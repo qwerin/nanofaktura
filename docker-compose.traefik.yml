@@ -8,6 +8,10 @@
 #   TRAEFIK_NETWORK = proxy
 
 services:
+  db:
+    networks:
+      - internal
+
   app:
     ports: []
     networks:
