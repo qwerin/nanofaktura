@@ -48,13 +48,11 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	// ConditionalAuth: no-op v single-user módu, vynucuje session v multi-user
-	r.Use(auth.ConditionalAuth(db, &multiUser))
 
 	// --- API sub-router pod /api -------------------------------------------
-	// Frontend volá /api/*, Vite dev proxy odstraňuje prefix → backend vidí /invoices atd.
-	// V produkci single-binary toto zajišťuje správné rozdělení API vs. SPA.
+	// ConditionalAuth pouze na API routách — SPA soubory jsou veřejné.
 	apiRouter := chi.NewRouter()
+	apiRouter.Use(auth.ConditionalAuth(db, &multiUser))
 	api := humachi.New(apiRouter, huma.DefaultConfig("NanoFaktura API", "1.0.0"))
 
 	handler.RegisterHealth(api, db, &multiUser, &initialized)
