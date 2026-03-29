@@ -137,8 +137,8 @@ export function RevenueChart({ invoices }: { invoices: Invoice[] }) {
               width={52}
             />
             <Tooltip
-              formatter={(val: number, name: string) => [
-                formatKc(val),
+              formatter={(val, name) => [
+                formatKc(typeof val === 'number' ? val : 0),
                 name === 'issued' ? 'Vydáno' : 'Zaplaceno',
               ]}
               contentStyle={{

@@ -54,7 +54,7 @@ function ChartStyle({ id, config }: { id: string; config: ChartConfig }) {
   return (
     <style
       dangerouslySetInnerHTML={{
-        __html: Object.entries(colorConfig)
+        __html: colorConfig
           .map(([key, { color }]) => `[data-chart=${id}] { --color-${key}: ${color}; }`)
           .join("\n"),
       }}
@@ -63,6 +63,15 @@ function ChartStyle({ id, config }: { id: string; config: ChartConfig }) {
 }
 
 const ChartTooltip = RechartsPrimitive.Tooltip
+
+// Typ pro položku payload injektovanou recharts do content funkce tooltipu
+type TooltipPayloadItem = {
+  name?: string | number
+  dataKey?: string | number
+  value?: number | string
+  color?: string
+  payload?: Record<string, unknown>
+}
 
 function ChartTooltipContent({
   active,
@@ -77,14 +86,20 @@ function ChartTooltipContent({
   color,
   nameKey,
   labelKey,
-}: React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
-  React.ComponentProps<"div"> & {
-    hideLabel?: boolean
-    hideIndicator?: boolean
-    indicator?: "line" | "dot" | "dashed"
-    nameKey?: string
-    labelKey?: string
-  }) {
+}: {
+  active?: boolean
+  payload?: TooltipPayloadItem[]
+  label?: string | number
+  labelFormatter?: (value: unknown, payload: TooltipPayloadItem[]) => React.ReactNode
+  formatter?: (value: unknown, name: string | number, item: TooltipPayloadItem, index: number, payload: TooltipPayloadItem[]) => React.ReactNode
+  color?: string
+  nameKey?: string
+  labelKey?: string
+  className?: string
+  hideLabel?: boolean
+  hideIndicator?: boolean
+  indicator?: "line" | "dot" | "dashed"
+}) {
   const { config } = useChart()
 
   const tooltipLabel = React.useMemo(() => {
@@ -118,7 +133,7 @@ function ChartTooltipContent({
         {payload.map((item, index) => {
           const key = `${nameKey || item.name || item.dataKey || "value"}`
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
-          const indicatorColor = color || (item.payload as Record<string, string>).fill || item.color
+          const indicatorColor = color || (item.payload as Record<string, string> | undefined)?.fill || item.color
 
           return (
             <div
