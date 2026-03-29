@@ -1,0 +1,40 @@
+# Traefik overlay — přidej tento soubor v Portaineru jako druhý compose soubor.
+#
+# Portainer → Add stack → Repository → "Add file" → docker-compose.traefik.yml
+#
+# Proměnné nastav v Portaineru (Environment variables):
+#   DOMAIN          = nanofaktura.cz
+#   CERT_RESOLVER   = letsencrypt
+#   TRAEFIK_NETWORK = proxy
+
+services:
+  app:
+    ports: !reset []
+    networks:
+      - internal
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      # HTTPS
+      - "traefik.http.routers.nanofaktura.rule=Host(`${DOMAIN}`) || Host(`www.${DOMAIN}`)"
+      - "traefik.http.routers.nanofaktura.entrypoints=websecure"
+      - "traefik.http.routers.nanofaktura.tls.certresolver=${CERT_RESOLVER}"
+      - "traefik.http.services.nanofaktura.loadbalancer.server.port=8080"
+      # www → apex redirect
+      - "traefik.http.middlewares.nanofaktura-www.redirectregex.regex=^https://www\\.${DOMAIN}/(.*)"
+      - "traefik.http.middlewares.nanofaktura-www.redirectregex.replacement=https://${DOMAIN}/$${1}"
+      - "traefik.http.middlewares.nanofaktura-www.redirectregex.permanent=true"
+      - "traefik.http.routers.nanofaktura.middlewares=nanofaktura-www"
+      # HTTP → HTTPS
+      - "traefik.http.routers.nanofaktura-http.rule=Host(`${DOMAIN}`) || Host(`www.${DOMAIN}`)"
+      - "traefik.http.routers.nanofaktura-http.entrypoints=web"
+      - "traefik.http.routers.nanofaktura-http.middlewares=nanofaktura-https-redirect"
+      - "traefik.http.middlewares.nanofaktura-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.nanofaktura-https-redirect.redirectscheme.permanent=true"
+
+networks:
+  internal:
+    driver: bridge
+  traefik:
+    name: ${TRAEFIK_NETWORK}
+    external: true
