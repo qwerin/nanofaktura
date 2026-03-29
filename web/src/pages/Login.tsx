@@ -1,12 +1,10 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 
 export function Login() {
   const { login } = useAuth()
-  const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -16,12 +14,7 @@ export function Login() {
     e.preventDefault()
     setLoading(true); setError(null)
     try {
-      const res = await login(username, password)
-      if (res.setup) {
-        navigate('/setup')
-      } else {
-        navigate('/')
-      }
+      await login(username, password)
     } catch (err) {
       setError((err as Error).message)
     } finally {
