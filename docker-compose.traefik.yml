@@ -9,7 +9,7 @@
 
 services:
   app:
-    ports: !reset []
+    ports: []
     networks:
       - internal
       - traefik
