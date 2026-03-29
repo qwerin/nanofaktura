@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, type Subject } from '../api/client'
+import { toast } from '../components/Toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -45,7 +46,6 @@ export function SubjectNew() {
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
   const [aresLoading, setAresLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   const [form, setForm] = useState<Subject>({
     name: '',
@@ -87,7 +87,7 @@ export function SubjectNew() {
         zip: s.zip,
       }))
     } catch (e) {
-      setError((e as Error).message)
+      toast((e as Error).message, 'error')
     } finally {
       setAresLoading(false)
     }
@@ -95,12 +95,12 @@ export function SubjectNew() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSaving(true); setError(null)
+    setSaving(true)
     try {
       await api.subjects.create(form)
       navigate('/subjects')
     } catch (err) {
-      setError((err as Error).message)
+      toast((err as Error).message, 'error')
     } finally {
       setSaving(false)
     }
@@ -219,12 +219,6 @@ export function SubjectNew() {
               rows={3} className="resize-none" />
           </Field>
         </SectionCard>
-
-        {error && (
-          <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
 
         <div className="flex justify-end gap-3 pb-8">
           <Button type="button" variant="outline" onClick={() => navigate('/subjects')}>

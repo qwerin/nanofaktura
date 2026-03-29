@@ -17,11 +17,9 @@ const (
 type InvoiceStatus string
 
 const (
-	StatusOpen      InvoiceStatus = "open"
-	StatusSent      InvoiceStatus = "sent"
-	StatusOverdue   InvoiceStatus = "overdue"
-	StatusPaid      InvoiceStatus = "paid"
-	StatusCancelled InvoiceStatus = "cancelled"
+	StatusOpen    InvoiceStatus = "open"    // neuhrazená (dříve "open"+"sent")
+	StatusOverdue InvoiceStatus = "overdue" // po splatnosti — počítáno dynamicky z due date
+	StatusPaid    InvoiceStatus = "paid"    // uhrazená
 )
 
 type PaymentMethod string
@@ -46,9 +44,10 @@ const (
 // InvoiceLine is one line item on the invoice (renamed from InvoiceItem to match Fakturoid)
 type InvoiceLine struct {
 	Base
-	InvoiceID uint   `gorm:"not null;index" json:"invoice_id"`
-	Position  int    `gorm:"not null"       json:"position"`
-	Name      string `gorm:"not null"       json:"name"`
+	InvoiceID   uint  `gorm:"not null;index"  json:"invoice_id"`
+	PriceItemID *uint `gorm:"index"           json:"price_item_id,omitempty"` // odkaz na ceníkovou položku
+	Position    int   `gorm:"not null"        json:"position"`
+	Name        string `gorm:"not null"       json:"name"`
 
 	Quantity string `gorm:"not null;default:'1'" json:"quantity"`  // stored as decimal string e.g. "1.5"
 	UnitName string `gorm:"size:20"              json:"unit_name"` // ks, hod, km, …

@@ -69,6 +69,12 @@ export function Login() {
             </Button>
           </form>
         </div>
+        <p className="mt-4 text-center text-xs text-slate-400">
+          <a href="https://github.com/qwerin/nanofaktura" target="_blank" rel="noopener noreferrer"
+            className="hover:text-slate-600 underline underline-offset-2">
+            github.com/qwerin/nanofaktura
+          </a>
+        </p>
       </div>
     </div>
   )

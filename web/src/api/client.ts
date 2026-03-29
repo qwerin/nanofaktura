@@ -4,6 +4,7 @@
 export interface InvoiceLine {
   id?: number
   invoice_id?: number
+  price_item_id?: number  // odkaz na ceníkovou položku (volitelný)
   position: number
   name: string
   quantity: string        // decimal string e.g. "1.5"
@@ -17,7 +18,7 @@ export interface InvoiceLine {
   total_hal?: number
 }
 
-export type InvoiceStatus = 'open' | 'sent' | 'overdue' | 'paid' | 'cancelled'
+export type InvoiceStatus = 'open' | 'overdue' | 'paid'
 export type DocumentType = 'invoice' | 'proforma' | 'correction' | 'tax_document'
 export type PaymentMethod = 'bank' | 'cash' | 'card' | 'cod' | 'paypal'
 
@@ -135,6 +136,29 @@ export interface Subject {
   default_due?: number
 }
 
+export interface PriceItem {
+  id?: number
+  name: string
+  catalog_no?: string
+  ean?: string
+  unit_name: string
+  unit_price_hal: number
+  vat_rate_bps: number
+  track_stock: boolean
+  allow_negative_stock: boolean
+  stock_quantity?: number   // computed ze StockMovement
+  archived?: boolean
+}
+
+export interface StockMovement {
+  id?: number
+  price_item_id: number
+  quantity: string   // decimal, + příjem / - výdej
+  note?: string
+  invoice_id?: number
+  created_at?: string
+}
+
 export interface AresSubject {
   ic: string
   name: string
@@ -186,7 +210,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ title: res.statusText }))
-    throw new Error(err.title ?? res.statusText)
+    throw new Error(err.detail ?? err.title ?? res.statusText)
   }
   if (res.status === 204) return undefined as T
   const json = await res.json()
@@ -245,6 +269,18 @@ export const api = {
       update: (id: number, f: NumberFormat) => request<NumberFormat>  ('PUT',    `/settings/number-formats/${id}`, f),
       delete: (id: number)                  => request<void>          ('DELETE', `/settings/number-formats/${id}`),
       next:   (id: number)                  => request<{number: string}>('POST', `/settings/number-formats/${id}/next`),
+    },
+  },
+
+  priceItems: {
+    list:    (archived = false)                     => request<PriceItem[]>    ('GET',    `/price-items${archived ? '?archived=true' : ''}`),
+    get:     (id: number)                           => request<PriceItem>      ('GET',    `/price-items/${id}`),
+    create:  (item: Omit<PriceItem, 'id'>)          => request<PriceItem>      ('POST',   '/price-items', item),
+    update:  (id: number, item: Omit<PriceItem, 'id'>) => request<PriceItem>   ('PUT',    `/price-items/${id}`, item),
+    archive: (id: number)                           => request<void>           ('DELETE', `/price-items/${id}`),
+    movements: {
+      list:   (itemId: number)                       => request<StockMovement[]>('GET',    `/price-items/${itemId}/movements`),
+      create: (itemId: number, m: { quantity: string; note?: string }) => request<StockMovement>('POST', `/price-items/${itemId}/movements`, m),
     },
   },
 }

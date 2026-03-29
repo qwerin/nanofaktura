@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type Subject, type SubjectType } from '../api/client'
+import { toast } from '../components/Toast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -21,13 +22,12 @@ const TYPE_LABELS: Record<SubjectType, string> = {
 export function SubjectList() {
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
 
   useEffect(() => {
     api.subjects.list()
       .then(setSubjects)
-      .catch((e: Error) => setError(e.message))
+      .catch((e: Error) => toast(e.message, 'error'))
       .finally(() => setLoading(false))
   }, [])
 
@@ -87,13 +87,7 @@ export function SubjectList() {
         </div>
       )}
 
-      {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700">
-          Chyba: {error}
-        </div>
-      )}
-
-      {!loading && !error && filtered.length === 0 && (
+      {!loading && filtered.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 py-16 text-center">
           <svg className="h-12 w-12 text-slate-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -112,7 +106,7 @@ export function SubjectList() {
         </div>
       )}
 
-      {!loading && !error && filtered.length > 0 && (
+      {!loading && filtered.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           <Table>
             <TableHeader>

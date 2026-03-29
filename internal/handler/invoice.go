@@ -17,6 +17,62 @@ import (
 	"github.com/qwerin/nanofaktura/internal/pdf"
 )
 
+// computeOverdue přepočítá status faktury na základě data splatnosti.
+// "sent" a "cancelled" jsou normalizovány na "open".
+// Faktura se stane "overdue" pokud je neuhrazená a datum splatnosti již minulo.
+func computeOverdue(inv *models.Invoice) {
+	if inv.Status == models.StatusPaid {
+		return
+	}
+	// Normalizace starých stavů sent/cancelled → open
+	if inv.Status != models.StatusOpen && inv.Status != models.StatusOverdue {
+		inv.Status = models.StatusOpen
+	}
+	issuedOn, err := time.Parse("2006-01-02", inv.IssuedOn)
+	if err != nil {
+		return
+	}
+	dueDate := issuedOn.AddDate(0, 0, inv.Due)
+	if time.Now().After(dueDate) {
+		inv.Status = models.StatusOverdue
+	} else {
+		inv.Status = models.StatusOpen
+	}
+}
+
+// createStockMovements vytvoří skladové pohyby pro řádky faktury s price_item_id.
+// Pohyby jsou záporné (výdej). Volá se po úspěšném vytvoření faktury v transakci.
+func createStockMovements(ctx context.Context, tx *gorm.DB, inv *models.Invoice) error {
+	for _, line := range inv.Lines {
+		if line.PriceItemID == nil {
+			continue
+		}
+		var item models.PriceItem
+		if err := tx.WithContext(ctx).First(&item, line.PriceItemID).Error; err != nil {
+			return fmt.Errorf("ceníková položka %d nenalezena: %w", *line.PriceItemID, err)
+		}
+		if !item.TrackStock {
+			continue
+		}
+		// Negace množství — výdej ze skladu
+		qty, err := strconv.ParseFloat(line.Quantity, 64)
+		if err != nil || qty <= 0 {
+			qty = 1
+		}
+		negQty := fmt.Sprintf("-%g", qty)
+		mov := models.StockMovement{
+			PriceItemID: item.ID,
+			Quantity:    negQty,
+			Note:        "Faktura " + inv.Number,
+			InvoiceID:   &inv.ID,
+		}
+		if err := tx.WithContext(ctx).Create(&mov).Error; err != nil {
+			return fmt.Errorf("chyba vytvoření pohybu skladu: %w", err)
+		}
+	}
+	return nil
+}
+
 func todayString() string {
 	return time.Now().Format("2006-01-02")
 }
@@ -43,12 +99,23 @@ func RegisterInvoice(api huma.API, r chi.Router, db *gorm.DB) {
 		inv := in.Body.toModel()
 		inv.UserID = auth.UserIDFromCtx(ctx)
 		inv.Recalculate()
-		if err := db.WithContext(ctx).Create(&inv).Error; err != nil {
+
+		tx := db.WithContext(ctx).Begin()
+		if err := tx.Create(&inv).Error; err != nil {
+			tx.Rollback()
 			return nil, huma.Error422UnprocessableEntity("uložení faktury selhalo", err)
 		}
-		// Načteme znovu včetně vygenerovaného ID a timestamps
-		if err := db.WithContext(ctx).Preload("Lines").First(&inv, inv.ID).Error; err != nil {
+		// Načteme řádky s ID pro skladové pohyby
+		if err := tx.Preload("Lines").First(&inv, inv.ID).Error; err != nil {
+			tx.Rollback()
 			return nil, huma.Error500InternalServerError("chyba načtení", err)
+		}
+		if err := createStockMovements(ctx, tx, &inv); err != nil {
+			tx.Rollback()
+			return nil, huma.Error422UnprocessableEntity(err.Error(), err)
+		}
+		if err := tx.Commit().Error; err != nil {
+			return nil, huma.Error500InternalServerError("commit selhalo", err)
 		}
 		return &CreateOutput{Body: inv}, nil
 	})
@@ -69,6 +136,9 @@ func RegisterInvoice(api huma.API, r chi.Router, db *gorm.DB) {
 		userID := auth.UserIDFromCtx(ctx)
 		if err := db.WithContext(ctx).Preload("Lines").Where("user_id = ?", userID).Find(&invoices).Error; err != nil {
 			return nil, huma.Error500InternalServerError("chyba databáze", err)
+		}
+		for i := range invoices {
+			computeOverdue(&invoices[i])
 		}
 		return &ListOutput{Body: invoices}, nil
 	})
@@ -94,6 +164,7 @@ func RegisterInvoice(api huma.API, r chi.Router, db *gorm.DB) {
 		if err != nil {
 			return nil, huma.Error404NotFound(fmt.Sprintf("faktura %d nenalezena", in.ID), err)
 		}
+		computeOverdue(&inv)
 		return &GetOutput{Body: inv}, nil
 	})
 
@@ -262,7 +333,7 @@ func RegisterInvoice(api huma.API, r chi.Router, db *gorm.DB) {
 	type PatchStatusInput struct {
 		ID   uint `path:"id" doc:"ID faktury"`
 		Body struct {
-			Status string `json:"status" enum:"open,sent,overdue,paid,cancelled"`
+			Status string `json:"status" enum:"open,paid"`
 		}
 	}
 

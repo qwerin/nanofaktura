@@ -29,6 +29,10 @@ build-web:
 run: build
 	./bin/nanofaktura
 
+## Sestaví frontend + backend a spustí na :8080 (produkční mód lokálně)
+run-full: build-web build
+	NANOFAKTURA_STATIC_DIR=web/dist ./bin/nanofaktura
+
 ## Dev: backend + frontend Vite dev server (vyžaduje 2 terminály)
 dev-backend:
 	go run ./cmd/server/

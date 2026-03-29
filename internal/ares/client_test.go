@@ -3,13 +3,15 @@ package ares
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
 func TestFetchByIC_OK(t *testing.T) {
-	// Mockujeme ARES server lokálně – testy nesmí záviset na síti
+	// Mockujeme ARES server lokálně – testy nesmí záviset na síti.
+	// Číselná pole (psc, cisloDomovni, cisloOrientacni) jsou v ARES jako JSON number.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := aresResponse{
 			ICO:           "27082440",
@@ -17,21 +19,19 @@ func TestFetchByIC_OK(t *testing.T) {
 			DIC:           "CZ27082440",
 		}
 		resp.Sidlo.UliceNazev = "Václavské náměstí"
-		resp.Sidlo.CisloDomovniOrientacni = "1"
+		resp.Sidlo.CisloDomovni = 1
+		resp.Sidlo.CisloOrientacni = 2
 		resp.Sidlo.ObecNazev = "Praha"
-		resp.Sidlo.PSC = "11000"
+		resp.Sidlo.PSC = 11000
 
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer srv.Close()
 
-	// Přesměrujeme klienta na mock server
-	c := &Client{http: srv.Client()}
-	// Nahradíme base URL mock serverem pomocí custom RoundTripper
-	c.http = &http.Client{
+	c := &Client{http: &http.Client{
 		Transport: rewriteTransport{base: srv.URL, inner: srv.Client().Transport},
-	}
+	}}
 
 	subj, err := c.FetchByIC(context.Background(), "27082440")
 	if err != nil {
@@ -40,8 +40,8 @@ func TestFetchByIC_OK(t *testing.T) {
 	if subj.Name != "Ukázková s.r.o." {
 		t.Errorf("Name = %q, want %q", subj.Name, "Ukázková s.r.o.")
 	}
-	if subj.Street != "Václavské náměstí 1" {
-		t.Errorf("Street = %q, want %q", subj.Street, "Václavské náměstí 1")
+	if subj.Street != "Václavské náměstí 1/2" {
+		t.Errorf("Street = %q, want %q", subj.Street, "Václavské náměstí 1/2")
 	}
 	if subj.ZIP != "11000" {
 		t.Errorf("ZIP = %q, want %q", subj.ZIP, "11000")
@@ -56,6 +56,52 @@ func TestFetchByIC_ShortIC(t *testing.T) {
 	}
 }
 
+func TestFetchByIC_NotFound(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c := &Client{http: &http.Client{
+		Transport: rewriteTransport{base: srv.URL, inner: srv.Client().Transport},
+	}}
+
+	_, err := c.FetchByIC(context.Background(), "00000000")
+	if !errors.Is(err, ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+// TestFetchByIC_Live volá živé ARES API – spusť jen ručně: go test -run TestFetchByIC_Live -v
+func TestFetchByIC_Live(t *testing.T) {
+	if testing.Short() {
+		t.Skip("live test přeskočen v short módu")
+	}
+
+	c := New(nil)
+	subj, err := c.FetchByIC(context.Background(), "25356275")
+	if err != nil {
+		t.Fatalf("ARES chyba: %v", err)
+	}
+
+	t.Logf("IC:     %s", subj.IC)
+	t.Logf("Name:   %s", subj.Name)
+	t.Logf("DIC:    %s", subj.DIC)
+	t.Logf("Street: %s", subj.Street)
+	t.Logf("City:   %s", subj.City)
+	t.Logf("ZIP:    %s", subj.ZIP)
+
+	if subj.Name == "" {
+		t.Error("Name je prázdné")
+	}
+	if subj.Street == "" {
+		t.Error("Street je prázdné")
+	}
+	if subj.ZIP == "" {
+		t.Error("ZIP je prázdné")
+	}
+}
+
 // rewriteTransport přesměruje všechny požadavky na testovací server.
 type rewriteTransport struct {
 	base  string
@@ -65,8 +111,6 @@ type rewriteTransport struct {
 func (t rewriteTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req = req.Clone(req.Context())
 	req.URL.Scheme = "http"
-	req.URL.Host = req.URL.Host // zachováme – mock server to přepíše automaticky
-	// Jednoduché přepsání: nahradíme host mock serverem
 	req.URL.Host = t.base[len("http://"):]
 	if t.inner == nil {
 		return http.DefaultTransport.RoundTrip(req)

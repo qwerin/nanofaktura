@@ -34,6 +34,33 @@ docker compose up -d
 # → http://localhost:8080
 ```
 
+### Produkce — Portainer + Traefik
+
+Repo obsahuje dva compose soubory:
+- `docker-compose.yml` — univerzální základ (PostgreSQL + app)
+- `docker-compose.traefik.yml` — overlay pro Traefik reverse proxy
+
+**Portainer → Stacks → Add stack → Repository:**
+
+| Pole | Hodnota |
+|------|---------|
+| Repository URL | `https://github.com/qwerin/nanofaktura` |
+| Repository reference | `refs/heads/main` |
+| Compose path | `docker-compose.yml` |
+| Additional file | `docker-compose.traefik.yml` |
+
+**Environment variables** (nebo nahraj `.env` soubor):
+
+```env
+POSTGRES_PASSWORD=silne_heslo
+DOMAIN=nanofaktura.cz
+CERT_RESOLVER=letsencrypt
+TRAEFIK_NETWORK=proxy
+```
+
+> Při prvním spuštění se PostgreSQL volume inicializuje s zadaným heslem.
+> Pokud změníš heslo, musíš smazat volume `nanofaktura_pgdata` a znovu nasadit.
+
 ## Konfigurace
 
 Konfigurace se načítá v pořadí: výchozí hodnoty → `nanofaktura.json` → env proměnné → CLI flags.

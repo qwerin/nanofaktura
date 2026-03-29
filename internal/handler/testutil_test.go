@@ -48,6 +48,7 @@ func newTestAPIWithDB(t *testing.T) (http.Handler, *gorm.DB) {
 	handler.RegisterInvoice(api, r, db)
 	handler.RegisterSubject(api, db)
 	handler.RegisterSettings(api, db)
+	handler.RegisterPriceItems(api, db)
 	handler.RegisterUsers(api, db, &multiUser)
 	handler.RegisterAuth(api, r, db, config.AppConfig{SessionTTL: 24}, &multiUser, &initialized)
 	return r, db

@@ -61,6 +61,7 @@ func main() {
 	handler.RegisterSubject(api, db)
 	handler.RegisterAres(api)
 	handler.RegisterSettings(api, db)
+	handler.RegisterPriceItems(api, db)
 	handler.RegisterUsers(api, db, &multiUser)
 
 	r.Mount("/api", apiRouter)

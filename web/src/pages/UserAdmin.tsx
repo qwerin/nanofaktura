@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type User, type UserRole } from '../api/client'
+import { toast } from '../components/Toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -39,7 +40,6 @@ function RoleBadge({ role }: { role: UserRole }) {
 export function UserAdmin() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [newUsername, setNewUsername] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -53,7 +53,7 @@ export function UserAdmin() {
     setLoading(true)
     api.users.list()
       .then(setUsers)
-      .catch(e => setError((e as Error).message))
+      .catch((e: Error) => toast(e.message, 'error'))
       .finally(() => setLoading(false))
   }
 
@@ -68,7 +68,7 @@ export function UserAdmin() {
       setShowCreate(false)
       load()
     } catch (err) {
-      setError((err as Error).message)
+      toast((err as Error).message, 'error')
     } finally {
       setSaving(false)
     }
@@ -79,7 +79,7 @@ export function UserAdmin() {
       await api.users.update(user.id!, { is_active: !user.is_active })
       load()
     } catch (err) {
-      setError((err as Error).message)
+      toast((err as Error).message, 'error')
     }
   }
 
@@ -89,7 +89,7 @@ export function UserAdmin() {
       await api.users.resetPassword(id, resetPassword)
       setResetId(null); setResetPassword('')
     } catch (err) {
-      setError((err as Error).message)
+      toast((err as Error).message, 'error')
     }
   }
 
@@ -141,10 +141,6 @@ export function UserAdmin() {
             </form>
           </CardContent>
         </Card>
-      )}
-
-      {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700 mb-4">{error}</div>
       )}
 
       {loading ? (

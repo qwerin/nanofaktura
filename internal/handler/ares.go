@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 
 	"github.com/danielgtaylor/huma/v2"
 
@@ -30,7 +31,10 @@ func RegisterAres(api huma.API) {
 	}, func(ctx context.Context, in *Input) (*AresOutput, error) {
 		subj, err := client.FetchByIC(ctx, in.IC)
 		if err != nil {
-			return nil, huma.Error404NotFound("subjekt nenalezen", err)
+			if errors.Is(err, ares.ErrNotFound) {
+				return nil, huma.Error404NotFound("subjekt nenalezen", err)
+			}
+			return nil, huma.Error500InternalServerError("chyba při načítání z ARES", err)
 		}
 		return &AresOutput{Body: *subj}, nil
 	})

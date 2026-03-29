@@ -6,12 +6,16 @@ package ares
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 )
 
 const aresBaseURL = "https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty"
+
+// ErrNotFound je vrácen, pokud ARES subjekt s daným IČO nezná.
+var ErrNotFound = errors.New("ares: subjekt nenalezen")
 
 // Lookup jsou data vrácená z ARES pro jedno IČO.
 // Mapujeme pouze pole, která jsou potřeba pro předvyplnění faktury.
@@ -26,16 +30,17 @@ type Lookup struct {
 }
 
 // aresResponse je interní struct pro parsování JSON odpovědi ARES.
+// Pozor: ARES vrací číselná pole (psc, cisloDomovni, cisloOrientacni) jako JSON number, ne string.
 type aresResponse struct {
-	ICO            string `json:"ico"`
-	ObchodniJmeno  string `json:"obchodniJmeno"`
-	DIC            string `json:"dic"`
-	Sidlo          struct {
-		PSC             string `json:"psc"`
+	ICO           string `json:"ico"`
+	ObchodniJmeno string `json:"obchodniJmeno"`
+	DIC           string `json:"dic"`
+	Sidlo         struct {
+		PSC             int    `json:"psc"`
 		ObecNazev       string `json:"nazevObce"`
 		UliceNazev      string `json:"nazevUlice"`
-		CisloDomovniOrientacni string `json:"cisloDomovniOrientacni"`
-		CisloOrientacni string `json:"cisloOrientacni"`
+		CisloDomovni    int    `json:"cisloDomovni"`
+		CisloOrientacni int    `json:"cisloOrientacni"`
 	} `json:"sidlo"`
 }
 
@@ -55,6 +60,7 @@ func New(hc *http.Client) *Client {
 
 // FetchByIC stáhne a vrátí data subjektu z ARES podle IČO.
 // IČO musí být 8místné číslo (s případnými vedoucími nulami).
+// Vrací ErrNotFound pokud ARES IČO nezná.
 func (c *Client) FetchByIC(ctx context.Context, ic string) (*Lookup, error) {
 	if len(ic) != 8 {
 		return nil, fmt.Errorf("ares: IČO musí mít přesně 8 znaků, dostali jsme %q", ic)
@@ -74,7 +80,7 @@ func (c *Client) FetchByIC(ctx context.Context, ic string) (*Lookup, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("ares: IČO %s nenalezeno", ic)
+		return nil, ErrNotFound
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("ares: neočekávaný status %d", resp.StatusCode)
@@ -91,11 +97,11 @@ func (c *Client) FetchByIC(ctx context.Context, ic string) (*Lookup, error) {
 // mapToLookup převede surovou ARES odpověď na naši doménovou strukturu.
 func mapToLookup(r aresResponse) *Lookup {
 	street := r.Sidlo.UliceNazev
-	if r.Sidlo.CisloDomovniOrientacni != "" {
-		street += " " + r.Sidlo.CisloDomovniOrientacni
+	if r.Sidlo.CisloDomovni != 0 {
+		street += fmt.Sprintf(" %d", r.Sidlo.CisloDomovni)
 	}
-	if r.Sidlo.CisloOrientacni != "" {
-		street += "/" + r.Sidlo.CisloOrientacni
+	if r.Sidlo.CisloOrientacni != 0 {
+		street += fmt.Sprintf("/%d", r.Sidlo.CisloOrientacni)
 	}
 	// Pokud ulice chybí, použijeme jen název obce (typické pro vesnice)
 	if street == "" {
@@ -108,7 +114,7 @@ func mapToLookup(r aresResponse) *Lookup {
 		DIC:         r.DIC,
 		Street:      street,
 		City:        r.Sidlo.ObecNazev,
-		ZIP:         r.Sidlo.PSC,
+		ZIP:         fmt.Sprintf("%05d", r.Sidlo.PSC),
 		CountryCode: "CZ",
 	}
 }

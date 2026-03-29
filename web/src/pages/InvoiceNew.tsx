@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useLocation, useParams } from 'react-router-dom'
-import { api, type Invoice, type InvoiceLine, type Subject, type Settings, type NumberFormat } from '../api/client'
+import { api, type Invoice, type InvoiceLine, type Subject, type Settings, type NumberFormat, type PriceItem } from '../api/client'
+import { toast } from '../components/Toast'
 import { formatKc } from '../utils/money'
 import { czIban, czSwift } from '../utils/iban'
 import { Input } from '@/components/ui/input'
@@ -65,7 +66,9 @@ export function InvoiceNew() {
 
   const [saving, setSaving] = useState(false)
   const [aresLoading, setAresLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [priceItems, setPriceItems] = useState<PriceItem[]>([])
+  const [showPriceDialog, setShowPriceDialog] = useState(false)
+  const [priceQuery, setPriceQuery] = useState('')
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(
     prefill?.subject_id ? String(prefill.subject_id) : ''
@@ -114,6 +117,7 @@ export function InvoiceNew() {
 
   useEffect(() => {
     api.subjects.list().then(setSubjects).catch(() => {})
+    api.priceItems.list().then(setPriceItems).catch(() => {})
 
     if (isEdit && editId) {
       // Edit mode: load existing invoice, skip settings defaults
@@ -201,8 +205,9 @@ export function InvoiceNew() {
         client_city: s.city,
         client_zip: s.zip,
       }))
-    } catch { /* silent */ }
-    finally { setAresLoading(false) }
+    } catch (e) {
+      toast((e as Error).message, 'error')
+    } finally { setAresLoading(false) }
   }
 
   const updateLine = (i: number, field: keyof InvoiceLine, value: string | number) =>
@@ -214,6 +219,23 @@ export function InvoiceNew() {
 
   const addLine = () =>
     setForm(f => ({ ...f, lines: [...f.lines, { ...EMPTY_LINE, position: f.lines.length + 1 }] }))
+
+  const addFromPriceItem = (item: PriceItem) => {
+    setForm(f => ({
+      ...f,
+      lines: [...f.lines, {
+        position:      f.lines.length + 1,
+        price_item_id: item.id,
+        name:          item.name,
+        quantity:      '1',
+        unit_name:     item.unit_name,
+        unit_price_hal: item.unit_price_hal,
+        vat_rate_bps:  item.vat_rate_bps,
+      }],
+    }))
+    setShowPriceDialog(false)
+    setPriceQuery('')
+  }
 
   const removeLine = (i: number) =>
     setForm(f => ({ ...f, lines: f.lines.filter((_, idx) => idx !== i) }))
@@ -227,7 +249,7 @@ export function InvoiceNew() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSaving(true); setError(null)
+    setSaving(true)
     try {
       if (isEdit && editId) {
         // Strippujeme serverová pole která Huma odmítá jako "unexpected property"
@@ -247,7 +269,7 @@ export function InvoiceNew() {
         navigate(`/invoices/${inv.id}`)
       }
     } catch (err) {
-      setError((err as Error).message)
+      toast((err as Error).message, 'error')
       setSaving(false)
     }
   }
@@ -639,6 +661,18 @@ export function InvoiceNew() {
                 </svg>
                 Přidat položku
               </button>
+              {priceItems.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowPriceDialog(true)}
+                  className="flex items-center gap-1.5 text-sm text-violet-600 hover:text-violet-700 font-medium transition-colors"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  Z ceníku
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -676,12 +710,72 @@ export function InvoiceNew() {
           </div>
         </div>
 
-        {error && (
-          <div className="max-w-2xl mx-auto px-4 pb-4">
-            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>
-          </div>
-        )}
       </form>
+
+      {/* ── Dialog: Z ceníku ────────────────────────────────────────── */}
+      {showPriceDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowPriceDialog(false)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+              <h2 className="text-base font-semibold text-slate-900">Přidat z ceníku</h2>
+              <button onClick={() => setShowPriceDialog(false)} className="text-slate-400 hover:text-slate-700">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {/* Search */}
+            <div className="px-5 py-3 border-b border-slate-100">
+              <input
+                autoFocus
+                type="text"
+                placeholder="Hledat název, kat. číslo…"
+                value={priceQuery}
+                onChange={e => setPriceQuery(e.target.value)}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+              />
+            </div>
+            {/* List */}
+            <div className="overflow-y-auto flex-1">
+              {priceItems
+                .filter(i => !i.archived && (
+                  !priceQuery ||
+                  i.name.toLowerCase().includes(priceQuery.toLowerCase()) ||
+                  (i.catalog_no ?? '').toLowerCase().includes(priceQuery.toLowerCase())
+                ))
+                .map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => addFromPriceItem(item)}
+                    className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors border-b border-slate-50 text-left"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">{item.name}</p>
+                      {item.catalog_no && (
+                        <p className="text-xs text-slate-400 mt-0.5">{item.catalog_no}</p>
+                      )}
+                    </div>
+                    <div className="text-right ml-4 shrink-0">
+                      <p className="text-sm font-mono text-slate-800">
+                        {(item.unit_price_hal / 100).toFixed(2)} Kč
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        {item.vat_rate_bps === 0 ? 'bez DPH' : `+ ${item.vat_rate_bps / 100} % DPH`} / {item.unit_name}
+                      </p>
+                      {item.track_stock && (
+                        <p className={`text-xs mt-0.5 ${(item.stock_quantity ?? 0) < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+                          sklad: {item.stock_quantity ?? 0} {item.unit_name}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Sticky footer ───────────────────────────────────────────── */}
       <div className="sticky bottom-0 border-t border-slate-200 bg-white px-8 py-4 flex items-center justify-end gap-3 shadow-[0_-1px_8px_oklch(0_0_0/0.06)]">

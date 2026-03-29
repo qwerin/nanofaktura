@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type Invoice, type InvoiceStatus } from '../api/client'
+import { toast } from '../components/Toast'
 import { StatusBadge } from '../components/StatusBadge'
 import { RevenueChart } from '../components/RevenueChart'
 import { formatKc } from '../utils/money'
@@ -17,22 +18,21 @@ import {
 type Filter = 'all' | InvoiceStatus
 
 const FILTER_TABS: { key: Filter; label: string }[] = [
-  { key: 'all',      label: 'Všechny' },
-  { key: 'open',     label: 'Otevřené' },
-  { key: 'paid',     label: 'Zaplacené' },
-  { key: 'overdue',  label: 'Po splatnosti' },
+  { key: 'all',     label: 'Všechny' },
+  { key: 'open',    label: 'Neuhrazené' },
+  { key: 'overdue', label: 'Po splatnosti' },
+  { key: 'paid',    label: 'Uhrazené' },
 ]
 
 export function InvoiceList() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
 
   useEffect(() => {
     api.invoices.list()
       .then(setInvoices)
-      .catch((e: Error) => setError(e.message))
+      .catch((e: Error) => toast(e.message, 'error'))
       .finally(() => setLoading(false))
   }, [])
 
@@ -58,7 +58,7 @@ export function InvoiceList() {
         </Button>
       </div>
 
-      {!loading && !error && <RevenueChart invoices={invoices} />}
+      {!loading && <RevenueChart invoices={invoices} />}
 
       {/* Filter tabs */}
       <div className="flex gap-1 mb-6 border-b border-slate-200">
@@ -87,13 +87,7 @@ export function InvoiceList() {
         </div>
       )}
 
-      {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700">
-          Chyba: {error}
-        </div>
-      )}
-
-      {!loading && !error && filtered.length === 0 && (
+      {!loading && filtered.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 py-16 text-center">
           <svg className="h-12 w-12 text-slate-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -110,7 +104,7 @@ export function InvoiceList() {
         </div>
       )}
 
-      {!loading && !error && filtered.length > 0 && (
+      {!loading && filtered.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           <Table>
             <TableHeader>

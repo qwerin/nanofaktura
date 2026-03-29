@@ -12,6 +12,8 @@ import { Settings } from './pages/Settings'
 import { Login } from './pages/Login'
 import { Setup } from './pages/Setup'
 import { UserAdmin } from './pages/UserAdmin'
+import { PriceItemList } from './pages/PriceItemList'
+import { PriceItemDetail } from './pages/PriceItemDetail'
 
 function Sidebar() {
   const { user, multiUser, logout } = useAuth()
@@ -57,6 +59,12 @@ function Sidebar() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
           Kontakty
+        </NavLink>
+        <NavLink to="/price-items" className={navItem}>
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
+          Ceník
         </NavLink>
         <NavLink to="/settings" className={navItem}>
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -150,6 +158,9 @@ function AppShell() {
                   <Route path="/invoices/:id"        element={<InvoiceDetail />} />
                   <Route path="/subjects"            element={<SubjectList />} />
                   <Route path="/subjects/new"        element={<SubjectNew />} />
+                  <Route path="/price-items"         element={<PriceItemList />} />
+                  <Route path="/price-items/new"     element={<PriceItemDetail />} />
+                  <Route path="/price-items/:id"     element={<PriceItemDetail />} />
                   <Route path="/settings"            element={<Settings />} />
                   {multiUser && user?.role === 'superadmin' && (
                     <Route path="/admin/users"       element={<UserAdmin />} />

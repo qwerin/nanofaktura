@@ -47,6 +47,8 @@ func Open(dsn string, driver ...string) (*gorm.DB, error) {
 		&models.Settings{},
 		&models.NumberFormat{},
 		&models.SystemConfig{},
+		&models.PriceItem{},
+		&models.StockMovement{},
 		&auth.User{},
 		&auth.Session{},
 	); err != nil {

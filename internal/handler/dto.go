@@ -9,11 +9,45 @@ import "github.com/qwerin/nanofaktura/internal/models"
 // LineInput je klientský vstup pro jednu řádkovou položku faktury.
 type LineInput struct {
 	Position     int    `json:"position,omitempty"`
+	PriceItemID  *uint  `json:"price_item_id,omitempty"` // volitelný odkaz na ceníkovou položku
 	Name         string `json:"name"`
 	Quantity     string `json:"quantity,omitempty"`
 	UnitName     string `json:"unit_name,omitempty"`
 	UnitPriceHal int64  `json:"unit_price_hal"`
 	VatRateBps   int32  `json:"vat_rate_bps,omitempty"`
+}
+
+// PriceItemInput je klientský vstup pro vytvoření / aktualizaci ceníkové položky.
+type PriceItemInput struct {
+	Name      string  `json:"name"`
+	CatalogNo *string `json:"catalog_no,omitempty"`
+	EAN       *string `json:"ean,omitempty"`
+
+	UnitName     string `json:"unit_name,omitempty"`
+	UnitPriceHal int64  `json:"unit_price_hal"`
+	VatRateBps   int32  `json:"vat_rate_bps,omitempty"`
+
+	TrackStock         bool `json:"track_stock,omitempty"`
+	AllowNegativeStock bool `json:"allow_negative_stock,omitempty"`
+}
+
+func (in *PriceItemInput) toModel() models.PriceItem {
+	return models.PriceItem{
+		Name:               in.Name,
+		CatalogNo:          in.CatalogNo,
+		EAN:                in.EAN,
+		UnitName:           orDefault(in.UnitName, "ks"),
+		UnitPriceHal:       in.UnitPriceHal,
+		VatRateBps:         in.VatRateBps,
+		TrackStock:         in.TrackStock,
+		AllowNegativeStock: in.AllowNegativeStock,
+	}
+}
+
+// StockMovementInput je klientský vstup pro ruční pohyb skladu.
+type StockMovementInput struct {
+	Quantity string `json:"quantity"` // decimal, + příjem / - výdej
+	Note     string `json:"note,omitempty"`
 }
 
 // InvoiceInput je klientský vstup pro vytvoření / aktualizaci faktury.
@@ -136,6 +170,7 @@ func (in *InvoiceInput) toModel() models.Invoice {
 
 	for i, l := range in.Lines {
 		inv.Lines = append(inv.Lines, models.InvoiceLine{
+			PriceItemID:  l.PriceItemID,
 			Position:     orDefaultInt(l.Position, i+1),
 			Name:         l.Name,
 			Quantity:     orDefault(l.Quantity, "1"),
