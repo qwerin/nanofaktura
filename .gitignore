@@ -1,0 +1,28 @@
+# Binárky
+/bin/
+/nanofaktura
+/server
+/cmd/server/server
+
+# SQLite databáze
+*.db
+*.db-shm
+*.db-wal
+
+# Go build cache
+/vendor/
+
+# IDE
+.idea/
+.vscode/
+
+# Frontend
+web/node_modules/
+web/dist/
+
+# Lokální config override (obsahuje hesla / lokální cesty)
+nanofaktura.json
+
+# Env soubory (obsahují secrets)
+.env
+.env.local

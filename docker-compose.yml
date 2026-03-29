@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nanofaktura
+      POSTGRES_USER: nanofaktura
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Nastav POSTGRES_PASSWORD v .env souboru}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nanofaktura"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      NANOFAKTURA_DB_DRIVER: postgres
+      NANOFAKTURA_DB_PATH: >-
+        host=db
+        user=nanofaktura
+        password=${POSTGRES_PASSWORD}
+        dbname=nanofaktura
+        sslmode=disable
+      NANOFAKTURA_STATIC_DIR: /app/dist
+      # Volitelné přepisy:
+      # NANOFAKTURA_MULTI_USER: "true"
+      # NANOFAKTURA_SESSION_TTL: "720"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
