@@ -40,8 +40,11 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     body: body ? JSON.stringify(body) : undefined,
   })
   if (res.status === 401) {
-    const returnTo = window.location.pathname + window.location.search
-    window.location.href = '/login?returnTo=' + encodeURIComponent(returnTo)
+    const here = window.location.pathname
+    if (here !== '/login' && here !== '/setup') {
+      const returnTo = here + window.location.search
+      window.location.href = '/login?returnTo=' + encodeURIComponent(returnTo)
+    }
     return undefined as T
   }
   if (!res.ok) {
