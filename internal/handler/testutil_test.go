@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"gorm.io/gorm"
 
+	"github.com/qwerin/nanofaktura/internal/auth"
 	"github.com/qwerin/nanofaktura/internal/config"
 	"github.com/qwerin/nanofaktura/internal/database"
 	"github.com/qwerin/nanofaktura/internal/handler"
@@ -96,6 +97,38 @@ func decodeBody(t *testing.T, w *httptest.ResponseRecorder, dst interface{}) {
 	if err := json.Unmarshal(raw, dst); err != nil {
 		t.Fatalf("decode body: %v\nraw: %s", err, raw)
 	}
+}
+
+// newTestAPIMultiUserChi vrátí hlavní chi router mountující apiRouter na /api
+// s ConditionalAuth middlewarem v multi-user módu — stejná topologie jako main.go.
+func newTestAPIMultiUserChi(t *testing.T) (http.Handler, *gorm.DB) {
+	t.Helper()
+	db, err := database.Open(":memory:")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+
+	s := models.DefaultSettings()
+	db.Create(&s)
+
+	var multiUser, initialized atomic.Bool
+	multiUser.Store(true)
+	initialized.Store(true)
+
+	apiRouter := chi.NewRouter()
+	apiRouter.Use(auth.ConditionalAuth(db, &multiUser))
+	api := humachi.New(apiRouter, huma.DefaultConfig("test", "1.0.0"))
+	handler.RegisterHealth(api, db, &multiUser, &initialized)
+	handler.RegisterAuth(api, apiRouter, db, config.AppConfig{SessionTTL: 24}, &multiUser, &initialized)
+	handler.RegisterInvoice(api, apiRouter, db)
+	handler.RegisterSubject(api, db)
+	handler.RegisterSettings(api, db)
+	handler.RegisterPriceItems(api, db)
+	handler.RegisterUsers(api, db, &multiUser)
+
+	r := chi.NewRouter()
+	r.Mount("/api", apiRouter)
+	return r, db
 }
 
 func idStr(id uint) string {
