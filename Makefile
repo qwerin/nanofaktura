@@ -1,4 +1,4 @@
-.PHONY: build test test-verbose lint run dev clean
+.PHONY: build test test-verbose lint run dev clean gen-types
 
 ## Sestaví Go binárku
 build:
@@ -39,6 +39,12 @@ dev-backend:
 
 dev-frontend:
 	cd web && npm run dev
+
+## Přegeneruje TypeScript typy z OpenAPI schématu backendu
+gen-types:
+	go run ./cmd/gen-schema/ > openapi.json
+	cd web && npx openapi-typescript ../openapi.json -o src/api/schema.gen.ts
+	rm openapi.json
 
 ## Smaže sestavené artefakty a dočasné DB soubory
 clean:

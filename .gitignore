@@ -26,3 +26,4 @@ nanofaktura.json
 # Env soubory (obsahují secrets)
 .env
 .env.local
+openapi.json

@@ -163,7 +163,7 @@ export function UserAdmin() {
                   <tr key={u.id}>
                     <td className="p-4 font-medium text-slate-800">{u.username}</td>
                     <td className="p-4 text-slate-500">{u.email || '—'}</td>
-                    <td className="p-4"><RoleBadge role={u.role} /></td>
+                    <td className="p-4"><RoleBadge role={u.role as UserRole} /></td>
                     <td className="p-4">
                       <span className={`text-xs font-medium ${u.is_active ? 'text-emerald-600' : 'text-slate-400'}`}>
                         {u.is_active ? 'Aktivní' : 'Deaktivován'}

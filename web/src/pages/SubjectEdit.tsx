@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { api, type SubjectInput } from '../api/client'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { api, type Subject, type SubjectInput } from '../api/client'
 import { toast } from '../components/Toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -42,50 +42,48 @@ function SectionCard({ title, children }: { title: string; children: React.React
   )
 }
 
-export function SubjectNew() {
+export function SubjectEdit() {
+  const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
   const [aresLoading, setAresLoading] = useState(false)
+  const [subjectName, setSubjectName] = useState('')
+  const [form, setForm] = useState<SubjectInput | null>(null)
 
-  const [form, setForm] = useState<SubjectInput>({
-    name: '',
-    type: 'customer',
-    street: '',
-    city: '',
-    zip: '',
-    country: 'CZ',
-    registration_no: '',
-    vat_no: '',
-    email: '',
-    phone: '',
-    website: '',
-    bank_account: '',
-    iban: '',
-    note: '',
-    default_payment_method: 'bank',
-    default_due: 14,
-  })
+  useEffect(() => {
+    api.subjects.get(Number(id))
+      .then((s: Subject) => {
+        setSubjectName(s.name)
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { id: _id, created_at: _ca, updated_at: _ua, deleted_at: _da, user_id: _uid, $schema: _s, ...input } = s
+        setForm(input)
+      })
+      .catch((e: Error) => {
+        toast(e.message, 'error')
+        navigate('/subjects')
+      })
+  }, [id])
 
   const set = <K extends keyof SubjectInput>(field: K) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       const val = e.target.type === 'number' ? Number(e.target.value) : e.target.value
-      setForm(f => ({ ...f, [field]: val }))
+      setForm(f => f ? { ...f, [field]: val } : f)
     }
 
   const fetchAres = async () => {
-    const ic = form.registration_no ?? ''
+    const ic = form?.registration_no ?? ''
     if (ic.length !== 8) return
     setAresLoading(true)
     try {
       const s = await api.ares.lookup(ic)
-      setForm(f => ({
+      setForm(f => f ? {
         ...f,
         name: s.name || f.name,
         vat_no: s.dic,
         street: s.street,
         city: s.city,
         zip: s.zip,
-      }))
+      } : f)
     } catch (e) {
       toast((e as Error).message, 'error')
     } finally {
@@ -95,9 +93,10 @@ export function SubjectNew() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!form) return
     setSaving(true)
     try {
-      await api.subjects.create(form)
+      await api.subjects.update(Number(id), form)
       navigate('/subjects')
     } catch (err) {
       toast((err as Error).message, 'error')
@@ -106,11 +105,23 @@ export function SubjectNew() {
     }
   }
 
+  if (!form) {
+    return (
+      <div className="flex items-center justify-center py-16 text-slate-400">
+        <svg className="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+        Načítám…
+      </div>
+    )
+  }
+
   return (
     <div className="p-8 max-w-3xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-slate-900">Nový kontakt</h1>
-        <p className="mt-1 text-sm text-slate-500">Přidejte zákazníka nebo dodavatele.</p>
+        <h1 className="text-2xl font-semibold text-slate-900">Upravit kontakt</h1>
+        <p className="mt-1 text-sm text-slate-500">{subjectName}</p>
       </div>
 
       <form onSubmit={submit} className="space-y-5">
@@ -120,7 +131,7 @@ export function SubjectNew() {
             <Field name="Typ kontaktu">
               <Select
                 value={form.type ?? 'customer'}
-                onValueChange={(val) => setForm(f => ({ ...f, type: val as SubjectInput['type'] }))}
+                onValueChange={(val) => setForm(f => f ? { ...f, type: val as SubjectInput['type'] } : f)}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -197,7 +208,7 @@ export function SubjectNew() {
             <Field name="Výchozí způsob platby">
               <Select
                 value={form.default_payment_method ?? 'bank'}
-                onValueChange={(val) => setForm(f => ({ ...f, default_payment_method: val as SubjectInput['default_payment_method'] }))}
+                onValueChange={(val) => setForm(f => f ? { ...f, default_payment_method: val as SubjectInput['default_payment_method'] } : f)}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -225,7 +236,7 @@ export function SubjectNew() {
             Zrušit
           </Button>
           <Button type="submit" disabled={saving}>
-            {saving ? 'Ukládám…' : 'Uložit kontakt'}
+            {saving ? 'Ukládám…' : 'Uložit změny'}
           </Button>
         </div>
       </form>

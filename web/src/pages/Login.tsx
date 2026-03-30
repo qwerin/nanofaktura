@@ -1,20 +1,25 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 
 export function Login() {
   const { login } = useAuth()
+  const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const returnTo = new URLSearchParams(window.location.search).get('returnTo') || '/'
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true); setError(null)
     try {
       await login(username, password)
+      navigate(returnTo, { replace: true })
     } catch (err) {
       setError((err as Error).message)
     } finally {

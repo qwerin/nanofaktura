@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api, type Subject, type SubjectType } from '../api/client'
 import { toast } from '../components/Toast'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,7 @@ const TYPE_LABELS: Record<SubjectType, string> = {
 }
 
 export function SubjectList() {
+  const navigate = useNavigate()
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
@@ -128,18 +129,28 @@ export function SubjectList() {
                   <TableCell className="text-slate-500">{s.email || '—'}</TableCell>
                   <TableCell>
                     <Badge variant="secondary">
-                      {TYPE_LABELS[s.type ?? 'customer'] ?? s.type}
+                      {TYPE_LABELS[(s.type ?? 'customer') as SubjectType] ?? s.type}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => s.id && handleDelete(s.id)}
-                      className="text-slate-400 hover:text-red-500"
-                    >
-                      Smazat
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => s.id && navigate(`/subjects/${s.id}/edit`)}
+                        className="text-slate-400 hover:text-slate-700"
+                      >
+                        Upravit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => s.id && handleDelete(s.id)}
+                        className="text-slate-400 hover:text-red-500"
+                      >
+                        Smazat
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

@@ -1,204 +1,35 @@
-// Typovaný API klient generovaný ručně z OpenAPI schématu backendu.
-// Komunikuje přes /api proxy (Vite dev) nebo relativní URL (produkce v single binary).
+// API klient pro NanoFaktura.
+// TYPY: generovány z OpenAPI schématu backendu — needitovat ručně.
+// Pro přegenerování spusť: make gen-types
 
-export interface InvoiceLine {
-  id?: number
-  invoice_id?: number
-  price_item_id?: number  // odkaz na ceníkovou položku (volitelný)
-  position: number
-  name: string
-  quantity: string        // decimal string e.g. "1.5"
-  unit_name: string
-  unit_price_hal: number  // v haléřích
-  vat_rate_bps: number    // basis points (2100 = 21 %)
-  unit_price_without_vat_hal?: number
-  unit_price_with_vat_hal?: number
-  total_price_without_vat_hal?: number
-  total_vat_hal?: number
-  total_hal?: number
-}
+import type { components } from './schema.gen'
 
-export type InvoiceStatus = 'open' | 'overdue' | 'paid'
-export type DocumentType = 'invoice' | 'proforma' | 'correction' | 'tax_document'
+// ── Response typy (full model, pro zobrazení/čtení) ───────────────────────────
+export type Invoice        = components['schemas']['Invoice']
+export type InvoiceLine    = components['schemas']['InvoiceLine']
+export type Subject        = components['schemas']['Subject']
+export type PriceItem      = components['schemas']['PriceItemOut']
+export type StockMovement  = components['schemas']['StockMovement']
+export type Settings       = components['schemas']['Settings']
+export type NumberFormat   = components['schemas']['NumberFormat']
+export type User           = components['schemas']['User']
+export type AresSubject    = components['schemas']['Lookup']
+
+// ── Input typy (DTO pro zápis, bez GORM/readonly polí) ───────────────────────
+export type InvoiceInput       = components['schemas']['InvoiceInput']
+export type LineInput          = components['schemas']['LineInput']
+export type SubjectInput       = components['schemas']['SubjectInput']
+export type PriceItemInput     = components['schemas']['PriceItemInput']
+export type StockMovementInput = components['schemas']['StockMovementInput']
+export type SettingsInput      = components['schemas']['SettingsInput']
+export type NumberFormatInput  = components['schemas']['NumberFormatInput']
+
+// ── Union typy (schema generuje 'string', zde zpřesňujeme) ───────────────────
 export type PaymentMethod = 'bank' | 'cash' | 'card' | 'cod' | 'paypal'
-
-export interface Invoice {
-  id?: number
-  document_type?: DocumentType
-  status?: InvoiceStatus
-  language?: string
-
-  number: string
-  variable_symbol?: string
-  order_number?: string
-  custom_id?: string
-
-  // Dates as "YYYY-MM-DD" strings
-  issued_on: string
-  taxable_fulfillment_due: string
-  due: number        // days until overdue
-  paid_on?: string
-
-  subject_id?: number
-
-  // Your company info
-  your_name?: string
-  your_street?: string
-  your_city?: string
-  your_zip?: string
-  your_country?: string
-  your_registration_no?: string
-  your_vat_no?: string
-
-  // Client info
-  client_name: string
-  client_street?: string
-  client_city?: string
-  client_zip?: string
-  client_country?: string
-  client_registration_no?: string
-  client_vat_no?: string
-
-  // Delivery address
-  client_has_delivery_address?: boolean
-  client_delivery_name?: string
-  client_delivery_street?: string
-  client_delivery_city?: string
-  client_delivery_zip?: string
-  client_delivery_country?: string
-
-  // Payment
-  payment_method?: PaymentMethod
-  bank_account?: string
-  iban?: string
-  swift_bic?: string
-
-  // Currency
-  currency?: string
-  exchange_rate?: string
-
-  // Tax
-  vat_exempt?: boolean
-  transferred_tax_liability?: boolean
-  vat_price_mode?: string
-
-  // Notes
-  note?: string
-  footer_note?: string
-  private_note?: string
-  tags?: string
-
-  // Totals (computed by backend)
-  subtotal?: number
-  total_vat_hal?: number
-  total?: number
-
-  lines: InvoiceLine[]
-}
-
-export type UserRole = 'superadmin' | 'admin' | 'user'
-
-export interface User {
-  id?: number
-  username: string
-  email?: string
-  role: UserRole
-  is_active: boolean
-  created_at?: string
-}
-
-export type SubjectType = 'customer' | 'supplier' | 'both'
-
-export interface Subject {
-  id?: number
-  custom_id?: string
-  type?: SubjectType
-
-  name: string
-  street?: string
-  city?: string
-  zip?: string
-  country?: string
-  registration_no?: string
-  vat_no?: string
-  local_vat_no?: string
-
-  email?: string
-  phone?: string
-  website?: string
-
-  bank_account?: string
-  iban?: string
-
-  note?: string
-
-  default_payment_method?: PaymentMethod
-  default_due?: number
-}
-
-export interface PriceItem {
-  id?: number
-  name: string
-  catalog_no?: string
-  ean?: string
-  unit_name: string
-  unit_price_hal: number
-  vat_rate_bps: number
-  track_stock: boolean
-  allow_negative_stock: boolean
-  stock_quantity?: number   // computed ze StockMovement
-  archived?: boolean
-}
-
-export interface StockMovement {
-  id?: number
-  price_item_id: number
-  quantity: string   // decimal, + příjem / - výdej
-  note?: string
-  invoice_id?: number
-  created_at?: string
-}
-
-export interface AresSubject {
-  ic: string
-  name: string
-  dic: string
-  street: string
-  city: string
-  zip: string
-  country_code: string
-}
-
-export interface NumberFormat {
-  id?: number
-  settings_id?: number
-  document_type: string
-  label?: string
-  pattern: string
-  next_number: number
-  padding_width?: number
-}
-
-export interface Settings {
-  id?: number
-  company_name?: string
-  company_street?: string
-  company_city?: string
-  company_zip?: string
-  company_country?: string
-  registration_no?: string
-  vat_no?: string
-  vat_exempt?: boolean
-  bank_account?: string
-  iban?: string
-  swift_bic?: string
-  default_due?: number
-  default_currency?: string
-  default_payment_method?: string
-  default_note?: string
-  invoice_template?: string
-  number_formats?: NumberFormat[]
-}
+export type InvoiceStatus = 'open' | 'overdue' | 'paid'
+export type DocumentType  = 'invoice' | 'proforma' | 'correction' | 'tax_document'
+export type SubjectType   = 'customer' | 'supplier' | 'both'
+export type UserRole      = 'superadmin' | 'admin' | 'user'
 
 const BASE = '/api'
 
@@ -208,21 +39,25 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     headers: { 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
   })
+  if (res.status === 401) {
+    const returnTo = window.location.pathname + window.location.search
+    window.location.href = '/login?returnTo=' + encodeURIComponent(returnTo)
+    return undefined as T
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ title: res.statusText }))
     throw new Error(err.detail ?? err.title ?? res.statusText)
   }
   if (res.status === 204) return undefined as T
   const json = await res.json()
-  // Huma v2 přidává "$schema" jako první klíč u objektových odpovědí; stripneme ho.
-  // Pole (list endpointy) vracíme přímo.
+  // Huma v2 přidává "$schema" jako první klíč — stripneme ho.
   if (Array.isArray(json)) return json as T
   const { $schema: _s, ...data } = json as Record<string, unknown>
   return data as T
 }
 
 export const api = {
-  health: () => request<{ status: string; version: string; multi_user: boolean; initialized: boolean }>('GET', '/health'),
+  health: () => request<components['schemas']['HealthOutputBody']>('GET', '/health'),
 
   auth: {
     login:  (credentials: { username: string; password: string }) => request<User>('POST', '/auth/login', credentials),
@@ -232,12 +67,12 @@ export const api = {
   },
 
   users: {
-    list:          ()                                                          => request<User[]>('GET',    '/users'),
-    get:           (id: number)                                                => request<User>  ('GET',    `/users/${id}`),
-    create:        (u: { username: string; password: string; email?: string; role?: UserRole }) => request<User>('POST', '/users', u),
-    update:        (id: number, u: { email?: string; role?: UserRole; is_active?: boolean })    => request<User>('PUT',  `/users/${id}`, u),
-    delete:        (id: number)                                                => request<void>  ('DELETE', `/users/${id}`),
-    resetPassword: (id: number, password: string)                             => request<void>  ('POST',   `/users/${id}/reset-password`, { password }),
+    list:          ()                                                                   => request<User[]>('GET',    '/users'),
+    get:           (id: number)                                                         => request<User>  ('GET',    `/users/${id}`),
+    create:        (u: components['schemas']['CreateUserInputBody'])                    => request<User>  ('POST',   '/users', u),
+    update:        (id: number, u: components['schemas']['UpdateUserInputBody'])        => request<User>  ('PUT',    `/users/${id}`, u),
+    delete:        (id: number)                                                         => request<void>  ('DELETE', `/users/${id}`),
+    resetPassword: (id: number, password: string)                                      => request<void>  ('POST',   `/users/${id}/reset-password`, { password }),
   },
 
   ares: {
@@ -245,42 +80,42 @@ export const api = {
   },
 
   invoices: {
-    list:      ()                         => request<Invoice[]>('GET',  '/invoices'),
-    get:       (id: number)               => request<Invoice>  ('GET',  `/invoices/${id}`),
-    create:    (inv: Invoice)             => request<Invoice>  ('POST', '/invoices', inv),
-    update:    (id: number, inv: Invoice) => request<Invoice>  ('PUT',  `/invoices/${id}`, inv),
-    duplicate: (id: number)               => request<Invoice>  ('POST', `/invoices/${id}/duplicate`),
+    list:      ()                                  => request<Invoice[]>('GET',  '/invoices'),
+    get:       (id: number)                        => request<Invoice>  ('GET',  `/invoices/${id}`),
+    create:    (inv: InvoiceInput)                 => request<Invoice>  ('POST', '/invoices', inv),
+    update:    (id: number, inv: InvoiceInput)     => request<Invoice>  ('PUT',  `/invoices/${id}`, inv),
+    duplicate: (id: number)                        => request<Invoice>  ('POST', `/invoices/${id}/duplicate`),
   },
 
   subjects: {
-    list:   ()                         => request<Subject[]>('GET',    '/subjects'),
-    get:    (id: number)               => request<Subject>  ('GET',    `/subjects/${id}`),
-    create: (s: Subject)               => request<Subject>  ('POST',   '/subjects', s),
-    update: (id: number, s: Subject)   => request<Subject>  ('PUT',    `/subjects/${id}`, s),
-    delete: (id: number)               => request<void>     ('DELETE', `/subjects/${id}`),
+    list:   ()                            => request<Subject[]>('GET',    '/subjects'),
+    get:    (id: number)                  => request<Subject>  ('GET',    `/subjects/${id}`),
+    create: (s: SubjectInput)             => request<Subject>  ('POST',   '/subjects', s),
+    update: (id: number, s: SubjectInput) => request<Subject>  ('PUT',    `/subjects/${id}`, s),
+    delete: (id: number)                  => request<void>     ('DELETE', `/subjects/${id}`),
   },
 
   settings: {
-    get:    ()                              => request<Settings>      ('GET',    '/settings'),
-    update: (s: Partial<Settings>)          => request<Settings>      ('PUT',    '/settings', s),
+    get:    ()                                     => request<Settings>      ('GET', '/settings'),
+    update: (s: SettingsInput)                     => request<Settings>      ('PUT', '/settings', s),
     formats: {
-      list:   ()                            => request<NumberFormat[]>('GET',    '/settings/number-formats'),
-      create: (f: NumberFormat)             => request<NumberFormat>  ('POST',   '/settings/number-formats', f),
-      update: (id: number, f: NumberFormat) => request<NumberFormat>  ('PUT',    `/settings/number-formats/${id}`, f),
-      delete: (id: number)                  => request<void>          ('DELETE', `/settings/number-formats/${id}`),
-      next:   (id: number)                  => request<{number: string}>('POST', `/settings/number-formats/${id}/next`),
+      list:   ()                                   => request<NumberFormat[]>('GET',    '/settings/number-formats'),
+      create: (f: NumberFormatInput)               => request<NumberFormat>  ('POST',   '/settings/number-formats', f),
+      update: (id: number, f: NumberFormatInput)   => request<NumberFormat>  ('PUT',    `/settings/number-formats/${id}`, f),
+      delete: (id: number)                         => request<void>          ('DELETE', `/settings/number-formats/${id}`),
+      next:   (id: number)                         => request<{ number: string }>('POST', `/settings/number-formats/${id}/next`),
     },
   },
 
   priceItems: {
-    list:    (archived = false)                     => request<PriceItem[]>    ('GET',    `/price-items${archived ? '?archived=true' : ''}`),
-    get:     (id: number)                           => request<PriceItem>      ('GET',    `/price-items/${id}`),
-    create:  (item: Omit<PriceItem, 'id'>)          => request<PriceItem>      ('POST',   '/price-items', item),
-    update:  (id: number, item: Omit<PriceItem, 'id'>) => request<PriceItem>   ('PUT',    `/price-items/${id}`, item),
-    archive: (id: number)                           => request<void>           ('DELETE', `/price-items/${id}`),
+    list:    (archived = false)                        => request<PriceItem[]>    ('GET',    `/price-items${archived ? '?archived=true' : ''}`),
+    get:     (id: number)                              => request<PriceItem>      ('GET',    `/price-items/${id}`),
+    create:  (item: PriceItemInput)                    => request<PriceItem>      ('POST',   '/price-items', item),
+    update:  (id: number, item: PriceItemInput)        => request<PriceItem>      ('PUT',    `/price-items/${id}`, item),
+    archive: (id: number)                              => request<void>           ('DELETE', `/price-items/${id}`),
     movements: {
-      list:   (itemId: number)                       => request<StockMovement[]>('GET',    `/price-items/${itemId}/movements`),
-      create: (itemId: number, m: { quantity: string; note?: string }) => request<StockMovement>('POST', `/price-items/${itemId}/movements`, m),
+      list:   (itemId: number)                         => request<StockMovement[]>('GET',  `/price-items/${itemId}/movements`),
+      create: (itemId: number, m: StockMovementInput)  => request<StockMovement> ('POST', `/price-items/${itemId}/movements`, m),
     },
   },
 }

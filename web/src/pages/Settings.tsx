@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type Settings as SettingsType, type NumberFormat } from '../api/client'
+import { api, type Settings as SettingsType, type SettingsInput, type NumberFormat, type NumberFormatInput } from '../api/client'
 import { czIban, czSwift } from '../utils/iban'
 import { toast } from '../components/Toast'
 import { Button } from '@/components/ui/button'
@@ -29,14 +29,14 @@ function Field({ name, children }: { name: string; children: React.ReactNode }) 
 }
 
 export function Settings() {
-  const [settings, setSettings] = useState<SettingsType>({})
+  const [settings, setSettings] = useState<SettingsInput>({})
   const [formats, setFormats] = useState<NumberFormat[]>([])
   const [saving, setSaving] = useState(false)
   const [savingSection, setSavingSection] = useState<string | null>(null)
 
   // New format form state
   const [showNewFormat, setShowNewFormat] = useState(false)
-  const [newFormat, setNewFormat] = useState<NumberFormat>({
+  const [newFormat, setNewFormat] = useState<NumberFormatInput>({
     document_type: 'invoice',
     label: '',
     pattern: '{YYYY}{NNN}',
@@ -46,7 +46,7 @@ export function Settings() {
 
   // Edit format state
   const [editingFormatId, setEditingFormatId] = useState<number | null>(null)
-  const [editFormat, setEditFormat] = useState<NumberFormat | null>(null)
+  const [editFormat, setEditFormat] = useState<NumberFormatInput | null>(null)
 
   // Preview number state
   const [previewNumbers, setPreviewNumbers] = useState<Record<number, string>>({})
@@ -168,7 +168,7 @@ export function Settings() {
       setSettings(s => ({ ...s, [field]: val }))
     }
 
-  const setNF = <K extends keyof NumberFormat>(obj: NumberFormat, setObj: (nf: NumberFormat) => void, field: K) =>
+  const setNF = <K extends keyof NumberFormatInput>(obj: NumberFormatInput, setObj: (nf: NumberFormatInput) => void, field: K) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.type === 'number' ? Number(e.target.value) : e.target.value
       setObj({ ...obj, [field]: val })
@@ -504,7 +504,12 @@ export function Settings() {
                                 variant="outline"
                                 size="sm"
                                 className="h-7 px-2 text-xs"
-                                onClick={() => { setEditingFormatId(fmt.id!); setEditFormat({ ...fmt }) }}
+                                onClick={() => {
+                                  setEditingFormatId(fmt.id!)
+                                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                                  const { id: _id, created_at: _ca, updated_at: _ua, deleted_at: _da, settings_id: _si, $schema: _s, ...input } = fmt
+                                  setEditFormat(input)
+                                }}
                               >
                                 Upravit
                               </Button>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { api, type PriceItem, type StockMovement } from '../api/client'
+import { api, type PriceItemInput, type StockMovement } from '../api/client'
 import { toast } from '../components/Toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,7 +30,7 @@ function Field({ name, required, children }: { name: string; required?: boolean;
   )
 }
 
-const EMPTY: Omit<PriceItem, 'id'> = {
+const EMPTY: PriceItemInput = {
   name: '',
   catalog_no: '',
   ean: '',
@@ -46,7 +46,7 @@ export function PriceItemDetail() {
   const isNew = !id || id === 'new'
   const navigate = useNavigate()
 
-  const [form, setForm] = useState<Omit<PriceItem, 'id'>>(EMPTY)
+  const [form, setForm] = useState<PriceItemInput>(EMPTY)
   const [stockQty, setStockQty] = useState<number>(0)
   const [movements, setMovements] = useState<StockMovement[]>([])
   const [loading, setLoading] = useState(!isNew)
@@ -89,7 +89,7 @@ export function PriceItemDetail() {
       setForm(f => ({ ...f, [field]: val }))
     }
 
-  const payload = (): Omit<PriceItem, 'id'> => ({
+  const payload = (): PriceItemInput => ({
     ...form,
     catalog_no: form.catalog_no?.trim() || undefined,
     ean: form.ean?.trim() || undefined,

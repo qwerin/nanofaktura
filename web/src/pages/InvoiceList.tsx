@@ -129,7 +129,7 @@ export function InvoiceList() {
                     {formatKc(inv.total ?? 0)}
                   </TableCell>
                   <TableCell>
-                    <StatusBadge status={inv.status ?? 'open'} />
+                    <StatusBadge status={(inv.status ?? 'open') as InvoiceStatus} />
                   </TableCell>
                   <TableCell className="text-right">
                     <Link

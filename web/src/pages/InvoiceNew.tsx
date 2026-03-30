@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useLocation, useParams } from 'react-router-dom'
-import { api, type Invoice, type InvoiceLine, type Subject, type Settings, type NumberFormat, type PriceItem } from '../api/client'
+import { api, type Invoice, type InvoiceInput, type LineInput, type Subject, type Settings, type NumberFormat, type PriceItem, type PaymentMethod } from '../api/client'
 import { toast } from '../components/Toast'
 import { formatKc } from '../utils/money'
 import { czIban, czSwift } from '../utils/iban'
@@ -13,7 +13,7 @@ const today = () => new Date().toISOString().slice(0, 10)
 
 const DUE_OPTIONS = [0, 7, 14, 21, 30, 45, 60, 90]
 
-const PAYMENT_METHODS: { key: Invoice['payment_method']; label: string }[] = [
+const PAYMENT_METHODS: { key: PaymentMethod; label: string }[] = [
   { key: 'bank',   label: 'Banka' },
   { key: 'card',   label: 'Kartou' },
   { key: 'cash',   label: 'Hotově' },
@@ -21,7 +21,7 @@ const PAYMENT_METHODS: { key: Invoice['payment_method']; label: string }[] = [
   { key: 'paypal', label: 'Jiná' },
 ]
 
-const EMPTY_LINE: InvoiceLine = {
+const EMPTY_LINE: LineInput = {
   position: 1,
   name: '',
   quantity: '1',
@@ -78,7 +78,7 @@ export function InvoiceNew() {
   const [docType, setDocType] = useState<'invoice' | 'proforma'>('invoice')
   const formRef = useRef<HTMLFormElement>(null)
 
-  const [form, setForm] = useState<Invoice>({
+  const [form, setForm] = useState<InvoiceInput>({
     number: '',
     issued_on: today(),
     taxable_fulfillment_due: today(),
@@ -124,8 +124,11 @@ export function InvoiceNew() {
       api.invoices.get(editId).then(inv => {
         setDocType((inv.document_type as 'invoice' | 'proforma') ?? 'invoice')
         setSelectedSubjectId(inv.subject_id ? String(inv.subject_id) : '')
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { id: _id, created_at: _ca, updated_at: _ua, deleted_at: _da, status: _st,
+                subtotal: _sub, total_vat_hal: _tv, total: _tot, user_id: _uid, $schema: _s, ...invInput } = inv
         setForm({
-          ...inv,
+          ...invInput,
           lines: inv.lines.map((l, i) => ({
             position: l.position ?? i + 1,
             name: l.name,
@@ -159,7 +162,7 @@ export function InvoiceNew() {
         iban: s.iban ?? f.iban,
         swift_bic: s.swift_bic ?? f.swift_bic,
         // Don't overwrite prefilled client payment prefs
-        payment_method: f.payment_method !== 'bank' ? f.payment_method : (s.default_payment_method as Invoice['payment_method']) ?? f.payment_method,
+        payment_method: f.payment_method !== 'bank' ? f.payment_method : (s.default_payment_method as PaymentMethod) ?? f.payment_method,
         due: f.due !== 14 ? f.due : s.default_due ?? f.due,
         currency: s.default_currency ?? f.currency,
         vat_exempt: s.vat_exempt ?? f.vat_exempt,
@@ -167,7 +170,7 @@ export function InvoiceNew() {
     }).catch(() => {})
   }, [])
 
-  const set = <K extends keyof Invoice>(field: K, value: Invoice[K]) =>
+  const set = <K extends keyof InvoiceInput>(field: K, value: InvoiceInput[K]) =>
     setForm(f => ({ ...f, [field]: value }))
 
   const handleSubjectSelect = (id: string) => {
@@ -210,7 +213,7 @@ export function InvoiceNew() {
     } finally { setAresLoading(false) }
   }
 
-  const updateLine = (i: number, field: keyof InvoiceLine, value: string | number) =>
+  const updateLine = (i: number, field: keyof LineInput, value: string | number) =>
     setForm(f => {
       const lines = [...f.lines]
       lines[i] = { ...lines[i], [field]: value }
@@ -243,7 +246,7 @@ export function InvoiceNew() {
   const totals = form.lines.reduce((acc, l) => {
     const qty = parseFloat(l.quantity || '1') || 1
     const base = Math.round(l.unit_price_hal * qty)
-    const vat = Math.round(base * l.vat_rate_bps / 10000)
+    const vat = Math.round(base * (l.vat_rate_bps ?? 0) / 10000)
     return { base: acc.base + base, vat: acc.vat + vat, total: acc.total + base + vat }
   }, { base: 0, vat: 0, total: 0 })
 
@@ -252,12 +255,7 @@ export function InvoiceNew() {
     setSaving(true)
     try {
       if (isEdit && editId) {
-        // Strippujeme serverová pole která Huma odmítá jako "unexpected property"
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { id: _id, created_at: _ca, updated_at: _ua, deleted_at: _da,
-                status: _st, subtotal: _sub, total_vat_hal: _tv, total: _tot,
-                user_id: _uid, ...invoiceData } = form as unknown as Record<string, unknown>
-        const inv = await api.invoices.update(editId, { ...invoiceData, document_type: docType } as Parameters<typeof api.invoices.update>[1])
+        const inv = await api.invoices.update(editId, { ...form, document_type: docType })
         navigate(`/invoices/${inv.id}`)
       } else {
         let number = form.number
@@ -443,12 +441,12 @@ export function InvoiceNew() {
                 {DUE_OPTIONS.map(d => (
                   <option key={d} value={d}>{d === 0 ? 'Ihned' : `${d} dní`}</option>
                 ))}
-                {!DUE_OPTIONS.includes(form.due) && (
-                  <option value={form.due}>{form.due} dní</option>
+                {!DUE_OPTIONS.includes(form.due ?? 14) && (
+                  <option value={form.due ?? 14}>{form.due ?? 14} dní</option>
                 )}
               </select>
               <span className="text-sm text-slate-400">
-                (vychází na {dueDate(form.issued_on, form.due)})
+                (vychází na {dueDate(form.issued_on, form.due ?? 14)})
               </span>
             </div>
           </Row>
@@ -687,9 +685,10 @@ export function InvoiceNew() {
                 for (const l of form.lines) {
                   const qty = parseFloat(l.quantity || '1') || 1
                   const base = Math.round(l.unit_price_hal * qty)
-                  const vat = Math.round(base * l.vat_rate_bps / 10000)
-                  const g = byRate.get(l.vat_rate_bps) ?? { base: 0, vat: 0 }
-                  byRate.set(l.vat_rate_bps, { base: g.base + base, vat: g.vat + vat })
+                  const rate = l.vat_rate_bps ?? 0
+                  const vat = Math.round(base * rate / 10000)
+                  const g = byRate.get(rate) ?? { base: 0, vat: 0 }
+                  byRate.set(rate, { base: g.base + base, vat: g.vat + vat })
                 }
                 return [...byRate.entries()].sort((a, b) => b[0] - a[0]).map(([bps, g]) => (
                   <div key={bps}>

@@ -8,6 +8,7 @@ import { InvoiceNew } from './pages/InvoiceNew'
 import { InvoiceDetail } from './pages/InvoiceDetail'
 import { SubjectList } from './pages/SubjectList'
 import { SubjectNew } from './pages/SubjectNew'
+import { SubjectEdit } from './pages/SubjectEdit'
 import { Settings } from './pages/Settings'
 import { Login } from './pages/Login'
 import { Setup } from './pages/Setup'
@@ -137,7 +138,7 @@ function AppShell() {
       <Route path="/login" element={
         !initialized ? <Navigate to="/setup" replace />
         : multiUser && !user ? <Login />
-        : <Navigate to="/" replace />
+        : <Navigate to={new URLSearchParams(window.location.search).get('returnTo') || '/'} replace />
       } />
 
       {/* Všechny ostatní routy */}
@@ -158,6 +159,7 @@ function AppShell() {
                   <Route path="/invoices/:id"        element={<InvoiceDetail />} />
                   <Route path="/subjects"            element={<SubjectList />} />
                   <Route path="/subjects/new"        element={<SubjectNew />} />
+                  <Route path="/subjects/:id/edit"  element={<SubjectEdit />} />
                   <Route path="/price-items"         element={<PriceItemList />} />
                   <Route path="/price-items/new"     element={<PriceItemDetail />} />
                   <Route path="/price-items/:id"     element={<PriceItemDetail />} />

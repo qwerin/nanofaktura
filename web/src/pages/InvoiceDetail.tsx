@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { api, type Invoice } from '../api/client'
+import { api, type Invoice, type InvoiceStatus } from '../api/client'
 import { StatusBadge } from '../components/StatusBadge'
 import { formatKc, formatQty } from '../utils/money'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -60,7 +60,7 @@ export function InvoiceDetail() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold text-slate-900">Faktura {inv.number}</h1>
-            <StatusBadge status={inv.status ?? 'open'} />
+            <StatusBadge status={(inv.status ?? 'open') as InvoiceStatus} />
           </div>
           <p className="mt-1 text-sm text-slate-500">
             Vystaveno: {inv.issued_on} · Splatnost: {inv.due} dní od vystavení
