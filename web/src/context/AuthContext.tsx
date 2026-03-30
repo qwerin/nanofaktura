@@ -33,10 +33,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setMultiUser(health.multi_user)
       setInitialized(health.initialized)
       if (health.multi_user && health.initialized) {
-        try {
-          const me = await api.auth.me()
-          setUser(me)
-        } catch {
+        // Přímý fetch — záměrně obcházíme api.request(), který by 401 přeměnil
+        // na window.location.href redirect. Zde 401 jen znamená "nepřihlášen".
+        const meRes = await fetch('/api/auth/me')
+        if (meRes.ok) {
+          const json = await meRes.json()
+          const { $schema: _s, ...me } = json as Record<string, unknown>
+          setUser(me as User)
+        } else {
           setUser(null)
         }
       }
