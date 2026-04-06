@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api, type PriceItem } from '../api/client'
 import { toast } from '../components/Toast'
 import { formatKc } from '../utils/money'
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/table'
 
 export function PriceItemList() {
+  const navigate = useNavigate()
   const [items, setItems] = useState<PriceItem[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
@@ -115,11 +116,13 @@ export function PriceItemList() {
             </TableHeader>
             <TableBody>
               {filtered.map(item => (
-                <TableRow key={item.id} className={item.archived ? 'opacity-50' : ''}>
+                <TableRow
+                  key={item.id}
+                  className={`cursor-pointer hover:bg-slate-50 ${item.archived ? 'opacity-50' : ''}`}
+                  onClick={() => navigate(`/price-items/${item.id}`)}
+                >
                   <TableCell className="font-medium text-slate-900">
-                    <Link to={`/price-items/${item.id}`} className="hover:text-violet-600 transition-colors">
-                      {item.name}
-                    </Link>
+                    {item.name}
                     {item.archived && (
                       <Badge className="ml-2 bg-slate-100 text-slate-500 text-xs">Archivováno</Badge>
                     )}
@@ -140,10 +143,10 @@ export function PriceItemList() {
                       <span className="text-slate-300">—</span>
                     )}
                   </TableCell>
-                  <TableCell>
-                    <Link to={`/price-items/${item.id}`} className="text-xs text-slate-400 hover:text-slate-700">
-                      Detail →
-                    </Link>
+                  <TableCell className="text-right" onClick={e => e.stopPropagation()}>
+                    <Button variant="ghost" size="sm" asChild className="text-slate-400 hover:text-slate-700">
+                      <Link to={`/price-items/${item.id}`}>Upravit</Link>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

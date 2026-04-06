@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api, type Invoice, type InvoiceStatus } from '../api/client'
 import { toast } from '../components/Toast'
 import { StatusBadge } from '../components/StatusBadge'
@@ -25,6 +25,7 @@ const FILTER_TABS: { key: Filter; label: string }[] = [
 ]
 
 export function InvoiceList() {
+  const navigate = useNavigate()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<Filter>('all')
@@ -120,7 +121,11 @@ export function InvoiceList() {
             </TableHeader>
             <TableBody>
               {filtered.map((inv) => (
-                <TableRow key={inv.id}>
+                <TableRow
+                  key={inv.id}
+                  className="cursor-pointer hover:bg-slate-50"
+                  onClick={() => navigate(`/invoices/${inv.id}`)}
+                >
                   <TableCell className="font-mono font-medium text-slate-900">{inv.number}</TableCell>
                   <TableCell className="text-slate-700">{inv.client_name}</TableCell>
                   <TableCell className="text-slate-500">{inv.issued_on}</TableCell>
@@ -131,13 +136,10 @@ export function InvoiceList() {
                   <TableCell>
                     <StatusBadge status={(inv.status ?? 'open') as InvoiceStatus} />
                   </TableCell>
-                  <TableCell className="text-right">
-                    <Link
-                      to={`/invoices/${inv.id}`}
-                      className="text-violet-600 hover:text-violet-800 font-medium text-xs"
-                    >
-                      Detail →
-                    </Link>
+                  <TableCell className="text-right" onClick={e => e.stopPropagation()}>
+                    <Button variant="ghost" size="sm" asChild className="text-slate-400 hover:text-slate-700">
+                      <Link to={`/invoices/${inv.id}/edit`}>Upravit</Link>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

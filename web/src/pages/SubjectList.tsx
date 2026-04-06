@@ -122,7 +122,11 @@ export function SubjectList() {
             </TableHeader>
             <TableBody>
               {filtered.map(s => (
-                <TableRow key={s.id}>
+                <TableRow
+                  key={s.id}
+                  className="cursor-pointer hover:bg-slate-50"
+                  onClick={() => s.id && navigate(`/subjects/${s.id}/edit`)}
+                >
                   <TableCell className="font-medium text-slate-900">{s.name}</TableCell>
                   <TableCell className="font-mono text-slate-500">{s.registration_no || '—'}</TableCell>
                   <TableCell className="font-mono text-slate-500">{s.vat_no || '—'}</TableCell>
@@ -132,7 +136,7 @@ export function SubjectList() {
                       {TYPE_LABELS[(s.type ?? 'customer') as SubjectType] ?? s.type}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={e => e.stopPropagation()}>
                     <div className="flex gap-1">
                       <Button
                         variant="ghost"

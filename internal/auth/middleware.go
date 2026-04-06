@@ -48,12 +48,12 @@ func ConditionalAuth(db *gorm.DB, multiUser *atomic.Bool) func(http.Handler) htt
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// chi nemění r.URL.Path pro middleware v mountovaném subrouteru;
-		// stripujeme /api prefix (mount point) před porovnáním s publicPaths.
-		path := r.URL.Path
-		if after, ok := strings.CutPrefix(path, "/api"); ok && after != "" {
-			path = after
-		}
-		if publicPaths[path] || !multiUser.Load() {
+			// stripujeme /api prefix (mount point) před porovnáním s publicPaths.
+			path := r.URL.Path
+			if after, ok := strings.CutPrefix(path, "/api"); ok && after != "" {
+				path = after
+			}
+			if !multiUser.Load() || publicPaths[path] {
 				next.ServeHTTP(w, r)
 				return
 			}
