@@ -47,8 +47,8 @@ function dueDate(issuedOn: string, dueDays: number): string {
 // Horizontal form row: right-aligned label + right-side content
 function Row({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-0 min-h-[38px]">
-      <label className="w-44 shrink-0 pr-4 pt-2 text-sm text-slate-500 text-right leading-tight">
+    <div className="flex flex-col sm:flex-row sm:items-start gap-0 min-h-[38px]">
+      <label className="sm:w-44 sm:shrink-0 sm:pr-4 sm:pt-2 sm:text-right pb-1 sm:pb-0 text-sm text-slate-500 leading-tight">
         {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
       <div className="flex-1 min-w-0">{children}</div>
@@ -275,7 +275,7 @@ export function InvoiceNew() {
   return (
     <div className="flex flex-col min-h-screen bg-white">
       {/* ── Top bar ─────────────────────────────────────────────────── */}
-      <div className="flex items-center px-8 py-4 border-b border-slate-200">
+      <div className="flex items-center px-4 md:px-8 py-4 border-b border-slate-200">
         <h1 className="text-xl font-semibold text-slate-900 flex-1">{isEdit ? 'Upravit fakturu' : 'Nová faktura'}</h1>
 
         {/* Doc type toggle */}

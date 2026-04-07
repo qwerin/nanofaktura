@@ -16,7 +16,7 @@ import { UserAdmin } from './pages/UserAdmin'
 import { PriceItemList } from './pages/PriceItemList'
 import { PriceItemDetail } from './pages/PriceItemDetail'
 
-function Sidebar() {
+function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user, multiUser, logout } = useAuth()
   const [companyName, setCompanyName] = useState<string>('')
 
@@ -32,91 +32,101 @@ function Sidebar() {
     }`
 
   return (
-    <aside className="fixed inset-y-0 left-0 w-56 bg-slate-900 flex flex-col">
-      {/* Logo */}
-      <div className="flex items-center gap-2 px-4 py-5 border-b border-slate-800">
-        <div className="h-7 w-7 rounded-md bg-violet-600 flex items-center justify-center">
-          <span className="text-white text-xs font-bold">N</span>
+    <>
+      {/* Mobile backdrop */}
+      {open && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={onClose}
+        />
+      )}
+      <aside className={`fixed inset-y-0 left-0 w-56 bg-slate-900 flex flex-col z-50 transition-transform duration-200 ease-in-out ${open ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+        {/* Logo */}
+        <div className="flex items-center gap-2 px-4 py-5 border-b border-slate-800">
+          <div className="h-7 w-7 rounded-md bg-violet-600 flex items-center justify-center">
+            <span className="text-white text-xs font-bold">N</span>
+          </div>
+          <span className="text-white font-semibold text-sm tracking-tight">NanoFaktura</span>
         </div>
-        <span className="text-white font-semibold text-sm tracking-tight">NanoFaktura</span>
-      </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        <NavLink to="/" className={navItem} end>
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-          </svg>
-          Přehled
-        </NavLink>
-        <NavLink to="/invoices" className={navItem}>
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          Faktury
-        </NavLink>
-        <NavLink to="/subjects" className={navItem}>
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          Kontakty
-        </NavLink>
-        <NavLink to="/price-items" className={navItem}>
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-          </svg>
-          Ceník
-        </NavLink>
-        <NavLink to="/settings" className={navItem}>
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          Nastavení
-        </NavLink>
-
-        {/* Správa uživatelů — pouze superadmin */}
-        {multiUser && user?.role === 'superadmin' && (
-          <NavLink to="/admin/users" className={navItem}>
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-4 space-y-1" onClick={onClose}>
+          <NavLink to="/" className={navItem} end>
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
             </svg>
-            Uživatelé
+            Přehled
           </NavLink>
-        )}
-      </nav>
+          <NavLink to="/invoices" className={navItem}>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Faktury
+          </NavLink>
+          <NavLink to="/subjects" className={navItem}>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Kontakty
+          </NavLink>
+          <NavLink to="/price-items" className={navItem}>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+            Ceník
+          </NavLink>
+          <NavLink to="/settings" className={navItem}>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Nastavení
+          </NavLink>
 
-      {/* Footer */}
-      <div className="px-4 py-3 border-t border-slate-800">
-        <div className="flex items-center justify-between">
-          <div className="min-w-0">
-            {companyName && (
-              <p className="text-xs text-slate-300 font-medium truncate">{companyName}</p>
-            )}
-            {multiUser && user ? (
-              <p className="text-xs text-slate-500 truncate">{user.username}</p>
-            ) : (
-              <p className="text-xs text-slate-500">v1.0.0</p>
+          {/* Správa uživatelů — pouze superadmin */}
+          {multiUser && user?.role === 'superadmin' && (
+            <NavLink to="/admin/users" className={navItem}>
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+              Uživatelé
+            </NavLink>
+          )}
+        </nav>
+
+        {/* Footer */}
+        <div className="px-4 py-3 border-t border-slate-800">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0">
+              {companyName && (
+                <p className="text-xs text-slate-300 font-medium truncate">{companyName}</p>
+              )}
+              {multiUser && user ? (
+                <p className="text-xs text-slate-500 truncate">{user.username}</p>
+              ) : (
+                <p className="text-xs text-slate-500">v1.0.0</p>
+              )}
+            </div>
+            {multiUser && user && (
+              <button
+                onClick={logout}
+                title="Odhlásit se"
+                className="ml-2 p-1.5 rounded text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors flex-shrink-0"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
             )}
           </div>
-          {multiUser && user && (
-            <button
-              onClick={logout}
-              title="Odhlásit se"
-              className="ml-2 p-1.5 rounded text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors flex-shrink-0"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-            </button>
-          )}
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   )
 }
 
 function AppShell() {
   const { user, multiUser, initialized, loading } = useAuth()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   if (loading) {
     return (
@@ -148,8 +158,26 @@ function AppShell() {
           ? <Navigate to="/login" replace />
           : (
             <div className="min-h-screen bg-slate-50 flex">
-              <Sidebar />
-              <main className="ml-56 flex-1 min-h-screen">
+              <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+              <main className="md:ml-56 flex-1 min-h-screen">
+                {/* Mobile top bar */}
+                <div className="md:hidden flex items-center px-4 py-3 bg-slate-900 border-b border-slate-800">
+                  <button
+                    onClick={() => setSidebarOpen(true)}
+                    className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                    aria-label="Otevřít menu"
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                  </button>
+                  <div className="flex items-center gap-2 ml-3">
+                    <div className="h-6 w-6 rounded bg-violet-600 flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">N</span>
+                    </div>
+                    <span className="text-white font-semibold text-sm">NanoFaktura</span>
+                  </div>
+                </div>
                 <ToastContainer />
                 <Routes>
                   <Route path="/"                    element={<InvoiceList />} />

@@ -184,7 +184,7 @@ export function Settings() {
   }
 
   return (
-    <div className="p-8 max-w-3xl space-y-6">
+    <div className="p-4 md:p-8 max-w-3xl space-y-6">
       <div className="mb-2">
         <h1 className="text-2xl font-semibold text-slate-900">Nastavení</h1>
         <p className="mt-1 text-sm text-slate-500">Konfigurace vašeho účtu a výchozích hodnot.</p>
@@ -200,7 +200,7 @@ export function Settings() {
             <Field name="Název firmy">
               <Input value={settings.company_name ?? ''} onChange={set('company_name')} placeholder="Moje firma s.r.o." />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field name="IČO">
                 <Input value={settings.registration_no ?? ''} onChange={set('registration_no')} maxLength={8} placeholder="12345678" />
               </Field>
@@ -211,7 +211,7 @@ export function Settings() {
             <Field name="Ulice">
               <Input value={settings.company_street ?? ''} onChange={set('company_street')} placeholder="Václavské nám. 1" />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field name="Město">
                 <Input value={settings.company_city ?? ''} onChange={set('company_city')} placeholder="Praha" />
               </Field>
@@ -247,7 +247,7 @@ export function Settings() {
         </CardHeader>
         <CardContent>
           <form onSubmit={savePayment} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field name="Bankovní účet">
                 <Input
                   value={settings.bank_account ?? ''}
@@ -265,7 +265,7 @@ export function Settings() {
             <Field name="SWIFT/BIC">
               <Input value={settings.swift_bic ?? ''} onChange={set('swift_bic')} placeholder="GIBACZPX" />
             </Field>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Field name="Způsob platby">
                 <Select
                   value={settings.default_payment_method ?? 'bank'}
@@ -305,7 +305,7 @@ export function Settings() {
           <CardTitle className="text-sm font-semibold text-slate-700">PDF šablona faktury</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {([
               { key: 'classic', label: 'Klasická', desc: 'Tmavé záhlaví, ohraničená tabulka, tradiční styl' },
               { key: 'modern',  label: 'Moderní',  desc: 'Fialový pruh, vzdušný layout, QR kód výrazně' },

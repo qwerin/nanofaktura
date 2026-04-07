@@ -47,7 +47,7 @@ export function PriceItemList() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Ceník</h1>
@@ -105,12 +105,12 @@ export function PriceItemList() {
             <TableHeader className="bg-slate-50">
               <TableRow>
                 <TableHead>Název</TableHead>
-                <TableHead>Kat. číslo</TableHead>
-                <TableHead>EAN</TableHead>
+                <TableHead className="hidden md:table-cell">Kat. číslo</TableHead>
+                <TableHead className="hidden lg:table-cell">EAN</TableHead>
                 <TableHead className="text-right">Cena bez DPH</TableHead>
-                <TableHead className="text-right">DPH</TableHead>
-                <TableHead>Jednotka</TableHead>
-                <TableHead className="text-right">Sklad</TableHead>
+                <TableHead className="hidden sm:table-cell text-right">DPH</TableHead>
+                <TableHead className="hidden sm:table-cell">Jednotka</TableHead>
+                <TableHead className="hidden sm:table-cell text-right">Sklad</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -126,15 +126,16 @@ export function PriceItemList() {
                     {item.archived && (
                       <Badge className="ml-2 bg-slate-100 text-slate-500 text-xs">Archivováno</Badge>
                     )}
+                    <span className="sm:hidden block text-xs text-slate-400 mt-0.5">{item.unit_name} · {item.vat_rate_bps === 0 ? '0 %' : `${item.vat_rate_bps / 100} %`} DPH</span>
                   </TableCell>
-                  <TableCell className="text-slate-500 text-sm">{item.catalog_no ?? '—'}</TableCell>
-                  <TableCell className="text-slate-500 text-sm font-mono text-xs">{item.ean ?? '—'}</TableCell>
+                  <TableCell className="hidden md:table-cell text-slate-500 text-sm">{item.catalog_no ?? '—'}</TableCell>
+                  <TableCell className="hidden lg:table-cell text-slate-500 text-sm font-mono text-xs">{item.ean ?? '—'}</TableCell>
                   <TableCell className="text-right font-mono text-sm">{formatKc(item.unit_price_hal)}</TableCell>
-                  <TableCell className="text-right text-sm text-slate-500">
+                  <TableCell className="hidden sm:table-cell text-right text-sm text-slate-500">
                     {item.vat_rate_bps === 0 ? '0 %' : `${item.vat_rate_bps / 100} %`}
                   </TableCell>
-                  <TableCell className="text-sm text-slate-500">{item.unit_name}</TableCell>
-                  <TableCell className="text-right text-sm">
+                  <TableCell className="hidden sm:table-cell text-sm text-slate-500">{item.unit_name}</TableCell>
+                  <TableCell className="hidden sm:table-cell text-right text-sm">
                     {item.track_stock ? (
                       <span className={`font-mono font-medium ${(item.stock_quantity ?? 0) < 0 ? 'text-red-600' : 'text-slate-800'}`}>
                         {item.stock_quantity ?? 0} {item.unit_name}

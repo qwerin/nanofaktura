@@ -118,7 +118,7 @@ export function SubjectEdit() {
   }
 
   return (
-    <div className="p-8 max-w-3xl">
+    <div className="p-4 md:p-8 max-w-3xl">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-slate-900">Upravit kontakt</h1>
         <p className="mt-1 text-sm text-slate-500">{subjectName}</p>
@@ -127,7 +127,7 @@ export function SubjectEdit() {
       <form onSubmit={submit} className="space-y-5">
 
         <SectionCard title="Základní údaje">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field name="Typ kontaktu">
               <Select
                 value={form.type ?? 'customer'}
@@ -167,7 +167,7 @@ export function SubjectEdit() {
             <Input value={form.street ?? ''} onChange={set('street')} />
           </Field>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-3 gap-3">
             <div className="col-span-2">
               <Field name="Město">
                 <Input value={form.city ?? ''} onChange={set('city')} />
@@ -180,7 +180,7 @@ export function SubjectEdit() {
         </SectionCard>
 
         <SectionCard title="Kontakt">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field name="E-mail">
               <Input type="email" value={form.email ?? ''} onChange={set('email')} />
             </Field>
@@ -195,7 +195,7 @@ export function SubjectEdit() {
         </SectionCard>
 
         <SectionCard title="Platební informace">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field name="Bankovní účet">
               <Input value={form.bank_account ?? ''} onChange={set('bank_account')}
                 placeholder="123456789/0800" />

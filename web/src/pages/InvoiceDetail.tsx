@@ -46,7 +46,7 @@ export function InvoiceDetail() {
   )
 
   if (error || !inv) return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700">
         Chyba: {error ?? 'Faktura nenalezena'}
       </div>
@@ -54,19 +54,19 @@ export function InvoiceDetail() {
   )
 
   return (
-    <div className="p-8 max-w-4xl">
+    <div className="p-4 md:p-8 max-w-4xl">
       {/* Page header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-slate-900">Faktura {inv.number}</h1>
+            <h1 className="text-xl md:text-2xl font-semibold text-slate-900">Faktura {inv.number}</h1>
             <StatusBadge status={(inv.status ?? 'open') as InvoiceStatus} />
           </div>
           <p className="mt-1 text-sm text-slate-500">
             Vystaveno: {inv.issued_on} · Splatnost: {inv.due} dní od vystavení
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             onClick={() => navigate(`/invoices/${inv.id}/edit`)}
@@ -106,7 +106,7 @@ export function InvoiceDetail() {
       <Card className="overflow-hidden">
         {/* Parties */}
         <CardHeader className="p-0">
-          <div className="grid grid-cols-2 gap-0 divide-x divide-slate-100 border-b border-slate-100">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 sm:divide-x divide-slate-100 border-b border-slate-100">
             <div className="p-6">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">Dodavatel</p>
               <p className="font-semibold text-slate-900">{inv.your_name}</p>
@@ -156,8 +156,8 @@ export function InvoiceDetail() {
           </Table>
 
           {/* Totals */}
-          <div className="flex justify-end bg-slate-50 px-6 py-4">
-            <div className="w-64 space-y-1.5 text-sm">
+          <div className="flex justify-end bg-slate-50 px-4 md:px-6 py-4">
+            <div className="w-full sm:w-64 space-y-1.5 text-sm">
               {!inv.vat_exempt && (
                 <>
                   <div className="flex justify-between text-slate-500">
@@ -182,7 +182,7 @@ export function InvoiceDetail() {
           {(inv.bank_account || inv.variable_symbol) && (
             <>
               <Separator />
-              <div className="px-6 py-4 text-sm text-slate-600 flex gap-6">
+              <div className="px-4 md:px-6 py-4 text-sm text-slate-600 flex flex-wrap gap-4 md:gap-6">
                 {inv.bank_account && (
                   <span><span className="font-medium text-slate-700">Číslo účtu:</span> {inv.bank_account}</span>
                 )}

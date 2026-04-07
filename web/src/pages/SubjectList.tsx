@@ -50,7 +50,7 @@ export function SubjectList() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       {/* Page header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -113,10 +113,10 @@ export function SubjectList() {
             <TableHeader>
               <TableRow className="bg-slate-50">
                 <TableHead>Název</TableHead>
-                <TableHead>IČO</TableHead>
-                <TableHead>DIČ</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Stav</TableHead>
+                <TableHead className="hidden sm:table-cell">IČO</TableHead>
+                <TableHead className="hidden md:table-cell">DIČ</TableHead>
+                <TableHead className="hidden md:table-cell">Email</TableHead>
+                <TableHead className="hidden sm:table-cell">Stav</TableHead>
                 <TableHead>Akce</TableHead>
               </TableRow>
             </TableHeader>
@@ -127,11 +127,14 @@ export function SubjectList() {
                   className="cursor-pointer hover:bg-slate-50"
                   onClick={() => s.id && navigate(`/subjects/${s.id}/edit`)}
                 >
-                  <TableCell className="font-medium text-slate-900">{s.name}</TableCell>
-                  <TableCell className="font-mono text-slate-500">{s.registration_no || '—'}</TableCell>
-                  <TableCell className="font-mono text-slate-500">{s.vat_no || '—'}</TableCell>
-                  <TableCell className="text-slate-500">{s.email || '—'}</TableCell>
-                  <TableCell>
+                  <TableCell className="font-medium text-slate-900">
+                    {s.name}
+                    <span className="sm:hidden block text-xs text-slate-400 mt-0.5">{s.registration_no || s.email || ''}</span>
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell font-mono text-slate-500">{s.registration_no || '—'}</TableCell>
+                  <TableCell className="hidden md:table-cell font-mono text-slate-500">{s.vat_no || '—'}</TableCell>
+                  <TableCell className="hidden md:table-cell text-slate-500">{s.email || '—'}</TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <Badge variant="secondary">
                       {TYPE_LABELS[(s.type ?? 'customer') as SubjectType] ?? s.type}
                     </Badge>

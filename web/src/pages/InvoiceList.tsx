@@ -42,7 +42,7 @@ export function InvoiceList() {
     : invoices.filter(inv => inv.status === filter)
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       {/* Page header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -62,12 +62,12 @@ export function InvoiceList() {
       {!loading && <RevenueChart invoices={invoices} />}
 
       {/* Filter tabs */}
-      <div className="flex gap-1 mb-6 border-b border-slate-200">
+      <div className="flex gap-1 mb-6 border-b border-slate-200 overflow-x-auto">
         {FILTER_TABS.map(tab => (
           <button
             key={tab.key}
             onClick={() => setFilter(tab.key)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            className={`px-3 md:px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
               filter === tab.key
                 ? 'border-violet-600 text-violet-600'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -112,10 +112,10 @@ export function InvoiceList() {
               <TableRow className="bg-slate-50">
                 <TableHead>Číslo</TableHead>
                 <TableHead>Klient</TableHead>
-                <TableHead>Vystaveno</TableHead>
-                <TableHead>Splatnost (dnů)</TableHead>
+                <TableHead className="hidden sm:table-cell">Vystaveno</TableHead>
+                <TableHead className="hidden md:table-cell">Splatnost (dnů)</TableHead>
                 <TableHead className="text-right">Částka</TableHead>
-                <TableHead>Stav</TableHead>
+                <TableHead className="hidden sm:table-cell">Stav</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -127,13 +127,18 @@ export function InvoiceList() {
                   onClick={() => navigate(`/invoices/${inv.id}`)}
                 >
                   <TableCell className="font-mono font-medium text-slate-900">{inv.number}</TableCell>
-                  <TableCell className="text-slate-700">{inv.client_name}</TableCell>
-                  <TableCell className="text-slate-500">{inv.issued_on}</TableCell>
-                  <TableCell className="text-slate-500">{inv.due} dní</TableCell>
+                  <TableCell className="text-slate-700">
+                    <span>{inv.client_name}</span>
+                    <span className="sm:hidden block text-xs text-slate-400 mt-0.5">
+                      <StatusBadge status={(inv.status ?? 'open') as InvoiceStatus} />
+                    </span>
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell text-slate-500">{inv.issued_on}</TableCell>
+                  <TableCell className="hidden md:table-cell text-slate-500">{inv.due} dní</TableCell>
                   <TableCell className="text-right font-medium text-slate-900">
                     {formatKc(inv.total ?? 0)}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <StatusBadge status={(inv.status ?? 'open') as InvoiceStatus} />
                   </TableCell>
                   <TableCell className="text-right" onClick={e => e.stopPropagation()}>
