@@ -16,7 +16,7 @@ Jednoduchý fakturační nástroj pro OSVČ. Go backend + React SPA, SQLite pro 
 ### Lokální binárka (SQLite)
 
 ```bash
-# Nainstaluj Go 1.25+ a Node 22+
+# Nainstaluj Go 1.26+ a Node 22+
 make build-web   # sestav frontend
 make build       # sestav Go binárku
 ./bin/nanofaktura
@@ -165,7 +165,7 @@ web/src/                  → React SPA (React Router, shadcn/ui, Tailwind v4)
 
 | Vrstva    | Technologie                                                   |
 |-----------|---------------------------------------------------------------|
-| Backend   | Go 1.25, [chi](https://github.com/go-chi/chi), [Huma v2](https://github.com/danielgtaylor/huma), GORM |
+| Backend   | Go 1.26, [chi](https://github.com/go-chi/chi), [Huma v2](https://github.com/danielgtaylor/huma), GORM |
 | Databáze  | SQLite (mattn/go-sqlite3) nebo PostgreSQL (pgx v5)            |
 | PDF       | [Maroto v2](https://github.com/johnfercher/maroto)            |
 | Frontend  | React 19, TypeScript, Vite, Tailwind v4, shadcn/ui            |
