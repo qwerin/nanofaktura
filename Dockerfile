@@ -9,7 +9,7 @@ COPY web/ ./
 RUN npm run build
 
 # ── Stage 2: Build Go binary (CGO required for SQLite) ───────────────────────
-FROM golang:1.25-bookworm AS go-builder
+FROM golang:1.26-bookworm AS go-builder
 WORKDIR /app
 
 # Download dependencies first (better layer caching)
