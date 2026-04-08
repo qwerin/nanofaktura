@@ -4,7 +4,12 @@
 // přímo jako Huma input, protože by se stala required i computed pole.
 package handler
 
-import "github.com/qwerin/nanofaktura/internal/models"
+import (
+	"strings"
+	"unicode"
+
+	"github.com/qwerin/nanofaktura/internal/models"
+)
 
 // LineInput je klientský vstup pro jednu řádkovou položku faktury.
 type LineInput struct {
@@ -122,7 +127,7 @@ func (in *InvoiceInput) toModel() models.Invoice {
 		DocumentType:   models.DocumentType(orDefault(in.DocumentType, string(models.DocInvoice))),
 		Status:         models.StatusOpen,
 		Language:       models.Language(orDefault(in.Language, string(models.LangCS))),
-		VariableSymbol: in.VariableSymbol,
+		VariableSymbol: orDefault(in.VariableSymbol, digitsFromNumber(in.Number)),
 		OrderNumber:    in.OrderNumber,
 		CustomID:       in.CustomID,
 		Due:            orDefaultInt(in.Due, 14),
@@ -236,6 +241,21 @@ func (in *SubjectInput) toModel() models.Subject {
 		DefaultPaymentMethod: models.PaymentMethod(orDefault(in.DefaultPaymentMethod, string(models.PaymentBank))),
 		DefaultDue:           orDefaultInt(in.DefaultDue, 14),
 	}
+}
+
+// digitsFromNumber extracts only digit characters from s and returns the last 10 (X-VS limit).
+func digitsFromNumber(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if unicode.IsDigit(r) {
+			b.WriteRune(r)
+		}
+	}
+	d := b.String()
+	if len(d) > 10 {
+		d = d[len(d)-10:]
+	}
+	return d
 }
 
 func orDefault(s, def string) string {

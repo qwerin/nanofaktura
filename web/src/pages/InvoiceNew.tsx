@@ -148,9 +148,12 @@ export function InvoiceNew() {
     api.settings.get().then((s: Settings) => {
       const fmt = (s.number_formats ?? []).find(f => f.document_type === 'invoice') ?? null
       setInvoiceFormat(fmt)
-      setForm(f => ({
+      setForm(f => {
+        const number = fmt ? previewNumber(fmt) : f.number
+        return {
         ...f,
-        number: fmt ? previewNumber(fmt) : f.number,
+        number,
+        variable_symbol: f.variable_symbol || number.replace(/\D/g, '').slice(-10),
         your_name: s.company_name ?? f.your_name,
         your_street: s.company_street ?? f.your_street,
         your_city: s.company_city ?? f.your_city,
@@ -166,7 +169,7 @@ export function InvoiceNew() {
         due: f.due !== 14 ? f.due : s.default_due ?? f.due,
         currency: s.default_currency ?? f.currency,
         vat_exempt: s.vat_exempt ?? f.vat_exempt,
-      }))
+      }})
     }).catch(() => {})
   }, [])
 
@@ -224,18 +227,23 @@ export function InvoiceNew() {
     setForm(f => ({ ...f, lines: [...f.lines, { ...EMPTY_LINE, position: f.lines.length + 1 }] }))
 
   const addFromPriceItem = (item: PriceItem) => {
-    setForm(f => ({
-      ...f,
-      lines: [...f.lines, {
-        position:      f.lines.length + 1,
+    setForm(f => {
+      const emptyIdx = f.lines.findIndex(l => l.unit_price_hal === 0 && !l.name)
+      const newLine = {
         price_item_id: item.id,
         name:          item.name,
         quantity:      '1',
         unit_name:     item.unit_name,
         unit_price_hal: item.unit_price_hal,
         vat_rate_bps:  item.vat_rate_bps,
-      }],
-    }))
+      }
+      if (emptyIdx !== -1) {
+        const lines = [...f.lines]
+        lines[emptyIdx] = { ...lines[emptyIdx], ...newLine }
+        return { ...f, lines }
+      }
+      return { ...f, lines: [...f.lines, { position: f.lines.length + 1, ...newLine }] }
+    })
     setShowPriceDialog(false)
     setPriceQuery('')
   }

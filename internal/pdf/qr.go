@@ -6,6 +6,8 @@ import (
 	"image"
 	"image/draw"
 	"image/png"
+	"strings"
+	"unicode"
 
 	"github.com/boombuler/barcode"
 	"github.com/boombuler/barcode/qr"
@@ -14,10 +16,11 @@ import (
 )
 
 // spayd builds a Czech QR platba string in SPAYD 1.0 format.
+// Returns "" if IBAN is missing or not a Czech account (CZ prefix).
 func spayd(inv *models.Invoice) string {
 	iban := inv.IBAN
-	if iban == "" {
-		return "" // can't generate without IBAN
+	if !strings.HasPrefix(strings.ToUpper(iban), "CZ") {
+		return "" // QR Platba is only for Czech (CZ) accounts
 	}
 
 	amount := fmt.Sprintf("%.2f", float64(inv.Total)/100.0)
@@ -32,10 +35,29 @@ func spayd(inv *models.Invoice) string {
 	s += "*AM:" + amount
 	s += "*CC:" + inv.Currency
 	s += "*MSG:" + msg
-	if inv.VariableSymbol != "" {
-		s += "*X-VS:" + inv.VariableSymbol
+	vs := inv.VariableSymbol
+	if vs == "" {
+		vs = onlyDigits(inv.Number)
+	}
+	if vs != "" {
+		s += "*X-VS:" + vs
 	}
 	return s
+}
+
+// onlyDigits returns only the digit characters from s, truncated to 10 (X-VS limit).
+func onlyDigits(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if unicode.IsDigit(r) {
+			b.WriteRune(r)
+		}
+	}
+	d := b.String()
+	if len(d) > 10 {
+		d = d[len(d)-10:] // keep trailing digits (sequence number is more significant than year)
+	}
+	return d
 }
 
 // QRPlatba generates a PNG-encoded QR platba image for the invoice.
