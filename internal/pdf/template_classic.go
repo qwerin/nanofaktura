@@ -7,13 +7,12 @@ import (
 	"fmt"
 
 	"github.com/johnfercher/maroto/v2/pkg/components/col"
-	"github.com/johnfercher/maroto/v2/pkg/components/image"
+	"github.com/johnfercher/maroto/v2/pkg/components/code"
 	"github.com/johnfercher/maroto/v2/pkg/components/line"
 	"github.com/johnfercher/maroto/v2/pkg/components/row"
 	"github.com/johnfercher/maroto/v2/pkg/components/text"
 	"github.com/johnfercher/maroto/v2/pkg/consts/align"
 	"github.com/johnfercher/maroto/v2/pkg/consts/border"
-	"github.com/johnfercher/maroto/v2/pkg/consts/extension"
 	"github.com/johnfercher/maroto/v2/pkg/consts/fontstyle"
 	"github.com/johnfercher/maroto/v2/pkg/core"
 	"github.com/johnfercher/maroto/v2/pkg/props"
@@ -28,12 +27,12 @@ var white    = props.Color{Red: 255, Green: 255, Blue: 255}
 var black    = props.Color{Red: 15, Green: 23, Blue: 42}
 var muted    = props.Color{Red: 100, Green: 116, Blue: 139}
 
-func generateClassic(m core.Maroto, inv *models.Invoice, qrBytes []byte) {
+func generateClassic(m core.Maroto, inv *models.Invoice, spaydStr string) {
 	classicHeader(m, inv)
 	classicParties(m, inv)
 	classicInfoBar(m, inv)
 	classicItems(m, inv)
-	classicTotals(m, inv, qrBytes)
+	classicTotals(m, inv, spaydStr)
 }
 
 // ── Header ──────────────────────────────────────────────────────────────────
@@ -269,7 +268,7 @@ func classicItems(m core.Maroto, inv *models.Invoice) {
 
 // ── Totals ───────────────────────────────────────────────────────────────────
 
-func classicTotals(m core.Maroto, inv *models.Invoice, qrBytes []byte) {
+func classicTotals(m core.Maroto, inv *models.Invoice, spaydStr string) {
 	// DPH sumář pro plátce (tabulka SAZBA | ZÁKLAD | DPH)
 	if !inv.VatExempt && !inv.TransferredTaxLiability {
 		m.AddRows(row.New(6).WithStyle(&props.Cell{BackgroundColor: &lightBg}).Add(
@@ -326,12 +325,11 @@ func classicTotals(m core.Maroto, inv *models.Invoice, qrBytes []byte) {
 	}
 
 	// Footer: QR vlevo, podpisová linka vpravo
-	hasQR := len(qrBytes) > 0
-	if hasQR {
+	if spaydStr != "" {
 		m.AddRows(
 			row.New(5),
 			row.New(26).Add(
-				col.New(3).Add(image.NewFromBytes(qrBytes, extension.Png, props.Rect{Percent: 92, Center: true})),
+				col.New(3).Add(code.NewQr(spaydStr, props.Rect{Percent: 92, Center: true})),
 				col.New(3).Add(text.New("QR Platba", props.Text{Size: 7, Color: &muted, Top: 22})),
 				col.New(6).Add(text.New("", props.Text{})),
 			),

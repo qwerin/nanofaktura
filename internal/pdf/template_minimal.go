@@ -5,13 +5,12 @@ package pdf
 import (
 	"fmt"
 
+	"github.com/johnfercher/maroto/v2/pkg/components/code"
 	"github.com/johnfercher/maroto/v2/pkg/components/col"
-	"github.com/johnfercher/maroto/v2/pkg/components/image"
 	"github.com/johnfercher/maroto/v2/pkg/components/row"
 	"github.com/johnfercher/maroto/v2/pkg/components/text"
 	"github.com/johnfercher/maroto/v2/pkg/consts/align"
 	"github.com/johnfercher/maroto/v2/pkg/consts/border"
-	"github.com/johnfercher/maroto/v2/pkg/consts/extension"
 	"github.com/johnfercher/maroto/v2/pkg/consts/fontstyle"
 	"github.com/johnfercher/maroto/v2/pkg/core"
 	"github.com/johnfercher/maroto/v2/pkg/props"
@@ -24,11 +23,11 @@ var minGray   = props.Color{Red: 107, Green: 114, Blue: 128} // gray-500
 var minLine   = props.Color{Red: 209, Green: 213, Blue: 219} // gray-300
 var minDark   = props.Color{Red: 17, Green: 24, Blue: 39}    // gray-900
 
-func generateMinimal(m core.Maroto, inv *models.Invoice, qrBytes []byte) {
+func generateMinimal(m core.Maroto, inv *models.Invoice, spaydStr string) {
 	minimalHeader(m, inv)
 	minimalParties(m, inv)
 	minimalItems(m, inv)
-	minimalTotals(m, inv, qrBytes)
+	minimalTotals(m, inv, spaydStr)
 }
 
 func minimalHeader(m core.Maroto, inv *models.Invoice) {
@@ -160,8 +159,8 @@ func minimalItems(m core.Maroto, inv *models.Invoice) {
 	m.AddRows(row.New(6))
 }
 
-func minimalTotals(m core.Maroto, inv *models.Invoice, qrBytes []byte) {
-	hasQR := len(qrBytes) > 0
+func minimalTotals(m core.Maroto, inv *models.Invoice, spaydStr string) {
+	hasQR := spaydStr != ""
 
 	if inv.TransferredTaxLiability {
 		m.AddRows(row.New(6).Add(col.New(12).Add(text.New(
@@ -189,9 +188,7 @@ func minimalTotals(m core.Maroto, inv *models.Invoice, qrBytes []byte) {
 	if hasQR {
 		m.AddRows(
 			row.New(22).WithStyle(totalLineStyle).Add(
-				col.New(3).Add(image.NewFromBytes(qrBytes, extension.Png,
-					props.Rect{Percent: 85, Center: true},
-				)),
+				col.New(3).Add(code.NewQr(spaydStr, props.Rect{Percent: 85, Center: true})),
 				col.New(7).Add(text.New("", props.Text{})),
 				col.New(2).Add(text.New(formatHal(inv.Total)+" Kč", props.Text{
 					Size: 12, Style: fontstyle.Bold, Align: align.Right, Color: &minAccent, Top: 8,

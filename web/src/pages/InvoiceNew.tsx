@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom'
 import { api, type Invoice, type InvoiceInput, type LineInput, type Subject, type Settings, type NumberFormat, type PriceItem, type PaymentMethod } from '../api/client'
 import { toast } from '../components/Toast'
 import { formatKc } from '../utils/money'
-import { czIban, czSwift } from '../utils/iban'
+import { czIban, czSwift, validateCzAccount } from '../utils/iban'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { DateInput } from '../components/DateInput'
@@ -271,7 +271,8 @@ export function InvoiceNew() {
           const res = await api.settings.formats.next(invoiceFormat.id)
           number = res.number
         }
-        const inv = await api.invoices.create({ ...form, number, document_type: docType })
+        const variable_symbol = form.variable_symbol || number.replace(/\D/g, '').slice(-10)
+        const inv = await api.invoices.create({ ...form, number, variable_symbol, document_type: docType })
         navigate(`/invoices/${inv.id}`)
       }
     } catch (err) {
@@ -532,6 +533,9 @@ export function InvoiceNew() {
                     placeholder="123456789/0800"
                     className="w-56"
                   />
+                  {form.bank_account && !validateCzAccount(form.bank_account) && (
+                    <p className="text-xs text-amber-600 mt-1">Číslo účtu nevyhovuje kontrole mod-11</p>
+                  )}
                 </Row>
                 <Row label="IBAN">
                   <Input

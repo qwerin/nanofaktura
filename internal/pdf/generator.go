@@ -67,18 +67,15 @@ func Generate(req InvoiceRequest) ([]byte, error) {
 
 	m := maroto.New(cfg)
 
-	qrBytes, err := QRPlatba(inv)
-	if err != nil {
-		qrBytes = nil // QR je volitelné, chyba neblokuje generování
-	}
+	spaydStr := Spayd(inv)
 
 	switch tmpl {
 	case "modern":
-		generateModern(m, inv, qrBytes)
+		generateModern(m, inv, spaydStr)
 	case "minimal":
-		generateMinimal(m, inv, qrBytes)
+		generateMinimal(m, inv, spaydStr)
 	default:
-		generateClassic(m, inv, qrBytes)
+		generateClassic(m, inv, spaydStr)
 	}
 
 	doc, err := m.Generate()

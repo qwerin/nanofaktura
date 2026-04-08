@@ -1,3 +1,19 @@
+const MOD11_WEIGHTS = [6, 3, 7, 9, 10, 5, 8, 4, 2, 1]
+
+function mod11valid(part: string): boolean {
+  const padded = part.padStart(10, '0')
+  let sum = 0
+  for (let i = 0; i < 10; i++) sum += parseInt(padded[i]) * MOD11_WEIGHTS[i]
+  return sum % 11 === 0
+}
+
+// Vrátí true pokud české číslo účtu "prefix-číslo/kód" nebo "číslo/kód" projde mod-11 kontrolou.
+export function validateCzAccount(account: string): boolean {
+  const m = account.trim().match(/^(?:(\d{1,6})-)?(\d{1,10})\/(\d{4})$/)
+  if (!m) return false
+  return mod11valid(m[1] ?? '') && mod11valid(m[2])
+}
+
 // Dopočítá CZ IBAN z českého čísla účtu "prefix-číslo/kód" nebo "číslo/kód".
 // Vrátí prázdný řetězec pokud vstup není ve správném formátu.
 export function czIban(account: string): string {

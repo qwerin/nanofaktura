@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type Settings as SettingsType, type SettingsInput, type NumberFormat, type NumberFormatInput } from '../api/client'
-import { czIban, czSwift } from '../utils/iban'
+import { czIban, czSwift, validateCzAccount } from '../utils/iban'
 import { toast } from '../components/Toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -223,7 +223,7 @@ export function Settings() {
               <input
                 type="checkbox"
                 id="vat_exempt"
-                checked={settings.vat_exempt ?? false}
+                checked={settings.vat_exempt ?? true}
                 onChange={set('vat_exempt')}
                 className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
               />
@@ -257,6 +257,9 @@ export function Settings() {
                   }}
                   placeholder="123456789/0800"
                 />
+                {settings.bank_account && !validateCzAccount(settings.bank_account) && (
+                  <p className="text-xs text-amber-600 mt-1">Číslo účtu nevyhovuje kontrole mod-11</p>
+                )}
               </Field>
               <Field name="IBAN">
                 <Input value={settings.iban ?? ''} onChange={set('iban')} placeholder="CZ65 0800 0000 0012 3456 7890" />
