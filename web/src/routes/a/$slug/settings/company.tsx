@@ -76,7 +76,7 @@ const schema = z.object({
   web: z.string(),
   default_currency: z.string().min(1),
   default_due_days: z.string().trim().regex(/^\d{1,3}$/, 'Počet dní 0\u2013999'),
-  default_payment_method: z.string().min(1),
+  default_payment_method: z.enum(['bank', 'cash', 'card', 'cod', 'paypal', 'custom']),
   default_language: z.enum(['cs', 'en']),
   default_vat_rate_bps: z.string(),
   round_total: z.boolean(),

@@ -79,7 +79,7 @@ function PasswordForm() {
 
   const onSubmit = form.handleSubmit(async ({ current_password, new_password }) => {
     try {
-      await update.mutateAsync({ current_password, new_password })
+      await update.mutateAsync({ current_password, password: new_password })
       form.reset()
       toast.success('Heslo změněno')
     } catch (err) {

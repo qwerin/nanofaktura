@@ -20,7 +20,7 @@ dev-frontend:
 test:
 	go vet ./...
 	go test ./... -count=1
-	@if [ -d web/node_modules ]; then cd web && npx tsc --noEmit; fi
+	@if [ -d web/node_modules ]; then cd web && npm run typecheck && npm test; fi
 
 ## Jen API testy
 test-api:
