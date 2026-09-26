@@ -13,5 +13,6 @@ func All() []any {
 		&BankAccount{}, &NumberFormat{}, &NumberCounter{},
 		&Subject{}, &Invoice{}, &InvoiceLine{}, &Payment{},
 		&Invitation{}, &Attachment{},
+		&PriceItem{}, &StockMove{}, &Expense{}, &ExpenseLine{}, &ExpensePayment{},
 	}
 }

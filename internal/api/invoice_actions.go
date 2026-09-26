@@ -43,7 +43,13 @@ func (s *server) invoiceAction(ctx context.Context, in *struct {
 		}
 		m.Status, m.SentAt, m.CancelledAt, m.UncollectibleAt, m.LockedAt =
 			st.Status, st.SentAt, st.CancelledAt, st.UncollectibleAt, st.LockedAt
-		return m.ID, dbErrOrNil(tx.Omit(clause.Associations).Save(m).Error, "invoice")
+		if err := tx.Omit(clause.Associations).Save(m).Error; err != nil {
+			return 0, dbErr(err, "invoice")
+		}
+		if in.Action == billing.ActionCancel || in.Action == billing.ActionUndoCancel {
+			return m.ID, syncInvoiceStock(ctx, tx, m) // cancelled invoices return their goods
+		}
+		return m.ID, nil
 	})
 }
 

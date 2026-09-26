@@ -767,6 +767,7 @@ func TestDashboard(t *testing.T) {
 	want := api.Dashboard{
 		Year: 2026, Currency: "CZK", RevenueByMonth: []int64{1000, -300, 2050, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		RevenueTotal: 2750, UnpaidTotal: 2800, UnpaidCount: 4, OverdueTotal: 100, OverdueCount: 2,
+		ExpensesByMonth: make([]int64, 12), ProfitTotal: 2750,
 	}
 	if !reflect.DeepEqual(d, want) {
 		t.Fatalf("dashboard\n got %+v\nwant %+v", d, want)

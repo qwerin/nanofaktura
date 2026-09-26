@@ -141,6 +141,9 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 	s.registerDashboard(account)
 	s.registerMembers(public, authed, account)
 	s.registerAttachments(account)
+	s.registerPriceItems(account)
+	s.registerStockMoves(account)
+	s.registerExpenses(account)
 
 	return router, api
 }

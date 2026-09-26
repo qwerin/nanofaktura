@@ -510,6 +510,9 @@ func (s *server) createInvoiceTx(ctx context.Context, tx *gorm.DB, in *InvoiceCr
 	if err := checkRelated(ctx, tx, m); err != nil {
 		return nil, err
 	}
+	if err := checkPriceItems(ctx, tx, in.Lines); err != nil {
+		return nil, err
+	}
 	if m.Lines, err = buildLines(in.Lines, nil, acc.DefaultVatRateBps); err != nil {
 		return nil, err
 	}
@@ -527,6 +530,9 @@ func (s *server) createInvoiceTx(ctx context.Context, tx *gorm.DB, in *InvoiceCr
 
 	if err := tx.Create(m).Error; err != nil {
 		return nil, numberErr(err, m.Number)
+	}
+	if err := syncInvoiceStock(ctx, tx, m); err != nil {
+		return nil, err
 	}
 	return m, nil
 }
@@ -595,6 +601,9 @@ func (s *server) patchInvoice(ctx context.Context, in *struct {
 			return 0, err
 		}
 		if p.Lines != nil {
+			if err := checkPriceItems(ctx, tx, p.Lines); err != nil {
+				return 0, err
+			}
 			if m.Lines, err = buildLines(p.Lines, m.Lines, acc.DefaultVatRateBps); err != nil {
 				return 0, err
 			}
@@ -607,7 +616,10 @@ func (s *server) patchInvoice(ctx context.Context, in *struct {
 		if err := tx.Omit(clause.Associations).Save(m).Error; err != nil {
 			return 0, numberErr(err, m.Number)
 		}
-		return m.ID, saveLines(tx, m)
+		if err := saveLines(tx, m); err != nil {
+			return 0, err
+		}
+		return m.ID, syncInvoiceStock(ctx, tx, m)
 	})
 }
 
@@ -622,6 +634,9 @@ func (s *server) deleteInvoice(ctx context.Context, in *invoiceID) (*NoContent, 
 		}
 		if len(m.Payments) > 0 {
 			return conflict("the invoice has payments; delete them first")
+		}
+		if err := clearInvoiceStock(ctx, tx, m.ID); err != nil {
+			return err
 		}
 		if err := tx.Where("invoice_id = ?", m.ID).Delete(&model.InvoiceLine{}).Error; err != nil {
 			return dbErr(err, "invoice")

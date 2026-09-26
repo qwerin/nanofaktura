@@ -165,6 +165,129 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/accounts/{slug}/expenses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug expenses */
+        get: operations["get-api-accounts-by-slug-expenses"];
+        put?: never;
+        /**
+         * Post API accounts by slug expenses
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-expenses"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/expenses/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug expenses categories */
+        get: operations["get-api-accounts-by-slug-expenses-categories"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/expenses/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug expenses by ID */
+        get: operations["get-api-accounts-by-slug-expenses-by-id"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete API accounts by slug expenses by ID
+         * @description Allowed roles: owner, admin, member.
+         */
+        delete: operations["delete-api-accounts-by-slug-expenses-by-id"];
+        options?: never;
+        head?: never;
+        /**
+         * Patch API accounts by slug expenses by ID
+         * @description Allowed roles: owner, admin, member.
+         */
+        patch: operations["patch-api-accounts-by-slug-expenses-by-id"];
+        trace?: never;
+    };
+    "/api/accounts/{slug}/expenses/{id}/actions/{action}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug expenses by ID actions by action
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-expenses-by-id-actions-by-action"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/expenses/{id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug expenses by ID payments
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-expenses-by-id-payments"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/expenses/{id}/payments/{payment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete API accounts by slug expenses by ID payments by payment ID
+         * @description Allowed roles: owner, admin, member.
+         */
+        delete: operations["delete-api-accounts-by-slug-expenses-by-id-payments-by-payment-id"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/accounts/{slug}/invitations": {
         parameters: {
             query?: never;
@@ -504,6 +627,93 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/price-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug price items */
+        get: operations["get-api-accounts-by-slug-price-items"];
+        put?: never;
+        /**
+         * Post API accounts by slug price items
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-price-items"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/price-items/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug price items by ID */
+        get: operations["get-api-accounts-by-slug-price-items-by-id"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete API accounts by slug price items by ID
+         * @description Allowed roles: owner, admin, member.
+         */
+        delete: operations["delete-api-accounts-by-slug-price-items-by-id"];
+        options?: never;
+        head?: never;
+        /**
+         * Patch API accounts by slug price items by ID
+         * @description Allowed roles: owner, admin, member.
+         */
+        patch: operations["patch-api-accounts-by-slug-price-items-by-id"];
+        trace?: never;
+    };
+    "/api/accounts/{slug}/price-items/{id}/stock-moves": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug price items by ID stock moves */
+        get: operations["get-api-accounts-by-slug-price-items-by-id-stock-moves"];
+        put?: never;
+        /**
+         * Post API accounts by slug price items by ID stock moves
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-price-items-by-id-stock-moves"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/price-items/{id}/stock-moves/{move_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete API accounts by slug price items by ID stock moves by move ID
+         * @description Allowed roles: owner, admin, member.
+         */
+        delete: operations["delete-api-accounts-by-slug-price-items-by-id-stock-moves-by-move-id"];
         options?: never;
         head?: never;
         patch?: never;
@@ -929,6 +1139,13 @@ export interface components {
         };
         Dashboard: {
             currency: string;
+            /** @description Σ total of expenses issued in each month of year */
+            expenses_by_month: number[];
+            /**
+             * Format: int64
+             * @description Σ expenses_by_month
+             */
+            expenses_total: number;
             /** Format: int64 */
             overdue_count: number;
             /**
@@ -936,6 +1153,11 @@ export interface components {
              * @description The part of unpaid that is past due
              */
             overdue_total: number;
+            /**
+             * Format: int64
+             * @description revenue_total − expenses_total
+             */
+            profit_total: number;
             /** @description Σ total of invoices and corrections issued in each month of year (not cancelled) */
             revenue_by_month: number[];
             /**
@@ -993,6 +1215,279 @@ export interface components {
              * @example https://example.com/errors/example
              */
             type: string;
+        };
+        Expense: {
+            category: string;
+            /** Format: date-time */
+            created_at: string;
+            currency: string;
+            description: string;
+            due_on: string;
+            exchange_rate: string;
+            /** Format: int64 */
+            id: number;
+            issued_on: string;
+            lines: components["schemas"]["ExpenseLine"][];
+            /** Format: date-time */
+            locked_at?: string;
+            /** @description Internal number (number format of document type expense) */
+            number: string;
+            /** @description The supplier's document number */
+            original_number: string;
+            /** Format: int64 */
+            paid_amount: number;
+            paid_on: string;
+            payment_method: string;
+            payments: components["schemas"]["ExpensePayment"][];
+            prices_include_vat: boolean;
+            private_note: string;
+            /** Format: int64 */
+            remaining_amount: number;
+            round_total: boolean;
+            /** Format: int64 */
+            rounding: number;
+            /**
+             * @description Stored status, or overdue when open and due_on < today
+             * @enum {string}
+             */
+            status: "open" | "overdue" | "paid";
+            /**
+             * Format: int64
+             * @description The supplier
+             */
+            subject_id?: number;
+            /** Format: int64 */
+            subtotal: number;
+            supplier_bank_account: string;
+            supplier_city: string;
+            supplier_country: string;
+            supplier_full_name: string;
+            supplier_iban: string;
+            supplier_name: string;
+            supplier_registration_no: string;
+            supplier_street: string;
+            supplier_swift_bic: string;
+            supplier_vat_no: string;
+            supplier_zip: string;
+            tags: string[];
+            tax_deductible: boolean;
+            taxable_fulfillment_due: string;
+            /** Format: int64 */
+            total: number;
+            /** Format: date-time */
+            updated_at: string;
+            variable_symbol: string;
+            vat_recap: components["schemas"]["VatRecapItem"][];
+            /** Format: int64 */
+            vat_total: number;
+        };
+        ExpenseCategories: {
+            items: string[];
+        };
+        ExpenseCreate: {
+            category?: string;
+            /** @description Default: account default_currency */
+            currency?: string;
+            description?: string;
+            /**
+             * Format: date
+             * @description Default: issued_on + account default_due_days
+             */
+            due_on?: string;
+            /** @description Default 1 */
+            exchange_rate?: string;
+            /**
+             * Format: date
+             * @description Default today
+             */
+            issued_on?: string;
+            lines: components["schemas"]["InvoiceLineInput"][] | null;
+            /** @description Custom internal number; default: next number of the default expense number format */
+            number?: string;
+            original_number?: string;
+            /**
+             * @description Default: account default_payment_method
+             * @enum {string}
+             */
+            payment_method?: "bank" | "cash" | "card" | "cod" | "paypal" | "custom";
+            prices_include_vat?: boolean;
+            private_note?: string;
+            round_total?: boolean;
+            /**
+             * Format: int64
+             * @description Supplier; snapshots supplier_*. Without it supplier_name is required
+             */
+            subject_id?: number;
+            supplier_bank_account?: string;
+            supplier_city?: string;
+            supplier_country?: string;
+            supplier_full_name?: string;
+            supplier_iban?: string;
+            supplier_name?: string;
+            supplier_registration_no?: string;
+            supplier_street?: string;
+            supplier_swift_bic?: string;
+            supplier_vat_no?: string;
+            supplier_zip?: string;
+            tags?: string[] | null;
+            /** @description Default true */
+            tax_deductible?: boolean;
+            /** @description YYYY-MM-DD or empty; default issued_on */
+            taxable_fulfillment_due?: string;
+            /** @description Default: digits of original_number (last 10) */
+            variable_symbol?: string;
+        };
+        ExpenseLine: {
+            /** Format: int64 */
+            base: number;
+            /** Format: int64 */
+            id: number;
+            name: string;
+            /** Format: int64 */
+            position: number;
+            /** Format: int64 */
+            price_item_id?: number;
+            /** @example 1.5 */
+            quantity: string;
+            /** Format: int64 */
+            total: number;
+            unit_name: string;
+            /** Format: int64 */
+            unit_price: number;
+            /** Format: int64 */
+            vat: number;
+            /** Format: int32 */
+            vat_rate_bps: number;
+        };
+        ExpensePatch: {
+            category?: string;
+            currency?: string;
+            description?: string;
+            /** Format: date */
+            due_on?: string;
+            exchange_rate?: string;
+            /** Format: date */
+            issued_on?: string;
+            lines?: components["schemas"]["InvoiceLineInput"][] | null;
+            number?: string;
+            original_number?: string;
+            /** @enum {string} */
+            payment_method?: "bank" | "cash" | "card" | "cod" | "paypal" | "custom";
+            prices_include_vat?: boolean;
+            private_note?: string;
+            round_total?: boolean;
+            /**
+             * Format: int64
+             * @description Changing the supplier re-snapshots supplier_* (unless sent explicitly)
+             */
+            subject_id?: number;
+            supplier_bank_account?: string;
+            supplier_city?: string;
+            supplier_country?: string;
+            supplier_full_name?: string;
+            supplier_iban?: string;
+            supplier_name?: string;
+            supplier_registration_no?: string;
+            supplier_street?: string;
+            supplier_swift_bic?: string;
+            supplier_vat_no?: string;
+            supplier_zip?: string;
+            /** @description Replaces all tags; [] clears */
+            tags?: string[] | null;
+            tax_deductible?: boolean;
+            taxable_fulfillment_due?: string;
+            variable_symbol?: string;
+        };
+        ExpensePayment: {
+            /** Format: int64 */
+            amount: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: int64 */
+            expense_id: number;
+            /** Format: int64 */
+            id: number;
+            note: string;
+            paid_on: string;
+        };
+        ExpensePaymentCreate: {
+            /**
+             * Format: int64
+             * @description Minor units, non-zero; default: remaining_amount
+             */
+            amount?: number;
+            note?: string;
+            /**
+             * Format: date
+             * @description Default today
+             */
+            paid_on?: string;
+        };
+        ExpensePaymentResult: {
+            expense: components["schemas"]["Expense"];
+            payment: components["schemas"]["ExpensePayment"];
+        };
+        ExpenseSummary: {
+            category: string;
+            /** Format: date-time */
+            created_at: string;
+            currency: string;
+            description: string;
+            due_on: string;
+            exchange_rate: string;
+            /** Format: int64 */
+            id: number;
+            issued_on: string;
+            /** Format: date-time */
+            locked_at?: string;
+            /** @description Internal number (number format of document type expense) */
+            number: string;
+            /** @description The supplier's document number */
+            original_number: string;
+            /** Format: int64 */
+            paid_amount: number;
+            paid_on: string;
+            payment_method: string;
+            prices_include_vat: boolean;
+            private_note: string;
+            /** Format: int64 */
+            remaining_amount: number;
+            round_total: boolean;
+            /** Format: int64 */
+            rounding: number;
+            /**
+             * @description Stored status, or overdue when open and due_on < today
+             * @enum {string}
+             */
+            status: "open" | "overdue" | "paid";
+            /**
+             * Format: int64
+             * @description The supplier
+             */
+            subject_id?: number;
+            /** Format: int64 */
+            subtotal: number;
+            supplier_bank_account: string;
+            supplier_city: string;
+            supplier_country: string;
+            supplier_full_name: string;
+            supplier_iban: string;
+            supplier_name: string;
+            supplier_registration_no: string;
+            supplier_street: string;
+            supplier_swift_bic: string;
+            supplier_vat_no: string;
+            supplier_zip: string;
+            tags: string[];
+            tax_deductible: boolean;
+            taxable_fulfillment_due: string;
+            /** Format: int64 */
+            total: number;
+            /** Format: date-time */
+            updated_at: string;
+            variable_symbol: string;
+            /** Format: int64 */
+            vat_total: number;
         };
         Health: {
             /** @example ok */
@@ -1443,6 +1938,15 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        ListResponseExpenseSummary: {
+            items: components["schemas"]["ExpenseSummary"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            per_page: number;
+            /** Format: int64 */
+            total: number;
+        };
         ListResponseInvitation: {
             items: components["schemas"]["Invitation"][];
             /** Format: int64 */
@@ -1472,6 +1976,24 @@ export interface components {
         };
         ListResponseNumberFormat: {
             items: components["schemas"]["NumberFormat"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            per_page: number;
+            /** Format: int64 */
+            total: number;
+        };
+        ListResponsePriceItem: {
+            items: components["schemas"]["PriceItem"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            per_page: number;
+            /** Format: int64 */
+            total: number;
+        };
+        ListResponseStockMove: {
+            items: components["schemas"]["StockMove"][];
             /** Format: int64 */
             page: number;
             /** Format: int64 */
@@ -1588,6 +2110,78 @@ export interface components {
             invoice: components["schemas"]["Invoice"];
             payment: components["schemas"]["Payment"];
         };
+        PriceItem: {
+            archived: boolean;
+            /** Format: date-time */
+            archived_at?: string;
+            /** Format: date-time */
+            created_at: string;
+            currency: string;
+            /** Format: int64 */
+            id: number;
+            /** @description track_stock and stock_quantity ≤ min_stock */
+            low_stock: boolean;
+            /** @description Low stock threshold; empty = none */
+            min_stock: string;
+            name: string;
+            note: string;
+            prices_include_vat: boolean;
+            sku: string;
+            /**
+             * @description Σ stock moves (meaningful with track_stock)
+             * @example 12.5
+             */
+            stock_quantity: string;
+            track_stock: boolean;
+            unit_name: string;
+            /**
+             * Format: int64
+             * @description Minor units; VAT included when prices_include_vat
+             */
+            unit_price: number;
+            /** Format: date-time */
+            updated_at: string;
+            /** Format: int32 */
+            vat_rate_bps: number;
+        };
+        PriceItemCreate: {
+            /** @description Default: account default_currency */
+            currency?: string;
+            /** @description Low stock threshold; empty = none */
+            min_stock?: string;
+            name: string;
+            note?: string;
+            prices_include_vat?: boolean;
+            sku?: string;
+            /** @description Initial stock (track_stock only); recorded as a manual stock move */
+            stock_quantity?: string;
+            track_stock?: boolean;
+            unit_name?: string;
+            /** Format: int64 */
+            unit_price?: number;
+            /**
+             * Format: int32
+             * @description Default: account default_vat_rate_bps
+             */
+            vat_rate_bps?: number;
+        };
+        PriceItemPatch: {
+            /** @description true archives (hidden from the default list), false restores */
+            archived?: boolean;
+            currency?: string;
+            /** @description Empty string clears the threshold */
+            min_stock?: string;
+            name?: string;
+            note?: string;
+            prices_include_vat?: boolean;
+            sku?: string;
+            track_stock?: boolean;
+            unit_name?: string;
+            /** Format: int64 */
+            unit_price?: number;
+            /** Format: int32 */
+            vat_rate_bps?: number;
+        };
         RegisterRequest: {
             /** @description Name of the new account; required unless invitation_token is given */
             account_name?: string;
@@ -1596,6 +2190,52 @@ export interface components {
             invitation_token?: string;
             name: string;
             password: string;
+        };
+        StockMove: {
+            /** Format: date-time */
+            created_at: string;
+            /** @enum {string} */
+            direction: "in" | "out";
+            /**
+             * Format: int64
+             * @description Generated from this expense (not deletable manually)
+             */
+            expense_id?: number;
+            /** Format: int64 */
+            id: number;
+            /**
+             * Format: int64
+             * @description Generated from this invoice (not deletable manually)
+             */
+            invoice_id?: number;
+            moved_on: string;
+            note: string;
+            /** Format: int64 */
+            price_item_id: number;
+            /**
+             * @description Always positive; the sign is direction
+             * @example 2
+             */
+            quantity: string;
+        };
+        StockMoveCreate: {
+            /** @enum {string} */
+            direction: "in" | "out";
+            /**
+             * Format: date
+             * @description Default today
+             */
+            moved_on?: string;
+            note?: string;
+            /**
+             * @description Positive decimal, max 3 places
+             * @example 5
+             */
+            quantity: string;
+        };
+        StockMoveResult: {
+            move: components["schemas"]["StockMove"];
+            price_item: components["schemas"]["PriceItem"];
         };
         Subject: {
             bank_account: string;
@@ -2229,6 +2869,328 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Dashboard"];
                 };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-expenses": {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+                /** @description Effective status: open excludes overdue expenses */
+                status?: "open" | "overdue" | "paid";
+                /** @description Exact category */
+                category?: string;
+                subject_id?: number;
+                /** @description issued_on ≥ since */
+                since?: string;
+                /** @description issued_on ≤ until */
+                until?: string;
+                /** @description Number, original number, supplier name, variable symbol or description (case-insensitive substring) */
+                query?: string;
+                sort?: "-issued_on" | "issued_on" | "-number" | "due_on" | "-total";
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListResponseExpenseSummary"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-expenses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpenseCreate"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-expenses-categories": {
+        parameters: {
+            query?: {
+                /** @description Case-insensitive substring */
+                query?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpenseCategories"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-expenses-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-api-accounts-by-slug-expenses-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "patch-api-accounts-by-slug-expenses-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpensePatch"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-expenses-by-id-actions-by-action": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+                action: "lock" | "unlock";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Expense"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-expenses-by-id-payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpensePaymentCreate"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpensePaymentResult"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-api-accounts-by-slug-expenses-by-id-payments-by-payment-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+                payment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Error */
             default: {
@@ -3068,6 +4030,289 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["NumberPreview"];
                 };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-price-items": {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+                /** @description Name or SKU (case-insensitive substring) */
+                query?: string;
+                /** @description true = only archived items, false (default) = only active */
+                archived?: boolean;
+                /** @description Only tracked items at or below min_stock */
+                low_stock?: boolean;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListResponsePriceItem"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-price-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PriceItemCreate"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceItem"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-price-items-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceItem"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-api-accounts-by-slug-price-items-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "patch-api-accounts-by-slug-price-items-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PriceItemPatch"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceItem"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-price-items-by-id-stock-moves": {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListResponseStockMove"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-price-items-by-id-stock-moves": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StockMoveCreate"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockMoveResult"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-api-accounts-by-slug-price-items-by-id-stock-moves-by-move-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+                move_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Error */
             default: {

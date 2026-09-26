@@ -148,12 +148,8 @@ func (s *server) checkOwner(ctx context.Context, ownerType string, ownerID uint)
 	if !ok {
 		return invalid("owner_type", "unknown owner type")
 	}
-	db := s.db.WithContext(ctx)
-	if !db.Migrator().HasTable(table) {
-		return notFound("owner")
-	}
 	var n int64
-	if err := db.Table(table).Where("id = ? AND account_id = ?", ownerID, auth.AccountFrom(ctx).ID).Count(&n).Error; err != nil {
+	if err := s.db.WithContext(ctx).Table(table).Where("id = ? AND account_id = ?", ownerID, auth.AccountFrom(ctx).ID).Count(&n).Error; err != nil {
 		return dbErr(err, "owner")
 	}
 	if n == 0 {

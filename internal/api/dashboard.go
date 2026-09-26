@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/danielgtaylor/huma/v2"
+	"gorm.io/gorm"
 
 	"github.com/qwerin/nanofaktura/internal/auth"
 	"github.com/qwerin/nanofaktura/internal/model"
@@ -22,6 +23,10 @@ type Dashboard struct {
 	UnpaidCount    int64   `json:"unpaid_count"`
 	OverdueTotal   int64   `json:"overdue_total" doc:"The part of unpaid that is past due"`
 	OverdueCount   int64   `json:"overdue_count"`
+
+	ExpensesByMonth []int64 `json:"expenses_by_month" nullable:"false" minItems:"12" maxItems:"12" doc:"Σ total of expenses issued in each month of year"`
+	ExpensesTotal   int64   `json:"expenses_total" doc:"Σ expenses_by_month"`
+	ProfitTotal     int64   `json:"profit_total" doc:"revenue_total − expenses_total"`
 }
 
 func (s *server) registerDashboard(g huma.API) {
@@ -33,32 +38,25 @@ func (s *server) getDashboard(ctx context.Context, in *struct {
 }) (*Out[Dashboard], error) {
 	acc := auth.AccountFrom(ctx)
 	today := s.today()
-	d := Dashboard{Year: in.Year, Currency: acc.DefaultCurrency, RevenueByMonth: make([]int64, 12)}
+	d := Dashboard{Year: in.Year, Currency: acc.DefaultCurrency, RevenueByMonth: make([]int64, 12), ExpensesByMonth: make([]int64, 12)}
 	if d.Year == 0 {
 		d.Year = s.deps.Now().Year()
 	}
 
-	// substr() and CAST … AS BIGINT work on both SQLite and PostgreSQL.
-	var months []struct {
-		Month string
-		Sum   int64
-	}
-	err := s.scoped(ctx).Model(&model.Invoice{}).
-		Select("substr(issued_on, 6, 2) AS month, CAST(COALESCE(SUM(total), 0) AS BIGINT) AS sum").
+	since, until := fmt.Sprintf("%04d-01-01", d.Year), fmt.Sprintf("%04d-12-31", d.Year)
+	revenue := s.scoped(ctx).Model(&model.Invoice{}).
 		Where("currency = ? AND document_type IN ? AND status <> ? AND issued_on BETWEEN ? AND ?",
-			d.Currency, []string{model.DocInvoice, model.DocCorrection}, model.StatusCancelled,
-			fmt.Sprintf("%04d-01-01", d.Year), fmt.Sprintf("%04d-12-31", d.Year)).
-		Group("substr(issued_on, 6, 2)").
-		Scan(&months).Error
-	if err != nil {
+			d.Currency, []string{model.DocInvoice, model.DocCorrection}, model.StatusCancelled, since, until)
+	var err error
+	if d.RevenueTotal, err = sumByMonth(revenue, d.RevenueByMonth); err != nil {
 		return nil, dbErr(err, "statistics")
 	}
-	for _, m := range months {
-		if n, err := strconv.Atoi(m.Month); err == nil && n >= 1 && n <= 12 {
-			d.RevenueByMonth[n-1] = m.Sum
-			d.RevenueTotal += m.Sum
-		}
+	expenses := s.scoped(ctx).Model(&model.Expense{}).
+		Where("currency = ? AND issued_on BETWEEN ? AND ?", d.Currency, since, until)
+	if d.ExpensesTotal, err = sumByMonth(expenses, d.ExpensesByMonth); err != nil {
+		return nil, dbErr(err, "statistics")
 	}
+	d.ProfitTotal = d.RevenueTotal - d.ExpensesTotal
 
 	type agg struct {
 		Count int64
@@ -85,4 +83,28 @@ func (s *server) getDashboard(ctx context.Context, in *struct {
 	}
 	d.UnpaidCount, d.UnpaidTotal, d.OverdueCount, d.OverdueTotal = u.Count, u.Sum, o.Count, o.Sum
 	return &Out[Dashboard]{Body: d}, nil
+}
+
+// sumByMonth sums total of the filtered documents q per month of issued_on
+// into byMonth (12 entries) and returns the grand total.
+// substr() and CAST … AS BIGINT work on both SQLite and PostgreSQL.
+func sumByMonth(q *gorm.DB, byMonth []int64) (int64, error) {
+	var months []struct {
+		Month string
+		Sum   int64
+	}
+	err := q.Select("substr(issued_on, 6, 2) AS month, CAST(COALESCE(SUM(total), 0) AS BIGINT) AS sum").
+		Group("substr(issued_on, 6, 2)").
+		Scan(&months).Error
+	if err != nil {
+		return 0, err
+	}
+	var total int64
+	for _, m := range months {
+		if n, err := strconv.Atoi(m.Month); err == nil && n >= 1 && n <= 12 {
+			byMonth[n-1] = m.Sum
+			total += m.Sum
+		}
+	}
+	return total, nil
 }
