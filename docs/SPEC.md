@@ -390,3 +390,12 @@ EET (zrušeno), účetnictví (podvojné), mzdy, OCR účtenek (jen příprava: 
 - **[frontend] Záložky nastavení jsou vnořené routy** `/a/$slug/settings/{company,bank-accounts,number-formats,profile,tokens}`;
   `/a/$slug/settings` je na mobilu seznam sekcí, na desktopu přesměruje na `company`.
 - **[frontend] Vite dev proxy** předává `/api/*` beze změny cesty (backend servíruje API pod `/api`).
+
+**PDF (internal/pdf, `GET …/invoices/{id}/pdf`) — rozhodnutí a odchylky:**
+- API balíčku: `pdf.Render(inv *model.Invoice, acc *model.Account, opt pdf.Options) ([]byte, error)`; `Options{Template, Accent, Language, Logo, Stamp, ShowQR, RelatedNumber}`. Šablona/akcent/logo/razítko zatím nejsou na `Account` (§7.14, §7.12) — přicházejí přes `Options`; endpoint zatím bere jen `?template=classic|modern|minimal&lang=cs|en|sk|de` (neplatná hodnota → 422) a posílá `ShowQR=true`. Po doplnění polí na Account je stačí předat v `getInvoicePDF`.
+- `pdf.Sample(pdf.SampleSpec)` vrací konzistentní ukázková data (pro budoucí `GET /pdf-preview` z §7.14); `go run ./cmd/pdf-sample [-png]` vygeneruje všechny šablony × typy dokladů do `tmp/pdf-samples/` (gitignored).
+- Titulek neplátce je jen „Faktura“ (resp. „Opravná faktura“ u dobropisu neplátce); „Neplátce DPH“ je v bloku dodavatele. `identified_person` se zobrazuje jako neplátce (bez sloupců DPH) s poznámkou „Identifikovaná osoba k DPH“. Finální faktura k proformě (`related_id`) má podtitulek „Vyúčtování zálohové faktury č. …“.
+- QR Platba jen při `payment_method=bank`, měně CZK, CZ IBAN, zbývající částce > 0 a stavu ≠ cancelled/uncollectible; částka v QR = zbývající částka. SWIFT se do SPAYD záměrně neposílá (některé bankovní aplikace pak platbu berou jako zahraniční).
+- Rekapitulace DPH se v PDF počítá z řádků přes `billing.Calculate`; součty (`subtotal/vat_total/rounding/total/paid_amount`) se berou z uložené faktury.
+- Stav `paid` → razítko „ZAPLACENO“ s datem `paid_on`, `cancelled` → „STORNO“. Plně zaplacená faktura ukáže „Celkem“ + řádek „Zaplaceno“, částečně zaplacená „Zaplaceno“ + „Zbývá uhradit“.
+- Kontakty (e-mail, telefon, web) v patičce jsou z aktuálního `Account` (na faktuře nejsou snapshotované).

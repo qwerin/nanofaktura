@@ -31,3 +31,6 @@ openapi.json
 # Claude Code lokální stav
 .claude/worktrees/
 .claude/settings.local.json
+
+# Ukázková PDF (go run ./cmd/pdf-sample)
+/tmp/

@@ -114,6 +114,7 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 	s.registerInvoices(account)
 	s.registerInvoiceActions(account)
 	s.registerPayments(account)
+	s.registerInvoicePDF(account)
 	s.registerDashboard(account)
 
 	return router, api
