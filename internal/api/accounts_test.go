@@ -125,5 +125,5 @@ func TestMemberCannotPatchAccount(t *testing.T) {
 		t.Fatalf("role = %q", got.Role)
 	}
 	res, body := b.do("PATCH", a.acct(""), map[string]any{"name": "hacked"})
-	assertError(t, res, body, http.StatusForbidden, "owner")
+	assertError(t, res, body, http.StatusForbidden, "allowed roles: owner, admin")
 }

@@ -27,7 +27,7 @@ type User struct {
 type MeAccount struct {
 	Slug string `json:"slug"`
 	Name string `json:"name"`
-	Role string `json:"role" enum:"owner,member"`
+	Role string `json:"role" enum:"owner,admin,accountant,member"`
 }
 
 type Me struct {
@@ -39,7 +39,10 @@ type RegisterRequest struct {
 	Email       string `json:"email" format:"email" maxLength:"254"`
 	Name        string `json:"name" minLength:"1" maxLength:"200"`
 	Password    string `json:"password" minLength:"8" maxLength:"72"`
-	AccountName string `json:"account_name" minLength:"1" maxLength:"200"`
+	AccountName string `json:"account_name,omitempty" maxLength:"200" doc:"Name of the new account; required unless invitation_token is given"`
+	// InvitationToken joins the invited account instead of creating one
+	// (allowed even when signup is disabled; email must match the invitation).
+	InvitationToken string `json:"invitation_token,omitempty" maxLength:"100"`
 }
 
 type LoginRequest struct {
@@ -93,13 +96,29 @@ func (s *server) register(ctx context.Context, in *struct{ Body RegisterRequest 
 	}
 	user := model.User{Email: normalizeEmail(in.Body.Email), Name: strings.TrimSpace(in.Body.Name), PasswordHash: hash}
 
+	accountName := strings.TrimSpace(in.Body.AccountName)
+	if in.Body.InvitationToken == "" && accountName == "" {
+		return nil, invalid("account_name", "account_name is required")
+	}
+
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		has, err := hasUsers(tx)
-		if err != nil {
-			return dbErr(err, "users")
-		}
-		if has && !s.cfg.AllowSignup {
-			return huma.Error403Forbidden("signup is disabled")
+		var inv *model.Invitation
+		if in.Body.InvitationToken != "" {
+			var err error
+			if inv, err = s.pendingInvitation(tx, in.Body.InvitationToken); err != nil {
+				return err
+			}
+			if inv.Email != user.Email {
+				return invalid("email", "email does not match the invitation")
+			}
+		} else {
+			has, err := hasUsers(tx)
+			if err != nil {
+				return dbErr(err, "users")
+			}
+			if has && !s.cfg.AllowSignup {
+				return huma.Error403Forbidden("signup is disabled")
+			}
 		}
 		if err := tx.Create(&user).Error; err != nil {
 			if errors.Is(err, gorm.ErrDuplicatedKey) {
@@ -107,7 +126,10 @@ func (s *server) register(ctx context.Context, in *struct{ Body RegisterRequest 
 			}
 			return dbErr(err, "user")
 		}
-		_, err = newAccount(tx, in.Body.AccountName, user.ID)
+		if inv != nil {
+			return s.joinByInvitation(tx, inv, user.ID)
+		}
+		_, err := newAccount(tx, accountName, user.ID)
 		return err
 	})
 	if err != nil {

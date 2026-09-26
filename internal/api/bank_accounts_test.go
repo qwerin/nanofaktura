@@ -170,9 +170,9 @@ func TestBankAccountsTenantIsolationAndRoles(t *testing.T) {
 	ts.db.Create(&model.Membership{UserID: user.ID, AccountID: acc.ID, Role: model.RoleMember})
 	b.mustDo(http.StatusOK, "GET", bankURL(a, ba.ID), nil)
 	res, body := b.do("POST", a.acct("/bank-accounts"), api.BankAccountCreate{Name: "x", Number: "2000145399/2010"})
-	assertError(t, res, body, http.StatusForbidden, "owner")
+	assertError(t, res, body, http.StatusForbidden, "allowed roles: owner, admin")
 	res, body = b.do("PATCH", bankURL(a, ba.ID), map[string]any{"name": "x"})
-	assertError(t, res, body, http.StatusForbidden, "owner")
+	assertError(t, res, body, http.StatusForbidden, "allowed roles: owner, admin")
 	res, body = b.do("DELETE", bankURL(a, ba.ID), nil)
-	assertError(t, res, body, http.StatusForbidden, "owner")
+	assertError(t, res, body, http.StatusForbidden, "allowed roles: owner, admin")
 }

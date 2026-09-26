@@ -48,10 +48,10 @@ func toNumberFormat(m *model.NumberFormat) NumberFormat {
 
 func (s *server) registerNumberFormats(g huma.API) {
 	huma.Get(g, "/number-formats", s.listNumberFormats)
-	huma.Post(g, "/number-formats", s.createNumberFormat, status(http.StatusCreated))
+	huma.Post(g, "/number-formats", s.createNumberFormat, status(http.StatusCreated), auth.ForManagers)
 	huma.Get(g, "/number-formats/{id}", s.getNumberFormat)
-	huma.Patch(g, "/number-formats/{id}", s.patchNumberFormat)
-	huma.Delete(g, "/number-formats/{id}", s.deleteNumberFormat, status(http.StatusNoContent))
+	huma.Patch(g, "/number-formats/{id}", s.patchNumberFormat, auth.ForManagers)
+	huma.Delete(g, "/number-formats/{id}", s.deleteNumberFormat, status(http.StatusNoContent), auth.ForManagers)
 	huma.Get(g, "/number-formats/{id}/preview", s.previewNumberFormat)
 }
 
@@ -102,9 +102,6 @@ func makeDefault(ctx context.Context, tx *gorm.DB, m *model.NumberFormat) error 
 }
 
 func (s *server) createNumberFormat(ctx context.Context, in *struct{ Body NumberFormatCreate }) (*Out[NumberFormat], error) {
-	if err := auth.RequireOwner(ctx); err != nil {
-		return nil, err
-	}
 	m := model.NumberFormat{
 		AccountID:    auth.AccountFrom(ctx).ID,
 		DocumentType: in.Body.DocumentType,
@@ -143,9 +140,6 @@ func (s *server) patchNumberFormat(ctx context.Context, in *struct {
 	ID   uint `path:"id"`
 	Body NumberFormatPatch
 }) (*Out[NumberFormat], error) {
-	if err := auth.RequireOwner(ctx); err != nil {
-		return nil, err
-	}
 	var m model.NumberFormat
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Scopes(inAccount(ctx)).First(&m, in.ID).Error; err != nil {
@@ -182,9 +176,6 @@ func (s *server) patchNumberFormat(ctx context.Context, in *struct {
 func (s *server) deleteNumberFormat(ctx context.Context, in *struct {
 	ID uint `path:"id"`
 }) (*NoContent, error) {
-	if err := auth.RequireOwner(ctx); err != nil {
-		return nil, err
-	}
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var m model.NumberFormat
 		if err := tx.Scopes(inAccount(ctx)).First(&m, in.ID).Error; err != nil {

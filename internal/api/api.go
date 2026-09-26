@@ -15,6 +15,9 @@
 //     do not declare it.
 //
 // Membership is thus enforced centrally by the group, never per handler.
+// Roles likewise: account operations declare the allowed roles at
+// registration (auth.ForEditors, auth.ForManagers, auth.Allow(...)) and
+// RequireAccount answers 403 to other roles; undeclared = every member.
 //
 // # Adding a resource
 //
@@ -29,6 +32,8 @@ package api
 import (
 	"context"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -39,7 +44,9 @@ import (
 	"github.com/qwerin/nanofaktura/internal/ares"
 	"github.com/qwerin/nanofaktura/internal/auth"
 	"github.com/qwerin/nanofaktura/internal/config"
+	"github.com/qwerin/nanofaktura/internal/mail"
 	"github.com/qwerin/nanofaktura/internal/numbering"
+	"github.com/qwerin/nanofaktura/internal/storage"
 )
 
 // Deps holds swappable dependencies (tests replace them).
@@ -51,6 +58,12 @@ type Deps struct {
 	// issued on issuedOn ("YYYY-MM-DD") inside the creating transaction tx.
 	// Defaults to numbering.Next.
 	NextNumber func(tx *gorm.DB, accountID uint, docType, issuedOn string) (string, error)
+
+	// Mailer sends e-mails. Defaults to SMTP when cfg.SMTPHost is set,
+	// otherwise to a mail.LogMailer printing to stdout. Tests: mailtest.New().
+	Mailer mail.Mailer
+	// Storage keeps attachment content. Defaults to storage.NewLocal(cfg.DataDir + "/attachments").
+	Storage storage.Storage
 }
 
 // ARES looks up subjects in the Czech business register (see internal/ares
@@ -76,6 +89,16 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 	}
 	if deps.NextNumber == nil {
 		deps.NextNumber = numbering.Next
+	}
+	if deps.Mailer == nil {
+		deps.Mailer = defaultMailer(cfg)
+	}
+	if deps.Storage == nil {
+		dir := cfg.DataDir
+		if dir == "" {
+			dir = "./data"
+		}
+		deps.Storage = storage.NewLocal(filepath.Join(dir, "attachments"))
 	}
 	s := &server{db: db, cfg: cfg, deps: deps, auth: auth.NewService(db, deps.Now, cfg.SecureCookies)}
 
@@ -116,8 +139,20 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 	s.registerPayments(account)
 	s.registerInvoicePDF(account)
 	s.registerDashboard(account)
+	s.registerMembers(public, authed, account)
+	s.registerAttachments(account)
 
 	return router, api
+}
+
+func defaultMailer(cfg config.Config) mail.Mailer {
+	if cfg.SMTPHost == "" {
+		return mail.NewLogMailer(os.Stdout, cfg.MailFrom)
+	}
+	return mail.NewSMTP(mail.SMTPConfig{
+		Host: cfg.SMTPHost, Port: cfg.SMTPPort, Username: cfg.SMTPUser, Password: cfg.SMTPPassword,
+		TLS: cfg.SMTPTLS, From: cfg.MailFrom,
+	})
 }
 
 // addSlugParam documents the {slug} path parameter of account-scoped operations.

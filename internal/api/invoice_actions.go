@@ -9,15 +9,16 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"github.com/qwerin/nanofaktura/internal/auth"
 	"github.com/qwerin/nanofaktura/internal/billing"
 	"github.com/qwerin/nanofaktura/internal/model"
 )
 
 func (s *server) registerInvoiceActions(g huma.API) {
-	huma.Post(g, "/invoices/{id}/actions/{action}", s.invoiceAction)
-	huma.Post(g, "/invoices/{id}/correction", s.createCorrection, status(http.StatusCreated))
-	huma.Post(g, "/invoices/{id}/duplicate", s.duplicateInvoice, status(http.StatusCreated))
-	huma.Post(g, "/invoices/{id}/regenerate-public-token", s.regeneratePublicToken)
+	huma.Post(g, "/invoices/{id}/actions/{action}", s.invoiceAction, auth.ForEditors)
+	huma.Post(g, "/invoices/{id}/correction", s.createCorrection, status(http.StatusCreated), auth.ForEditors)
+	huma.Post(g, "/invoices/{id}/duplicate", s.duplicateInvoice, status(http.StatusCreated), auth.ForEditors)
+	huma.Post(g, "/invoices/{id}/regenerate-public-token", s.regeneratePublicToken, auth.ForEditors)
 }
 
 func (s *server) invoiceAction(ctx context.Context, in *struct {

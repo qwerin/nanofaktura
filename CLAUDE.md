@@ -30,7 +30,9 @@ cmd/gen-schema/   prints OpenAPI JSON (api.New with nil DB)
 internal/config/  env config
 internal/db/      Open(driver, dsn) (glebarez pure-Go SQLite or Postgres) + Migrate (AutoMigrate model.All())
 internal/model/   GORM structs + enum constants; no API concerns
-internal/auth/    bcrypt, sessions, API tokens, huma middlewares, auth.UserFrom/AccountFrom/RoleFrom/RequireOwner
+internal/auth/    bcrypt, sessions, API tokens, huma middlewares, auth.UserFrom/AccountFrom/RoleFrom, roles (auth.Allow/ForEditors/ForManagers/RequireRole)
+internal/mail/    Mailer interface + SMTP / LogMailer (dev, no SMTP host) + mail.Render("{placeholder}" templates); tests: mail/mailtest.New()
+internal/storage/ Storage interface (Put/Get/Delete by key) + Local disk implementation (NANOFAKTURA_DATA_DIR/attachments)
 internal/api/     api.New + one file per resource (DTOs next to handlers) + *_test.go (package api_test)
 ```
 
@@ -57,7 +59,7 @@ Routes live in three huma groups built in `api.New` (see the doc comment in `int
 ```go
 func (s *server) registerSubjects(g huma.API) {
 	huma.Get(g, "/subjects", s.listSubjects)
-	huma.Post(g, "/subjects", s.createSubject, status(http.StatusCreated))
+	huma.Post(g, "/subjects", s.createSubject, status(http.StatusCreated), auth.ForEditors)
 	huma.Get(g, "/subjects/{id}", s.getSubject)
 }
 
@@ -84,7 +86,7 @@ func (s *server) getSubject(ctx context.Context, in *struct {
 ```
 
    New records set `AccountID: auth.AccountFrom(ctx).ID`. In transactions use `tx.Scopes(inAccount(ctx))`.
-   Owner-only operations start with `if err := auth.RequireOwner(ctx); err != nil { return nil, err }`.
+   **Roles are declared at registration** (see "Roles" below), never checked ad hoc in handlers.
    Outputs: `Out[T]` (JSON body), `NoContent` + `status(http.StatusNoContent)` for deletes.
 2. Register it in `api.New`: `s.registerSubjects(account)`.
 3. Test it in `internal/api/subjects_test.go` (harness in `testutil_test.go`: in-memory SQLite, fixed clock `ts.now`):
@@ -108,4 +110,39 @@ func TestSubjects(t *testing.T) {
    Helpers: `c.do(method, path, body)`, `c.mustDo(status, …) []byte`, `doJSON[T](c, status, …) T`,
    `decodeJSON[T](t, b)`, `assertError(t, res, body, status, substr)`, `ts.anon()`, `ts.db` for direct setup,
    `&client{ts: ts, token: "nf_…"}` for bearer auth.
+   More helpers: `ts.memberOf(owner, email, role) *client` (user added to owner's account with a role),
+   `ts.mail` (recorded e-mails: `ts.mail.Last()`, `.Messages()`, `.Err` to simulate failure),
+   `ts.dataDir` (attachment storage), `c.upload(fields, filename, data)` (multipart, in attachments_test.go).
 4. `make test` and `make gen-types`.
+
+## Roles (SPEC §7.13)
+
+Roles: `owner` (everything), `admin` (everything except managing owners), `accountant` (read-only;
+later exports/reports), `member` (documents, subjects, expenses, attachments; no settings).
+An account-scoped operation declares who may call it with an operation option; `auth.RequireAccount`
+reads it from the operation metadata and answers 403 (`your role (x) cannot do this; allowed roles: …`)
+before the handler (and before input validation) runs:
+
+```go
+huma.Get(g, "/invoices", s.listInvoices)                                        // nothing declared = ANY member (all roles)
+huma.Post(g, "/invoices", s.createInvoice, status(http.StatusCreated), auth.ForEditors) // owner, admin, member
+huma.Patch(g, "/bank-accounts/{id}", s.patchBankAccount, auth.ForManagers)       // owner, admin
+huma.Get(g, "/reports/vat", s.vatReport, auth.Allow(model.RoleOwner, model.RoleAdmin, model.RoleAccountant))
+```
+
+Matrix: reads → nothing declared; mutations of documents/subjects/payments/attachments → `auth.ForEditors`;
+settings (account PATCH, bank accounts, number formats, members, invitations) → `auth.ForManagers`;
+exports/reports → `auth.Allow(owner, admin, accountant[, member])`. Rules that depend on the request
+(admin may not touch owners, anyone may leave) stay in the handler: `auth.RequireRole(ctx, roles...)`.
+`Allow` also documents the roles in OpenAPI (description + `x-roles`). `TestEveryAccountMutationDeclaresRoles`
+fails for any account-scoped POST/PUT/PATCH/DELETE without a declaration — add one (or an explicit exception).
+`TestRoleMatrix` (roles_test.go) lists every operation × role; extend it with new endpoints.
+
+## Mail, attachments
+
+- `s.deps.Mailer.Send(ctx, mail.Message{To, Subject, Text, …})`; `From` empty = `NANOFAKTURA_MAIL_FROM`.
+  Texts with placeholders: `mail.Render("Faktura {number}", map[string]string{"number": n})`.
+  Links in e-mails: `s.publicURL()` (`NANOFAKTURA_PUBLIC_URL`).
+- Files go through `s.deps.Storage` (keys `"{account_id}/{random}"`); metadata in `model.Attachment`
+  (owner_type invoice|expense|subject|account). Small files into memory: `s.attachmentBytes(ctx, id)`.
+  When deleting an owner record, its attachments are not removed automatically yet.

@@ -154,10 +154,10 @@ func subjectErr(err error) error {
 
 func (s *server) registerSubjects(g huma.API) {
 	huma.Get(g, "/subjects", s.listSubjects)
-	huma.Post(g, "/subjects", s.createSubject, status(http.StatusCreated))
+	huma.Post(g, "/subjects", s.createSubject, status(http.StatusCreated), auth.ForEditors)
 	huma.Get(g, "/subjects/{id}", s.getSubject)
-	huma.Patch(g, "/subjects/{id}", s.patchSubject)
-	huma.Delete(g, "/subjects/{id}", s.deleteSubject, status(http.StatusNoContent))
+	huma.Patch(g, "/subjects/{id}", s.patchSubject, auth.ForEditors)
+	huma.Delete(g, "/subjects/{id}", s.deleteSubject, status(http.StatusNoContent), auth.ForEditors)
 }
 
 func (s *server) listSubjects(ctx context.Context, in *struct {

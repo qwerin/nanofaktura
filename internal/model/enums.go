@@ -1,9 +1,11 @@
 package model
 
-// Membership roles.
+// Membership roles (SPEC §7.13). Permissions per role: see auth.Allow.
 const (
-	RoleOwner  = "owner"
-	RoleMember = "member"
+	RoleOwner      = "owner"      // everything
+	RoleAdmin      = "admin"      // everything except managing owners (and deleting the account)
+	RoleAccountant = "accountant" // read-only + exports/reports
+	RoleMember     = "member"     // documents, subjects, expenses; no settings
 )
 
 // Account VAT modes.

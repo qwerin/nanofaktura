@@ -36,8 +36,70 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Patch API accounts by slug */
+        /**
+         * Patch API accounts by slug
+         * @description Allowed roles: owner, admin.
+         */
         patch: operations["patch-api-accounts-by-slug"];
+        trace?: never;
+    };
+    "/api/accounts/{slug}/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug attachments */
+        get: operations["get-api-accounts-by-slug-attachments"];
+        put?: never;
+        /**
+         * Post API accounts by slug attachments
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-attachments"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/attachments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug attachments by ID */
+        get: operations["get-api-accounts-by-slug-attachments-by-id"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete API accounts by slug attachments by ID
+         * @description Allowed roles: owner, admin, member.
+         */
+        delete: operations["delete-api-accounts-by-slug-attachments-by-id"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/attachments/{id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug attachments by ID download */
+        get: operations["get-api-accounts-by-slug-attachments-by-id-download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/accounts/{slug}/bank-accounts": {
@@ -50,7 +112,10 @@ export interface paths {
         /** Get API accounts by slug bank accounts */
         get: operations["get-api-accounts-by-slug-bank-accounts"];
         put?: never;
-        /** Post API accounts by slug bank accounts */
+        /**
+         * Post API accounts by slug bank accounts
+         * @description Allowed roles: owner, admin.
+         */
         post: operations["post-api-accounts-by-slug-bank-accounts"];
         delete?: never;
         options?: never;
@@ -69,11 +134,17 @@ export interface paths {
         get: operations["get-api-accounts-by-slug-bank-accounts-by-id"];
         put?: never;
         post?: never;
-        /** Delete API accounts by slug bank accounts by ID */
+        /**
+         * Delete API accounts by slug bank accounts by ID
+         * @description Allowed roles: owner, admin.
+         */
         delete: operations["delete-api-accounts-by-slug-bank-accounts-by-id"];
         options?: never;
         head?: never;
-        /** Patch API accounts by slug bank accounts by ID */
+        /**
+         * Patch API accounts by slug bank accounts by ID
+         * @description Allowed roles: owner, admin.
+         */
         patch: operations["patch-api-accounts-by-slug-bank-accounts-by-id"];
         trace?: never;
     };
@@ -94,6 +165,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/accounts/{slug}/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get API accounts by slug invitations
+         * @description Allowed roles: owner, admin.
+         */
+        get: operations["get-api-accounts-by-slug-invitations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/invitations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete API accounts by slug invitations by ID
+         * @description Allowed roles: owner, admin.
+         */
+        delete: operations["delete-api-accounts-by-slug-invitations-by-id"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/accounts/{slug}/invoices": {
         parameters: {
             query?: never;
@@ -104,7 +215,10 @@ export interface paths {
         /** Get API accounts by slug invoices */
         get: operations["get-api-accounts-by-slug-invoices"];
         put?: never;
-        /** Post API accounts by slug invoices */
+        /**
+         * Post API accounts by slug invoices
+         * @description Allowed roles: owner, admin, member.
+         */
         post: operations["post-api-accounts-by-slug-invoices"];
         delete?: never;
         options?: never;
@@ -123,11 +237,17 @@ export interface paths {
         get: operations["get-api-accounts-by-slug-invoices-by-id"];
         put?: never;
         post?: never;
-        /** Delete API accounts by slug invoices by ID */
+        /**
+         * Delete API accounts by slug invoices by ID
+         * @description Allowed roles: owner, admin, member.
+         */
         delete: operations["delete-api-accounts-by-slug-invoices-by-id"];
         options?: never;
         head?: never;
-        /** Patch API accounts by slug invoices by ID */
+        /**
+         * Patch API accounts by slug invoices by ID
+         * @description Allowed roles: owner, admin, member.
+         */
         patch: operations["patch-api-accounts-by-slug-invoices-by-id"];
         trace?: never;
     };
@@ -140,7 +260,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Post API accounts by slug invoices by ID actions by action */
+        /**
+         * Post API accounts by slug invoices by ID actions by action
+         * @description Allowed roles: owner, admin, member.
+         */
         post: operations["post-api-accounts-by-slug-invoices-by-id-actions-by-action"];
         delete?: never;
         options?: never;
@@ -157,7 +280,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Post API accounts by slug invoices by ID correction */
+        /**
+         * Post API accounts by slug invoices by ID correction
+         * @description Allowed roles: owner, admin, member.
+         */
         post: operations["post-api-accounts-by-slug-invoices-by-id-correction"];
         delete?: never;
         options?: never;
@@ -174,7 +300,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Post API accounts by slug invoices by ID duplicate */
+        /**
+         * Post API accounts by slug invoices by ID duplicate
+         * @description Allowed roles: owner, admin, member.
+         */
         post: operations["post-api-accounts-by-slug-invoices-by-id-duplicate"];
         delete?: never;
         options?: never;
@@ -191,7 +320,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Post API accounts by slug invoices by ID payments */
+        /**
+         * Post API accounts by slug invoices by ID payments
+         * @description Allowed roles: owner, admin, member.
+         */
         post: operations["post-api-accounts-by-slug-invoices-by-id-payments"];
         delete?: never;
         options?: never;
@@ -209,7 +341,10 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Delete API accounts by slug invoices by ID payments by payment ID */
+        /**
+         * Delete API accounts by slug invoices by ID payments by payment ID
+         * @description Allowed roles: owner, admin, member.
+         */
         delete: operations["delete-api-accounts-by-slug-invoices-by-id-payments-by-payment-id"];
         options?: never;
         head?: never;
@@ -242,12 +377,73 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Post API accounts by slug invoices by ID regenerate public token */
+        /**
+         * Post API accounts by slug invoices by ID regenerate public token
+         * @description Allowed roles: owner, admin, member.
+         */
         post: operations["post-api-accounts-by-slug-invoices-by-id-regenerate-public-token"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug members */
+        get: operations["get-api-accounts-by-slug-members"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/members/invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug members invite
+         * @description Allowed roles: owner, admin.
+         */
+        post: operations["post-api-accounts-by-slug-members-invite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/members/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete API accounts by slug members by user ID */
+        delete: operations["delete-api-accounts-by-slug-members-by-user-id"];
+        options?: never;
+        head?: never;
+        /**
+         * Patch API accounts by slug members by user ID
+         * @description Allowed roles: owner, admin.
+         */
+        patch: operations["patch-api-accounts-by-slug-members-by-user-id"];
         trace?: never;
     };
     "/api/accounts/{slug}/number-formats": {
@@ -260,7 +456,10 @@ export interface paths {
         /** Get API accounts by slug number formats */
         get: operations["get-api-accounts-by-slug-number-formats"];
         put?: never;
-        /** Post API accounts by slug number formats */
+        /**
+         * Post API accounts by slug number formats
+         * @description Allowed roles: owner, admin.
+         */
         post: operations["post-api-accounts-by-slug-number-formats"];
         delete?: never;
         options?: never;
@@ -279,11 +478,17 @@ export interface paths {
         get: operations["get-api-accounts-by-slug-number-formats-by-id"];
         put?: never;
         post?: never;
-        /** Delete API accounts by slug number formats by ID */
+        /**
+         * Delete API accounts by slug number formats by ID
+         * @description Allowed roles: owner, admin.
+         */
         delete: operations["delete-api-accounts-by-slug-number-formats-by-id"];
         options?: never;
         head?: never;
-        /** Patch API accounts by slug number formats by ID */
+        /**
+         * Patch API accounts by slug number formats by ID
+         * @description Allowed roles: owner, admin.
+         */
         patch: operations["patch-api-accounts-by-slug-number-formats-by-id"];
         trace?: never;
     };
@@ -314,7 +519,10 @@ export interface paths {
         /** Get API accounts by slug subjects */
         get: operations["get-api-accounts-by-slug-subjects"];
         put?: never;
-        /** Post API accounts by slug subjects */
+        /**
+         * Post API accounts by slug subjects
+         * @description Allowed roles: owner, admin, member.
+         */
         post: operations["post-api-accounts-by-slug-subjects"];
         delete?: never;
         options?: never;
@@ -333,11 +541,17 @@ export interface paths {
         get: operations["get-api-accounts-by-slug-subjects-by-id"];
         put?: never;
         post?: never;
-        /** Delete API accounts by slug subjects by ID */
+        /**
+         * Delete API accounts by slug subjects by ID
+         * @description Allowed roles: owner, admin, member.
+         */
         delete: operations["delete-api-accounts-by-slug-subjects-by-id"];
         options?: never;
         head?: never;
-        /** Patch API accounts by slug subjects by ID */
+        /**
+         * Patch API accounts by slug subjects by ID
+         * @description Allowed roles: owner, admin, member.
+         */
         patch: operations["patch-api-accounts-by-slug-subjects-by-id"];
         trace?: never;
     };
@@ -496,6 +710,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/invitations/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API invitations by token */
+        get: operations["get-api-invitations-by-token"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invitations/{token}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post API invitations by token accept */
+        post: operations["post-api-invitations-by-token-accept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -531,6 +779,11 @@ export interface components {
             /** Format: int32 */
             default_vat_rate_bps: number;
             email: string;
+            /**
+             * Format: int64
+             * @description Logo image attachment (PNG/JPEG)
+             */
+            logo_attachment_id?: number;
             name: string;
             phone: string;
             registered_by: string;
@@ -539,9 +792,14 @@ export interface components {
              * @description Current user's role
              * @enum {string}
              */
-            role: "owner" | "member";
+            role: "owner" | "admin" | "accountant" | "member";
             round_total: boolean;
             slug: string;
+            /**
+             * Format: int64
+             * @description Signature/stamp image attachment (PNG/JPEG)
+             */
+            stamp_attachment_id?: number;
             street: string;
             /** Format: date-time */
             updated_at: string;
@@ -571,11 +829,21 @@ export interface components {
             /** Format: int32 */
             default_vat_rate_bps?: number;
             email?: string;
+            /**
+             * Format: int64
+             * @description PNG/JPEG attachment of this account; 0 removes the logo
+             */
+            logo_attachment_id?: number;
             name?: string;
             phone?: string;
             registered_by?: string;
             registration_no?: string;
             round_total?: boolean;
+            /**
+             * Format: int64
+             * @description PNG/JPEG attachment of this account; 0 removes the stamp
+             */
+            stamp_attachment_id?: number;
             street?: string;
             /** @enum {string} */
             vat_mode?: "non_vat_payer" | "vat_payer" | "identified_person";
@@ -591,6 +859,21 @@ export interface components {
             street: string;
             vat_no: string;
             zip: string;
+        };
+        Attachment: {
+            /** @description Detected from the content */
+            content_type: string;
+            /** Format: date-time */
+            created_at: string;
+            filename: string;
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            owner_id: number;
+            /** @enum {string} */
+            owner_type: "invoice" | "expense" | "subject" | "account";
+            /** Format: int64 */
+            size: number;
         };
         AuthStatus: {
             has_users: boolean;
@@ -714,6 +997,38 @@ export interface components {
         Health: {
             /** @example ok */
             status: string;
+        };
+        Invitation: {
+            /** Format: date-time */
+            created_at: string;
+            email: string;
+            /** Format: date-time */
+            expires_at: string;
+            /** Format: int64 */
+            id: number;
+            /**
+             * Format: int64
+             * @description User ID of the inviter
+             */
+            invited_by: number;
+            /** @enum {string} */
+            role: "owner" | "admin" | "accountant" | "member";
+        };
+        InvitationCreate: {
+            /** Format: email */
+            email: string;
+            /** @enum {string} */
+            role: "owner" | "admin" | "accountant" | "member";
+        };
+        InvitationInfo: {
+            account_name: string;
+            email: string;
+            /** Format: date-time */
+            expires_at: string;
+            /** @enum {string} */
+            role: "owner" | "admin" | "accountant" | "member";
+            /** @description The invited e-mail already has a user: log in and accept instead of registering */
+            user_exists: boolean;
         };
         Invoice: {
             bank_account: string;
@@ -1110,6 +1425,15 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        ListResponseAttachment: {
+            items: components["schemas"]["Attachment"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            per_page: number;
+            /** Format: int64 */
+            total: number;
+        };
         ListResponseBankAccount: {
             items: components["schemas"]["BankAccount"][];
             /** Format: int64 */
@@ -1119,8 +1443,26 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        ListResponseInvitation: {
+            items: components["schemas"]["Invitation"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            per_page: number;
+            /** Format: int64 */
+            total: number;
+        };
         ListResponseInvoiceSummary: {
             items: components["schemas"]["InvoiceSummary"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            per_page: number;
+            /** Format: int64 */
+            total: number;
+        };
+        ListResponseMember: {
+            items: components["schemas"]["Member"][];
             /** Format: int64 */
             page: number;
             /** Format: int64 */
@@ -1157,7 +1499,7 @@ export interface components {
         MeAccount: {
             name: string;
             /** @enum {string} */
-            role: "owner" | "member";
+            role: "owner" | "admin" | "accountant" | "member";
             slug: string;
         };
         MePatch: {
@@ -1165,6 +1507,20 @@ export interface components {
             current_password?: string;
             name?: string;
             password?: string;
+        };
+        Member: {
+            email: string;
+            /** Format: date-time */
+            joined_at: string;
+            name: string;
+            /** @enum {string} */
+            role: "owner" | "admin" | "accountant" | "member";
+            /** Format: int64 */
+            user_id: number;
+        };
+        MemberPatch: {
+            /** @enum {string} */
+            role: "owner" | "admin" | "accountant" | "member";
         };
         NumberFormat: {
             /** Format: date-time */
@@ -1233,9 +1589,11 @@ export interface components {
             payment: components["schemas"]["Payment"];
         };
         RegisterRequest: {
-            account_name: string;
+            /** @description Name of the new account; required unless invitation_token is given */
+            account_name?: string;
             /** Format: email */
             email: string;
+            invitation_token?: string;
             name: string;
             password: string;
         };
@@ -1489,6 +1847,192 @@ export interface operations {
             };
         };
     };
+    "get-api-accounts-by-slug-attachments": {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+                owner_type?: "invoice" | "expense" | "subject" | "account";
+                owner_id?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListResponseAttachment"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description PDF, PNG, JPEG, WebP, HEIC or XML, max 20 MB
+                     */
+                    file: string;
+                    /**
+                     * Format: int64
+                     * @description ID of the owner record; for owner_type=account ignored (current account)
+                     */
+                    owner_id: number;
+                    /** @enum {string} */
+                    owner_type: "invoice" | "expense" | "subject" | "account";
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Attachment"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-attachments-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Attachment"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-api-accounts-by-slug-attachments-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-attachments-by-id-download": {
+        parameters: {
+            query?: {
+                /** @description Content-Disposition inline instead of attachment (open in the browser) */
+                inline?: boolean;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description File content */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "get-api-accounts-by-slug-bank-accounts": {
         parameters: {
             query?: {
@@ -1685,6 +2229,72 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Dashboard"];
                 };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-invitations": {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListResponseInvitation"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-api-accounts-by-slug-invitations-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Error */
             default: {
@@ -2109,6 +2719,145 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Invoice"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-members": {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListResponseMember"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-members-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitationCreate"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invitation"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-api-accounts-by-slug-members-by-user-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "patch-api-accounts-by-slug-members-by-user-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberPatch"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Member"];
                 };
             };
             /** @description Error */
@@ -2865,6 +3614,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Health"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-invitations-by-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationInfo"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-invitations-by-token-accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeAccount"];
                 };
             };
             /** @description Error */

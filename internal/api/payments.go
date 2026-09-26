@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"github.com/qwerin/nanofaktura/internal/auth"
 	"github.com/qwerin/nanofaktura/internal/billing"
 	"github.com/qwerin/nanofaktura/internal/model"
 )
@@ -28,8 +29,8 @@ type PaymentResult struct {
 }
 
 func (s *server) registerPayments(g huma.API) {
-	huma.Post(g, "/invoices/{id}/payments", s.createPayment, status(http.StatusCreated))
-	huma.Delete(g, "/invoices/{id}/payments/{payment_id}", s.deletePayment, status(http.StatusNoContent))
+	huma.Post(g, "/invoices/{id}/payments", s.createPayment, status(http.StatusCreated), auth.ForEditors)
+	huma.Delete(g, "/invoices/{id}/payments/{payment_id}", s.deletePayment, status(http.StatusNoContent), auth.ForEditors)
 }
 
 func (s *server) createPayment(ctx context.Context, in *struct {

@@ -56,7 +56,10 @@ func (s *server) getInvoicePDF(ctx context.Context, in *InvoicePDFInput) (*Invoi
 			opt.RelatedNumber = rel.Number
 		}
 	}
-	b, err := pdf.Render(inv, auth.AccountFrom(ctx), opt)
+	acc := auth.AccountFrom(ctx)
+	opt.Logo = s.attachmentBytes(ctx, acc.LogoAttachmentID)
+	opt.Stamp = s.attachmentBytes(ctx, acc.StampAttachmentID)
+	b, err := pdf.Render(inv, acc, opt)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("pdf rendering failed", err)
 	}

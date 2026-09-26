@@ -330,10 +330,10 @@ type InvoicePatch struct {
 
 func (s *server) registerInvoices(g huma.API) {
 	huma.Get(g, "/invoices", s.listInvoices)
-	huma.Post(g, "/invoices", s.createInvoice, status(http.StatusCreated))
+	huma.Post(g, "/invoices", s.createInvoice, status(http.StatusCreated), auth.ForEditors)
 	huma.Get(g, "/invoices/{id}", s.getInvoice)
-	huma.Patch(g, "/invoices/{id}", s.patchInvoice)
-	huma.Delete(g, "/invoices/{id}", s.deleteInvoice, status(http.StatusNoContent))
+	huma.Patch(g, "/invoices/{id}", s.patchInvoice, auth.ForEditors)
+	huma.Delete(g, "/invoices/{id}", s.deleteInvoice, status(http.StatusNoContent), auth.ForEditors)
 }
 
 type invoiceID struct {

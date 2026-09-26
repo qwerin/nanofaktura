@@ -12,5 +12,6 @@ func All() []any {
 		&User{}, &Account{}, &Membership{}, &Session{}, &APIToken{},
 		&BankAccount{}, &NumberFormat{}, &NumberCounter{},
 		&Subject{}, &Invoice{}, &InvoiceLine{}, &Payment{},
+		&Invitation{}, &Attachment{},
 	}
 }

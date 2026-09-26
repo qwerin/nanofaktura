@@ -102,10 +102,10 @@ func makeDefaultBankAccount(ctx context.Context, tx *gorm.DB, m *model.BankAccou
 
 func (s *server) registerBankAccounts(g huma.API) {
 	huma.Get(g, "/bank-accounts", s.listBankAccounts)
-	huma.Post(g, "/bank-accounts", s.createBankAccount, status(http.StatusCreated))
+	huma.Post(g, "/bank-accounts", s.createBankAccount, status(http.StatusCreated), auth.ForManagers)
 	huma.Get(g, "/bank-accounts/{id}", s.getBankAccount)
-	huma.Patch(g, "/bank-accounts/{id}", s.patchBankAccount)
-	huma.Delete(g, "/bank-accounts/{id}", s.deleteBankAccount, status(http.StatusNoContent))
+	huma.Patch(g, "/bank-accounts/{id}", s.patchBankAccount, auth.ForManagers)
+	huma.Delete(g, "/bank-accounts/{id}", s.deleteBankAccount, status(http.StatusNoContent), auth.ForManagers)
 }
 
 func (s *server) listBankAccounts(ctx context.Context, in *struct {
@@ -130,9 +130,6 @@ func (s *server) getBankAccount(ctx context.Context, in *struct {
 }
 
 func (s *server) createBankAccount(ctx context.Context, in *struct{ Body BankAccountCreate }) (*Out[BankAccount], error) {
-	if err := auth.RequireOwner(ctx); err != nil {
-		return nil, err
-	}
 	acc := auth.AccountFrom(ctx)
 	b := in.Body
 	m := model.BankAccount{AccountID: acc.ID, Name: b.Name, Currency: b.Currency, Number: b.Number,
@@ -172,9 +169,6 @@ func (s *server) patchBankAccount(ctx context.Context, in *struct {
 	ID   uint `path:"id"`
 	Body BankAccountPatch
 }) (*Out[BankAccount], error) {
-	if err := auth.RequireOwner(ctx); err != nil {
-		return nil, err
-	}
 	var m model.BankAccount
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Scopes(inAccount(ctx)).First(&m, in.ID).Error; err != nil {
@@ -213,9 +207,6 @@ func (s *server) patchBankAccount(ctx context.Context, in *struct {
 func (s *server) deleteBankAccount(ctx context.Context, in *struct {
 	ID uint `path:"id"`
 }) (*NoContent, error) {
-	if err := auth.RequireOwner(ctx); err != nil {
-		return nil, err
-	}
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var m model.BankAccount
 		if err := tx.Scopes(inAccount(ctx)).First(&m, in.ID).Error; err != nil {

@@ -112,7 +112,8 @@ function toFormValues(a: Account): Values {
 
 /** Převod hodnot formuláře na PATCH tělo — posílají se jen změněná pole. */
 function toPatch(values: Values, dirty: Partial<Record<keyof Values, unknown>>): UpdateAccountInput {
-  const all: Required<Omit<UpdateAccountInput, '$schema'>> = {
+  // logo/razítko se nastavují zvlášť (nahrání přílohy), ne tímto formulářem
+  const all: Required<Omit<UpdateAccountInput, '$schema' | 'logo_attachment_id' | 'stamp_attachment_id'>> = {
     ...values,
     name: values.name.trim(),
     country: values.country.trim().toUpperCase(),

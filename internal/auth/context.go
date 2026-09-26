@@ -3,8 +3,6 @@ package auth
 import (
 	"context"
 
-	"github.com/danielgtaylor/huma/v2"
-
 	"github.com/qwerin/nanofaktura/internal/model"
 )
 
@@ -34,12 +32,4 @@ func AccountFrom(ctx context.Context) *model.Account {
 func RoleFrom(ctx context.Context) string {
 	r, _ := ctx.Value(roleKey).(string)
 	return r
-}
-
-// RequireOwner returns 403 unless the current user owns the current account.
-func RequireOwner(ctx context.Context) error {
-	if RoleFrom(ctx) != model.RoleOwner {
-		return huma.Error403Forbidden("only the account owner can do this")
-	}
-	return nil
 }

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -16,7 +17,7 @@ import (
 // Account is the company profile and invoicing defaults (SPEC §4.1).
 type Account struct {
 	Slug                 string    `json:"slug"`
-	Role                 string    `json:"role" enum:"owner,member" doc:"Current user's role"`
+	Role                 string    `json:"role" enum:"owner,admin,accountant,member" doc:"Current user's role"`
 	Name                 string    `json:"name"`
 	RegistrationNo       string    `json:"registration_no"`
 	VatNo                string    `json:"vat_no"`
@@ -37,6 +38,8 @@ type Account struct {
 	DefaultFooterNote    string    `json:"default_footer_note"`
 	RoundTotal           bool      `json:"round_total"`
 	DefaultVatRateBps    int32     `json:"default_vat_rate_bps"`
+	LogoAttachmentID     *uint     `json:"logo_attachment_id,omitempty" doc:"Logo image attachment (PNG/JPEG)"`
+	StampAttachmentID    *uint     `json:"stamp_attachment_id,omitempty" doc:"Signature/stamp image attachment (PNG/JPEG)"`
 	CreatedAt            time.Time `json:"created_at"`
 	UpdatedAt            time.Time `json:"updated_at"`
 }
@@ -67,6 +70,8 @@ type AccountPatch struct {
 	DefaultFooterNote    *string `json:"default_footer_note,omitempty" maxLength:"5000"`
 	RoundTotal           *bool   `json:"round_total,omitempty"`
 	DefaultVatRateBps    *int32  `json:"default_vat_rate_bps,omitempty" minimum:"0" maximum:"10000"`
+	LogoAttachmentID     *uint   `json:"logo_attachment_id,omitempty" doc:"PNG/JPEG attachment of this account; 0 removes the logo"`
+	StampAttachmentID    *uint   `json:"stamp_attachment_id,omitempty" doc:"PNG/JPEG attachment of this account; 0 removes the stamp"`
 }
 
 func toAccount(a *model.Account, role string) Account {
@@ -76,7 +81,8 @@ func toAccount(a *model.Account, role string) Account {
 		VatMode: a.VatMode, RegisteredBy: a.RegisteredBy, DefaultCurrency: a.DefaultCurrency,
 		DefaultDueDays: a.DefaultDueDays, DefaultPaymentMethod: a.DefaultPaymentMethod,
 		DefaultLanguage: a.DefaultLanguage, DefaultNote: a.DefaultNote, DefaultFooterNote: a.DefaultFooterNote,
-		RoundTotal: a.RoundTotal, DefaultVatRateBps: a.DefaultVatRateBps, CreatedAt: a.CreatedAt, UpdatedAt: a.UpdatedAt,
+		RoundTotal: a.RoundTotal, DefaultVatRateBps: a.DefaultVatRateBps,
+		LogoAttachmentID: a.LogoAttachmentID, StampAttachmentID: a.StampAttachmentID, CreatedAt: a.CreatedAt, UpdatedAt: a.UpdatedAt,
 	}
 }
 
@@ -120,7 +126,7 @@ func (s *server) registerAccounts(authed, account huma.API) {
 	huma.Get(authed, "/api/accounts", s.listAccounts)
 	huma.Post(authed, "/api/accounts", s.createAccount, status(http.StatusCreated))
 	huma.Get(account, "", s.getAccount)
-	huma.Patch(account, "", s.patchAccount)
+	huma.Patch(account, "", s.patchAccount, auth.ForManagers)
 }
 
 // accountRow is an account joined with the current user's membership role.
@@ -155,9 +161,6 @@ func (s *server) getAccount(ctx context.Context, _ *struct{}) (*Out[Account], er
 }
 
 func (s *server) patchAccount(ctx context.Context, in *struct{ Body AccountPatch }) (*Out[Account], error) {
-	if err := auth.RequireOwner(ctx); err != nil {
-		return nil, err
-	}
 	acc := *auth.AccountFrom(ctx)
 	p := in.Body
 	if p.Name != nil {
@@ -187,8 +190,42 @@ func (s *server) patchAccount(ctx context.Context, in *struct{ Body AccountPatch
 	if acc.Name == "" {
 		return nil, invalid("name", "name must not be empty")
 	}
+	for _, img := range []struct {
+		field string
+		src   *uint
+		dst   **uint
+	}{{"logo_attachment_id", p.LogoAttachmentID, &acc.LogoAttachmentID}, {"stamp_attachment_id", p.StampAttachmentID, &acc.StampAttachmentID}} {
+		if img.src == nil {
+			continue
+		}
+		if *img.src == 0 {
+			*img.dst = nil
+			continue
+		}
+		if err := s.checkImageAttachment(ctx, img.field, *img.src); err != nil {
+			return nil, err
+		}
+		id := *img.src
+		*img.dst = &id
+	}
 	if err := s.db.WithContext(ctx).Save(&acc).Error; err != nil {
 		return nil, dbErr(err, "account")
 	}
 	return &Out[Account]{Body: toAccount(&acc, auth.RoleFrom(ctx))}, nil
+}
+
+// checkImageAttachment: the attachment must belong to the account and be a
+// PNG or JPEG (the formats the PDF renderer embeds) → 422 on field otherwise.
+func (s *server) checkImageAttachment(ctx context.Context, field string, id uint) error {
+	var a model.Attachment
+	if err := s.scoped(ctx).First(&a, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return invalid(field, "attachment not found")
+		}
+		return dbErr(err, "attachment")
+	}
+	if a.ContentType != "image/png" && a.ContentType != "image/jpeg" {
+		return invalid(field, "attachment must be a PNG or JPEG image")
+	}
+	return nil
 }

@@ -9,6 +9,9 @@
 *.db-shm
 *.db-wal
 
+# Přílohy a další data (NANOFAKTURA_DATA_DIR)
+/data/
+
 # Go build cache
 /vendor/
 

@@ -16,6 +16,9 @@ import (
 	"github.com/qwerin/nanofaktura/internal/auth"
 	"github.com/qwerin/nanofaktura/internal/config"
 	"github.com/qwerin/nanofaktura/internal/db"
+	"github.com/qwerin/nanofaktura/internal/mail/mailtest"
+	"github.com/qwerin/nanofaktura/internal/model"
+	"github.com/qwerin/nanofaktura/internal/storage"
 )
 
 // testPassword is the password of every user created by signup.
@@ -27,6 +30,8 @@ type testServer struct {
 	handler http.Handler
 	db      *gorm.DB
 	now     time.Time // current time seen by the API; change it to move the clock
+	mail    *mailtest.Recorder
+	dataDir string // attachment storage (t.TempDir)
 }
 
 // newTestServer starts an API with signup allowed. Use opts to tweak the config.
@@ -48,8 +53,10 @@ func newTestServer(t *testing.T, opts ...func(*config.Config)) *testServer {
 	for _, o := range opts {
 		o(&cfg)
 	}
-	ts := &testServer{t: t, db: gdb, now: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)}
-	ts.handler, _ = api.New(gdb, cfg, api.Deps{Now: func() time.Time { return ts.now }})
+	ts := &testServer{t: t, db: gdb, now: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC), mail: mailtest.New(), dataDir: t.TempDir()}
+	ts.handler, _ = api.New(gdb, cfg, api.Deps{
+		Now: func() time.Time { return ts.now }, Mailer: ts.mail, Storage: storage.NewLocal(ts.dataDir),
+	})
 	return ts
 }
 
@@ -73,6 +80,26 @@ func (ts *testServer) signup(email, accountName string) *client {
 		Email: email, Name: "Test " + email, Password: testPassword, AccountName: accountName,
 	})
 	c.slug = me.Accounts[0].Slug
+	return c
+}
+
+// memberOf signs up a new user (with its own account) and adds it directly
+// to owner's account with role; the returned client acts in owner's account.
+func (ts *testServer) memberOf(owner *client, email, role string) *client {
+	ts.t.Helper()
+	c := ts.signup(email, "Vlastní "+email)
+	var acc model.Account
+	var user model.User
+	if err := ts.db.Where("slug = ?", owner.slug).First(&acc).Error; err != nil {
+		ts.t.Fatal(err)
+	}
+	if err := ts.db.Where("email = ?", email).First(&user).Error; err != nil {
+		ts.t.Fatal(err)
+	}
+	if err := ts.db.Create(&model.Membership{UserID: user.ID, AccountID: acc.ID, Role: role}).Error; err != nil {
+		ts.t.Fatal(err)
+	}
+	c.slug = owner.slug
 	return c
 }
 

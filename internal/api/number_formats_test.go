@@ -217,9 +217,9 @@ func TestNumberFormatsTenantIsolationAndRoles(t *testing.T) {
 	b.mustDo(http.StatusOK, "GET", own, nil)
 	b.mustDo(http.StatusOK, "GET", own+"/preview", nil)
 	res, body = b.do("PATCH", own, map[string]any{"format": "HACK{N}"})
-	assertError(t, res, body, http.StatusForbidden, "owner")
+	assertError(t, res, body, http.StatusForbidden, "allowed roles: owner, admin")
 	res, body = b.do("POST", a.acct("/number-formats"), api.NumberFormatCreate{DocumentType: "invoice", Format: "M{N}"})
-	assertError(t, res, body, http.StatusForbidden, "owner")
+	assertError(t, res, body, http.StatusForbidden, "allowed roles: owner, admin")
 	res, body = b.do("DELETE", own, nil)
-	assertError(t, res, body, http.StatusForbidden, "owner")
+	assertError(t, res, body, http.StatusForbidden, "allowed roles: owner, admin")
 }

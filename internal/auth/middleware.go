@@ -57,7 +57,8 @@ func (s *Service) authenticate(ctx huma.Context) (*model.User, error) {
 // RequireAccount resolves the {slug} path parameter to an account the current
 // user is a member of and stores it with the role in the context (see
 // AccountFrom, RoleFrom). Must run after RequireUser. Non-members get 404 so
-// the existence of foreign accounts is not revealed.
+// the existence of foreign accounts is not revealed. Members whose role is not
+// allowed by the operation (see Allow) get 403.
 func (s *Service) RequireAccount(api huma.API) Middleware {
 	return func(ctx huma.Context, next func(huma.Context)) {
 		acc, role, err := s.membership(ctx.Context(), UserFrom(ctx.Context()), ctx.Param("slug"))
@@ -67,6 +68,10 @@ func (s *Service) RequireAccount(api huma.API) Middleware {
 			} else {
 				_ = huma.WriteErr(api, ctx, http.StatusInternalServerError, "account lookup failed", err)
 			}
+			return
+		}
+		if op := ctx.Operation(); !roleAllowed(op, role) {
+			_ = huma.WriteErr(api, ctx, http.StatusForbidden, forbiddenMsg(role, AllowedRoles(op)))
 			return
 		}
 		ctx = huma.WithValue(ctx, accountKey, acc)

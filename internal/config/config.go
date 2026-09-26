@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 // Config holds all runtime settings.
@@ -16,6 +17,15 @@ type Config struct {
 	AllowSignup   bool   // NANOFAKTURA_ALLOW_SIGNUP: allow registration when users already exist
 	SecureCookies bool   // NANOFAKTURA_SECURE_COOKIES
 	AresURL       string // NANOFAKTURA_ARES_URL: ARES base URL override (tests)
+	PublicURL     string // NANOFAKTURA_PUBLIC_URL: external base URL for links in e-mails (no trailing slash)
+	DataDir       string // NANOFAKTURA_DATA_DIR: attachments etc. (default ./data)
+
+	SMTPHost     string // NANOFAKTURA_SMTP_HOST: empty = e-mails are only logged to stdout
+	SMTPPort     int    // NANOFAKTURA_SMTP_PORT (default 587, or 465 with TLS=tls)
+	SMTPUser     string // NANOFAKTURA_SMTP_USER: empty = no AUTH
+	SMTPPassword string // NANOFAKTURA_SMTP_PASSWORD
+	SMTPTLS      string // NANOFAKTURA_SMTP_TLS: starttls (default) | tls (implicit) | none
+	MailFrom     string // NANOFAKTURA_MAIL_FROM: sender address, e.g. "NanoFaktura <faktury@example.cz>"
 }
 
 // Load reads the configuration from the environment and applies defaults.
@@ -26,11 +36,32 @@ func Load() (Config, error) {
 		DBDSN:      env("NANOFAKTURA_DB_DSN", "nanofaktura.db"),
 		StaticDir:  os.Getenv("NANOFAKTURA_STATIC_DIR"),
 		AresURL:    os.Getenv("NANOFAKTURA_ARES_URL"),
+		PublicURL:  strings.TrimRight(env("NANOFAKTURA_PUBLIC_URL", "http://localhost:8080"), "/"),
+		DataDir:    env("NANOFAKTURA_DATA_DIR", "./data"),
+
+		SMTPHost:     os.Getenv("NANOFAKTURA_SMTP_HOST"),
+		SMTPUser:     os.Getenv("NANOFAKTURA_SMTP_USER"),
+		SMTPPassword: os.Getenv("NANOFAKTURA_SMTP_PASSWORD"),
+		SMTPTLS:      env("NANOFAKTURA_SMTP_TLS", "starttls"),
+		MailFrom:     env("NANOFAKTURA_MAIL_FROM", "NanoFaktura <nanofaktura@localhost>"),
 	}
 	if cfg.DBDriver != "sqlite" && cfg.DBDriver != "postgres" {
 		return Config{}, fmt.Errorf("NANOFAKTURA_DB_DRIVER: unsupported driver %q (sqlite|postgres)", cfg.DBDriver)
 	}
-	var err error
+	switch cfg.SMTPTLS {
+	case "starttls", "tls", "none":
+	default:
+		return Config{}, fmt.Errorf("NANOFAKTURA_SMTP_TLS: unsupported mode %q (starttls|tls|none)", cfg.SMTPTLS)
+	}
+	defPort := "587"
+	if cfg.SMTPTLS == "tls" {
+		defPort = "465"
+	}
+	port, err := strconv.Atoi(env("NANOFAKTURA_SMTP_PORT", defPort))
+	if err != nil || port <= 0 || port > 65535 {
+		return Config{}, fmt.Errorf("NANOFAKTURA_SMTP_PORT: invalid port")
+	}
+	cfg.SMTPPort = port
 	if cfg.AllowSignup, err = envBool("NANOFAKTURA_ALLOW_SIGNUP"); err != nil {
 		return Config{}, err
 	}
