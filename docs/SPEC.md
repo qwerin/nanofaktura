@@ -377,3 +377,16 @@ EET (zrušeno), účetnictví (podvojné), mzdy, OCR účtenek (jen příprava: 
 - Dobropis (`/correction`) jen k dokladu typu `invoice` (jinak 409), kopíruje `client_*` i `your_*` originálu, datum dnes. Duplikace zachová typ dokladu (dobropis i s `related_id`), snapshoty bere znovu ze subjektu a účtu.
 - Smazat lze i zrušenou fakturu bez plateb. Smazání dokladu, na který ukazuje cizí `related_id`, zatím blokované není (otevřené).
 - Dashboard: `revenue_by_month` obsahuje i `uncollectible` (vyřazen je jen `cancelled`) a dobropisy záporně. `unpaid_*`/`overdue_*` = doklady open/sent všech typů (vč. proforem) ve výchozí měně bez ohledu na `year`, částka `total − paid_amount`. `year` 2000–2999, default aktuální rok.
+- **[frontend] Předpokládané tvary auth/accounts odpovědí** (dočasné ručně psané `web/src/api/schema.gen.ts`,
+  frontend na ně odkazuje jen přes `paths` v `web/src/api/types.ts`):
+  `GET /api/auth/tokens` → `{items: [{id, name, prefix, last_used_at|null, created_at}]}`;
+  `POST /api/auth/tokens` `{name}` → `{id, name, prefix, token, created_at}`; `DELETE /api/auth/tokens/{id}` → 204;
+  `GET /api/accounts` → `{items: [{slug, name, role}]}`; `POST /api/accounts` `{name}` → celý `Account`;
+  `GET/PATCH /api/accounts/{slug}` → `Account` = `slug` + všechna pole §4.1 (PATCH = všechna pole volitelná);
+  `POST /api/auth/login|register` a `PATCH /api/auth/me` → `Me`; `POST /api/auth/logout` → 204;
+  `PATCH /api/auth/me` `{name?, current_password?, new_password?}` (název pole nového hesla `new_password`).
+  Špatné heslo při loginu → 401; špatné `current_password` → 401/403/422 (frontend zvládne všechny).
+  Validační chyby 422 s `errors[].location = "body.<pole>"` frontend mapuje přímo na pole formuláře.
+- **[frontend] Záložky nastavení jsou vnořené routy** `/a/$slug/settings/{company,bank-accounts,number-formats,profile,tokens}`;
+  `/a/$slug/settings` je na mobilu seznam sekcí, na desktopu přesměruje na `company`.
+- **[frontend] Vite dev proxy** předává `/api/*` beze změny cesty (backend servíruje API pod `/api`).
