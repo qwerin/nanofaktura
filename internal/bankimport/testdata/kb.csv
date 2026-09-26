@@ -1,0 +1,11 @@
+MojeBanka, export transakèní historie;
+Datum vytvoøení souboru;26.09.2026;
+;
+Èíslo úètu;123-4567890297/0100;
+IBAN;CZ6501000001234567890297;
+Název úètu;NOVÁK JAN;
+Mìna úètu;CZK;
+;
+Datum splatnosti;Datum odepsání z jiné banky;Protistrana;Název protistrany;Èástka;Originální èástka;Originální mìna;Kurz;VS;KS;SS;Identifikace transakce;Systémovı popis;Popis pøíkazce;Popis pro pøíjemce;AV pole 1;AV pole 2;AV pole 3;AV pole 4
+02.09.2026;01.09.2026;2000000000/2010;luouèkı kùò s.r.o.;12100,00;;;;2026001;0308;;123-02092026 1602 010111 000123;Pøíchozí úhrada;;Faktura 2026001;Platba za;webhosting;;
+03.09.2026;;19-2000145399/0800;Jan Novák;-2500,50;;;;1234;;42;123-03092026 1602 010111 000456;Odchozí úhrada;Nájem;Nájem záøí;;;;

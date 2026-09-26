@@ -1,0 +1,22 @@
+{
+  "isValid" : false,
+  "requestDate" : "2026-09-26T08:00:44.331Z",
+  "userError" : "INVALID",
+  "name" : "---",
+  "address" : "---",
+  "requestIdentifier" : "",
+  "originalVatNumber" : "12345678",
+  "vatNumber" : "12345678",
+  "viesApproximate" : {
+    "name" : "---",
+    "street" : "---",
+    "postalCode" : "---",
+    "city" : "---",
+    "companyType" : "---",
+    "matchName" : 3,
+    "matchStreet" : 3,
+    "matchPostalCode" : 3,
+    "matchCity" : 3,
+    "matchCompanyType" : 3
+  }
+}

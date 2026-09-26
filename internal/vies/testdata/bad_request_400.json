@@ -1,0 +1,7 @@
+{
+  "actionSucceed" : false,
+  "errorWrappers" : [ {
+    "error" : "VOW-ERR-2600",
+    "message" : "The VAT number does not match the following regular expression : \"{0}\"."
+  } ]
+}

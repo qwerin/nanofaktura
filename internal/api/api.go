@@ -43,10 +43,13 @@ import (
 
 	"github.com/qwerin/nanofaktura/internal/ares"
 	"github.com/qwerin/nanofaktura/internal/auth"
+	"github.com/qwerin/nanofaktura/internal/cnb"
 	"github.com/qwerin/nanofaktura/internal/config"
 	"github.com/qwerin/nanofaktura/internal/mail"
 	"github.com/qwerin/nanofaktura/internal/numbering"
 	"github.com/qwerin/nanofaktura/internal/storage"
+	"github.com/qwerin/nanofaktura/internal/vatreg"
+	"github.com/qwerin/nanofaktura/internal/vies"
 )
 
 // Deps holds swappable dependencies (tests replace them).
@@ -63,7 +66,17 @@ type Deps struct {
 	// otherwise to a mail.LogMailer printing to stdout. Tests: mailtest.New().
 	Mailer mail.Mailer
 	// Storage keeps attachment content. Defaults to storage.NewLocal(cfg.DataDir + "/attachments").
-	Storage storage.Storage
+	Storage     storage.Storage
+	CNB         ExchangeRates  // defaults to cnb.NewService(db, cnb.New(cfg.CNBURL), Now)
+	VIES        vies.Checker   // defaults to vies.New(cfg.ViesURL) cached 24 h
+	VatRegistry vatreg.Checker // defaults to vatreg.New(cfg.VatRegURL) cached 24 h
+}
+
+// ExchangeRates returns ČNB rates (see cnb.Service.Rate for the error
+// contract: cnb.ErrInvalidCurrency, cnb.ErrInvalidDate, cnb.ErrUnknownCurrency,
+// other = unavailable). rate is CZK per 1 unit, rateDate the ČNB list date.
+type ExchangeRates interface {
+	Rate(ctx context.Context, currency, date string) (rate, rateDate string, err error)
 }
 
 // ARES looks up subjects in the Czech business register (see internal/ares
@@ -100,6 +113,15 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 		}
 		deps.Storage = storage.NewLocal(filepath.Join(dir, "attachments"))
 	}
+	if deps.CNB == nil {
+		deps.CNB = cnb.NewService(db, cnb.New(cfg.CNBURL), deps.Now)
+	}
+	if deps.VIES == nil {
+		deps.VIES = vies.NewCached(vies.New(cfg.ViesURL), 24*time.Hour, deps.Now)
+	}
+	if deps.VatRegistry == nil {
+		deps.VatRegistry = vatreg.NewCached(vatreg.New(cfg.VatRegURL), 24*time.Hour, deps.Now)
+	}
 	s := &server{db: db, cfg: cfg, deps: deps, auth: auth.NewService(db, deps.Now, cfg.SecureCookies)}
 
 	router := chi.NewRouter()
@@ -131,6 +153,9 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 	s.registerTokens(authed)
 	s.registerAccounts(authed, account)
 	s.registerAres(authed)
+	s.registerExchangeRates(authed)
+	s.registerVies(authed)
+	s.registerVatRegistry(authed)
 	s.registerBankAccounts(account)
 	s.registerNumberFormats(account)
 	s.registerSubjects(account)

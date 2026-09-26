@@ -26,6 +26,9 @@ type Config struct {
 	SMTPPassword string // NANOFAKTURA_SMTP_PASSWORD
 	SMTPTLS      string // NANOFAKTURA_SMTP_TLS: starttls (default) | tls (implicit) | none
 	MailFrom     string // NANOFAKTURA_MAIL_FROM: sender address, e.g. "NanoFaktura <faktury@example.cz>"
+	CNBURL       string // NANOFAKTURA_CNB_URL: ČNB daily rates URL override (tests)
+	ViesURL      string // NANOFAKTURA_VIES_URL: VIES REST API base URL override (tests)
+	VatRegURL    string // NANOFAKTURA_VATREG_URL: VAT payer registry SOAP endpoint override (tests)
 }
 
 // Load reads the configuration from the environment and applies defaults.
@@ -44,6 +47,9 @@ func Load() (Config, error) {
 		SMTPPassword: os.Getenv("NANOFAKTURA_SMTP_PASSWORD"),
 		SMTPTLS:      env("NANOFAKTURA_SMTP_TLS", "starttls"),
 		MailFrom:     env("NANOFAKTURA_MAIL_FROM", "NanoFaktura <nanofaktura@localhost>"),
+		CNBURL:       os.Getenv("NANOFAKTURA_CNB_URL"),
+		ViesURL:      os.Getenv("NANOFAKTURA_VIES_URL"),
+		VatRegURL:    os.Getenv("NANOFAKTURA_VATREG_URL"),
 	}
 	if cfg.DBDriver != "sqlite" && cfg.DBDriver != "postgres" {
 		return Config{}, fmt.Errorf("NANOFAKTURA_DB_DRIVER: unsupported driver %q (sqlite|postgres)", cfg.DBDriver)

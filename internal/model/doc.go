@@ -14,5 +14,6 @@ func All() []any {
 		&Subject{}, &Invoice{}, &InvoiceLine{}, &Payment{},
 		&Invitation{}, &Attachment{},
 		&PriceItem{}, &StockMove{}, &Expense{}, &ExpenseLine{}, &ExpensePayment{},
+		&ExchangeRate{},
 	}
 }

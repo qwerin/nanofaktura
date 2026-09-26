@@ -1,0 +1,4 @@
+èíslo úètu;datum zaúètování;èástka;mìna;zùstatek;èíslo úètu protiúètu;kód banky protiúètu;název úètu protiúètu;konstantní symbol;variabilní symbol;specifickı symbol;oznaèení operace;ID transakce;poznámka
+123456789/0300;02.09.2026;12 100,00;CZK;27 532,10;2000000000;2010;luouèkı kùò s.r.o.;0308;2026001;;Pøíchozí úhrada;2026090200001;Faktura 2026001
+123456789/0300;03.09.2026;-1 250,00;CZK;26 282,10;35-0000123457;0100;Pronajímatel s.r.o.;0558;1234567890;77;Odchozí úhrada;2026090300002;Nájem 09/2026
+123456789/0300;05.09.2026;-99,00;CZK;26 183,10;;;;;;;Poplatek za vedení úètu;2026090500003;

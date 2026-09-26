@@ -903,6 +903,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/exchange-rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** ČNB exchange rate of a currency on a day */
+        get: operations["get-api-exchange-rates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -948,6 +965,40 @@ export interface paths {
         put?: never;
         /** Post API invitations by token accept */
         post: operations["post-api-invitations-by-token-accept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/vat-registry/{dic}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Czech VAT payer status (unreliable payer, published bank accounts) */
+        get: operations["get-api-vat-registry-by-dic"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/vies/{vat_no}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Check an EU VAT number in VIES */
+        get: operations["get-api-vies-by-vat-no"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1215,6 +1266,25 @@ export interface components {
              * @example https://example.com/errors/example
              */
             type: string;
+        };
+        ExchangeRate: {
+            /** @example EUR */
+            currency: string;
+            /**
+             * @description Requested date
+             * @example 2026-09-26
+             */
+            date: string;
+            /**
+             * @description CZK per 1 unit, decimal string with ≥ 3 decimal places
+             * @example 24.350
+             */
+            rate: string;
+            /**
+             * @description Date of the ČNB list the rate comes from (last working day for weekends/holidays)
+             * @example 2026-09-25
+             */
+            rate_date: string;
         };
         Expense: {
             category: string;
@@ -2344,6 +2414,40 @@ export interface components {
             vat: number;
             /** Format: int32 */
             vat_rate_bps: number;
+        };
+        VatRegistryAccount: {
+            iban: string;
+            /** @description Czech account "prefix-number/bank" or the published foreign number */
+            number: string;
+            /** Format: date */
+            published_on: string;
+        };
+        VatRegistryResult: {
+            address: string;
+            city: string;
+            name: string;
+            published_accounts: components["schemas"]["VatRegistryAccount"][];
+            /** @description false = the DIČ is not in the register of VAT payers */
+            registered: boolean;
+            /** @description null when not registered; false = unreliable payer */
+            reliable: boolean | null;
+            street: string;
+            /** Format: date */
+            unreliable_since?: string;
+            /** @example CZ27082440 */
+            vat_no: string;
+            zip: string;
+        };
+        ViesResult: {
+            /** @description Lines separated by \n; empty when not disclosed */
+            address: string;
+            /** @description VIES member state code (EL = Greece) */
+            country_code: string;
+            /** @description Empty when the member state does not disclose it */
+            name: string;
+            valid: boolean;
+            /** @example CZ27082440 */
+            vat_no: string;
         };
     };
     responses: never;
@@ -4843,6 +4947,67 @@ export interface operations {
             };
         };
     };
+    "get-api-exchange-rates": {
+        parameters: {
+            query: {
+                /** @description ISO 4217 code, e.g. EUR */
+                currency: string;
+                /** @description YYYY-MM-DD, default today (Prague time); future dates get the latest rate */
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExchangeRate"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "get-api-health": {
         parameters: {
             query?: never;
@@ -4925,6 +5090,106 @@ export interface operations {
             };
             /** @description Error */
             default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-vat-registry-by-dic": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Czech DIČ, with or without the CZ prefix */
+                dic: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VatRegistryResult"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-vies-by-vat-no": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description EU VAT number with country prefix, e.g. DE811907980 */
+                vat_no: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ViesResult"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };

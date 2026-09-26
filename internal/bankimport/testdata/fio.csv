@@ -1,0 +1,11 @@
+﻿"Výpis č. 9/2026 z účtu ""2000000000/2010"""
+"Majitel účtu: Jan Novák"
+"Období: 01.09.2026 - 25.09.2026"
+"Počáteční stav účtu k 01.09.2026: 15 432,10 CZK"
+"Koncový stav účtu k 25.09.2026: 25 332,60 CZK"
+
+"ID operace";"Datum";"Objem";"Měna";"Protiúčet";"Název protiúčtu";"Kód banky";"Název banky";"KS";"VS";"SS";"Poznámka";"Zpráva pro příjemce";"Typ";"Provedl";"Upřesnění";"Poznámka";"BIC";"ID pokynu"
+"26543210001";"02.09.2026";"12100,00";"CZK";"123456789";"Žluťoučký kůň s.r.o.";"0100";"Komerční banka, a.s.";"0308";"2026001";"";"Platba faktury 2026001";"Faktura 2026001";"Bezhotovostní příjem";"";"";"";"";"27543210001"
+"26543210002";"03.09.2026";"-130,00";"CZK";"";"";"";"";"";"";"";"Nákup: ORDR, PRAGUE, CZ";"";"Platba kartou";"Novák, Jan";"130,00 CZK";"";"";"27543210002"
+"26543210003";"10.09.2026";"-2 500,50";"CZK";"19-2000145399";"Jan Novák";"0800";"Česká spořitelna, a.s.";"";"1234";"42";"Nájem 09/2026";"Nájem září";"Bezhotovostní platba";"Novák, Jan";"";"";"";"27543210003"
+"26543210004";"25.09.2026";"431,00";"CZK";"";"";"";"";"";"";"";"Připsaný úrok";"";"Připsaný úrok";"";"";"";"";""

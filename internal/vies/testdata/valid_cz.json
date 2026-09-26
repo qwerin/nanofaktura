@@ -1,0 +1,22 @@
+{
+  "isValid" : true,
+  "requestDate" : "2026-09-26T08:00:44.234Z",
+  "userError" : "VALID",
+  "name" : "Alza.cz a.s.",
+  "address" : "Jankovcova 1522/53\nPRAHA 7 - HOLEŠOVICE\n170 00  PRAHA 7",
+  "requestIdentifier" : "",
+  "originalVatNumber" : "27082440",
+  "vatNumber" : "27082440",
+  "viesApproximate" : {
+    "name" : "---",
+    "street" : "---",
+    "postalCode" : "---",
+    "city" : "---",
+    "companyType" : "---",
+    "matchName" : 3,
+    "matchStreet" : 3,
+    "matchPostalCode" : 3,
+    "matchCity" : 3,
+    "matchCompanyType" : 3
+  }
+}
