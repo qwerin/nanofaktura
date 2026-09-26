@@ -10,8 +10,9 @@ ducha dokumentu a odchylku zapiš do sekce „Otevřené otázky“ na konci.
 - Go 1.26, `huma/v2` (OpenAPI 3.1) nad `chi/v5`, GORM.
 - DB: SQLite přes **pure-Go** driver `github.com/glebarez/sqlite` (bez CGO) + PostgreSQL (`gorm.io/driver/postgres`).
   Schéma přes GORM AutoMigrate.
-- Frontend: React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui, React Router,
-  TanStack Query, `openapi-fetch` s typy generovanými `openapi-typescript` z OpenAPI backendu.
+- Frontend: čistá SPA (bez SSR) — React 19 + Vite + TypeScript (strict) + Tailwind v4 + shadcn/ui (CLI v4, Base UI primitives),
+  **TanStack Router** (file-based, typované params i search params — filtry seznamů žijí v URL), TanStack Query,
+  React Hook Form + Zod, `openapi-fetch` s typy generovanými `openapi-typescript` z OpenAPI backendu. PWA (`vite-plugin-pwa`, instalovatelné, bez offline zápisu).
 - UI je česky. Kód, identifikátory a JSON pole anglicky. Komentáře v kódu stručně česky nebo anglicky, konzistentně v rámci souboru.
 
 ```
@@ -205,12 +206,26 @@ unpaid_total, unpaid_count, overdue_total, overdue_count, revenue_total }` (jen 
 `NANOFAKTURA_ALLOW_SIGNUP` (false), `NANOFAKTURA_SECURE_COOKIES` (false), `NANOFAKTURA_ARES_URL` (pro testy).
 
 ## 6. Frontend
-Routy: `/login`, `/register`, `/` → redirect na `/a/{slug}` (první účet), pod `/a/:slug/`:
+Routy (TanStack Router, `web/src/routes/`): `/login`, `/register`, `/` → redirect na `/a/{slug}` (první účet), pod `/a/$slug/`:
 `dashboard`, `invoices`, `invoices/new`, `invoices/:id`, `invoices/:id/edit`, `subjects`, `subjects/new`, `subjects/:id`,
 `settings` (záložky: Firma, Bankovní účty, Číselné řady, Můj profil, API tokeny). Přepínač účtů v sidebaru.
 Formulář faktury: výběr subjektu s hledáním + „Nový kontakt“ (s ARES), editovatelné řádky, živý přepočet
 (zobrazovací duplikát logiky; zdrojem pravdy je backend), klávesová efektivita. Detail faktury: náhled údajů, stav, akce,
 platby, PDF (otevřít/stáhnout), dobropis, duplikovat. Peníze formátovat `Intl.NumberFormat('cs-CZ', {style:'currency'})`.
+
+**Mobile-first (povinné od první obrazovky, ne dodatečně):**
+- Návrh začíná na 360 px šířky, desktop je rozšíření (`md:`/`lg:` breakpointy). Žádný horizontální scroll stránky.
+- Navigace: < `md` spodní tab bar (Přehled, Faktury, **+ Nová**, Kontakty, Více) s `env(safe-area-inset-bottom)`;
+  ≥ `md` shadcn Sidebar (sbalitelný na ikony). Přepínač účtů v „Více“ / v hlavičce sidebaru.
+- Seznamy: na mobilu karty (číslo, klient, částka, stav, splatnost), na desktopu tabulka. Filtry na mobilu v Drawer (bottom sheet).
+  Pull-to-refresh není nutný; nekonečné načítání nebo stránkování tlačítkem „Načíst další“.
+- Formuláře: jeden sloupec na mobilu, touch targety ≥ 44 px, `inputmode="decimal"`/`numeric` pro částky, množství a IČO,
+  `type="email"`/`tel`, nativní date input. Řádky faktury na mobilu jako skládací karty, ne tabulka.
+  Primární akce ve sticky spodní liště (Uložit / Vystavit), respektuje klávesnici a safe area.
+- Detail faktury: akce v Drawer menu na mobilu, v toolbaru na desktopu. PDF na mobilu otevírat v nové záložce (ne iframe).
+- Dialogy: na mobilu Drawer, na desktopu Dialog (vzor „responsive dialog“).
+- `viewport-fit=cover`, `theme-color`, podpora světlého/tmavého režimu (prefers-color-scheme + přepínač).
+- Ověřovat v Chrome DevTools / Playwright na 390×844 i 1440×900.
 
 ## 7. Mimo první milník
 Náklady (expenses), sklad, šablony/pravidelné faktury, odesílání e-mailem, webhooky, události, úkoly, ISDOC, EET, importy.
