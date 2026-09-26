@@ -1,53 +1,42 @@
-.PHONY: build test test-verbose lint run dev clean gen-types
+.PHONY: build run dev-backend dev-frontend test test-api gen-types build-web clean
 
-## Sestaví Go binárku
+## Sestaví Go binárku (bez CGO)
 build:
-	go build -o bin/nanofaktura ./cmd/server/
+	CGO_ENABLED=0 go build -o bin/nanofaktura ./cmd/server/
 
-## Spustí všechny testy (Go + frontend typecheck)
-test:
-	go test ./cmd/... ./internal/... -count=1
-	cd web && npx tsc --noEmit
-
-## Spustí testy s výpisem každého testu
-test-verbose:
-	go test ./cmd/... ./internal/... -v -count=1
-
-## Spustí pouze handler/endpoint testy
-test-api:
-	go test ./internal/handler/... -v -count=1
-
-## Spustí pouze model/výpočetní testy
-test-models:
-	go test ./internal/models/... ./internal/ares/... -v -count=1
-
-## Sestaví produkční frontend bundle
-build-web:
-	cd web && npm run build
-
-## Spustí backend (port 8080)
+## Sestaví a spustí backend na :8080
 run: build
 	./bin/nanofaktura
 
-## Sestaví frontend + backend a spustí na :8080 (produkční mód lokálně)
-run-full: build-web build
-	NANOFAKTURA_STATIC_DIR=web/dist ./bin/nanofaktura
-
-## Dev: backend + frontend Vite dev server (vyžaduje 2 terminály)
+## Spustí backend přes go run
 dev-backend:
 	go run ./cmd/server/
 
+## Vite dev server na :5173 (proxuje /api → :8080)
 dev-frontend:
 	cd web && npm run dev
 
-## Přegeneruje TypeScript typy z OpenAPI schématu backendu
-gen-types:
-	go run ./cmd/gen-schema/ > openapi.json
-	cd web && npx openapi-typescript ../openapi.json -o src/api/schema.gen.ts
-	rm openapi.json
+## Go testy + typecheck frontendu (pokud jsou nainstalované node_modules)
+test:
+	go vet ./...
+	go test ./... -count=1
+	@if [ -d web/node_modules ]; then cd web && npx tsc --noEmit; fi
 
-## Smaže sestavené artefakty a dočasné DB soubory
+## Jen API testy
+test-api:
+	go test ./internal/api/... -v -count=1
+
+## Přegeneruje web/src/api/schema.gen.ts z OpenAPI backendu
+gen-types:
+	go run ./cmd/gen-schema > web/openapi.json
+	cd web && npx openapi-typescript openapi.json -o src/api/schema.gen.ts
+	rm web/openapi.json
+
+## Produkční build frontendu
+build-web:
+	cd web && npm run build
+
+## Smaže build artefakty a lokální SQLite DB
 clean:
-	rm -f bin/nanofaktura
+	rm -rf bin/ web/dist/
 	rm -f nanofaktura.db nanofaktura.db-wal nanofaktura.db-shm
-	cd web && rm -rf dist

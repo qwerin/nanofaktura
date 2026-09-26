@@ -1,40 +1,29 @@
-# ── Stage 1: Build frontend ──────────────────────────────────────────────────
+# ── Stage 1: frontend ────────────────────────────────────────────────────────
 FROM node:22-alpine AS frontend-builder
 WORKDIR /app/web
-
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
-
 COPY web/ ./
 RUN npm run build
 
-# ── Stage 2: Build Go binary (CGO required for SQLite) ───────────────────────
-FROM golang:1.26-bookworm AS go-builder
+# ── Stage 2: Go binary (pure Go, no CGO) ─────────────────────────────────────
+FROM golang:1.26-alpine AS go-builder
 WORKDIR /app
-
-# Download dependencies first (better layer caching)
 COPY go.mod go.sum ./
 RUN go mod download
+COPY cmd/ cmd/
+COPY internal/ internal/
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /nanofaktura ./cmd/server/
 
-COPY . .
-RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o bin/nanofaktura ./cmd/server/
-
-# ── Stage 3: Minimal runtime image ───────────────────────────────────────────
-FROM debian:bookworm-slim
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
+# ── Stage 3: runtime ─────────────────────────────────────────────────────────
+FROM gcr.io/distroless/static-debian12:nonroot
 WORKDIR /app
+COPY --from=go-builder /nanofaktura /app/nanofaktura
+COPY --from=frontend-builder /app/web/dist /app/dist
 
-COPY --from=go-builder  /app/bin/nanofaktura ./nanofaktura
-COPY --from=frontend-builder /app/web/dist   ./dist
-
-ENV NANOFAKTURA_STATIC_DIR=/app/dist
-ENV NANOFAKTURA_LISTEN_ADDR=:8080
-ENV NANOFAKTURA_DB_DRIVER=postgres
+ENV NANOFAKTURA_STATIC_DIR=/app/dist \
+    NANOFAKTURA_LISTEN_ADDR=:8080 \
+    NANOFAKTURA_DB_DRIVER=postgres
 
 EXPOSE 8080
-
 ENTRYPOINT ["/app/nanofaktura"]

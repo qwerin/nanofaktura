@@ -1,7 +1,6 @@
 # NanoFaktura — specifikace (kontrakt pro implementaci)
 
-Open-source, self-hosted fakturace pro české OSVČ a malé firmy. Funkčně inspirováno
-Fakturoidem (https://www.fakturoid.cz/api/v3), API je ale vlastní a čistší.
+Open-source, self-hosted fakturace pro české OSVČ a malé firmy.
 **Tento dokument je závazný.** Když implementace potřebuje něco, co tu není, drž se
 ducha dokumentu a odchylku zapiš do sekce „Otevřené otázky“ na konci.
 
@@ -55,7 +54,7 @@ používá ho main i testy. `Deps` obsahuje vyměnitelné závislosti (ARES klie
 
 ## 3. Auth a účty
 
-Instance je multi-user a multi-account (jako Fakturoid): uživatel může mít přístup k více účtům (firmám/OSVČ).
+Instance je multi-user a multi-account: uživatel může mít přístup k více účtům (firmám/OSVČ).
 
 - `User`: id, email (unique, lowercase), name, password_hash, created_at, updated_at.
 - `Account`: id, slug (unique, z názvu, `[a-z0-9-]`), + firemní profil (viz 4.1).
@@ -227,8 +226,126 @@ platby, PDF (otevřít/stáhnout), dobropis, duplikovat. Peníze formátovat `In
 - `viewport-fit=cover`, `theme-color`, podpora světlého/tmavého režimu (prefers-color-scheme + přepínač).
 - Ověřovat v Chrome DevTools / Playwright na 390×844 i 1440×900.
 
-## 7. Mimo první milník
-Náklady (expenses), sklad, šablony/pravidelné faktury, odesílání e-mailem, webhooky, události, úkoly, ISDOC, EET, importy.
+## 7. Milník 2 — kompletní nástroj
+
+Stejné konvence jako výše (account scope, int64 peníze, testy na každý endpoint, mobile-first UI).
+Všechny nové zdroje pod `/api/accounts/{slug}/…`, pokud není řečeno jinak.
+
+### 7.1 Ceník (price items)
+`PriceItem`: `id, account_id, name, sku, unit_name, unit_price, vat_rate_bps, prices_include_vat, currency, track_stock (bool),
+stock_quantity (string, jen při track_stock), min_stock (string), archived_at, note`. CRUD `/price-items`, `?query=`, `?archived=`.
+`InvoiceLine.price_item_id` (*uint) — ve formuláři faktury našeptávač z ceníku (název/SKU).
+**Sklad**: pokud položka `track_stock`, vystavení faktury (create; ne proforma) odepíše množství, zrušení/smazání vrátí.
+`StockMove`: `id, account_id, price_item_id, direction (in|out), quantity, moved_on, note, invoice_id?, expense_id?`.
+`GET/POST /price-items/{id}/stock-moves`, ruční příjem/výdej. Nízký stav → úkol (7.9).
+
+### 7.2 Náklady (expenses)
+`Expense`: `id, account_id, number (interní, vlastní řada document_type=expense `N{YYYY}-{NNNN}`), original_number (číslo dokladu dodavatele),
+variable_symbol, subject_id (dodavatel), supplier_* snapshot, issued_on, taxable_fulfillment_due, due_on, paid_on, status (open|paid|overdue odvozené),
+currency, exchange_rate, payment_method, category (text, našeptávání z existujících), description, private_note, tags,
+tax_deductible (bool, default true), prices_include_vat, lines (stejná struktura a výpočet jako InvoiceLine, sdílený kód v billing),
+totals jako Invoice, attachments[], created_at…`.
+CRUD `/expenses` + filtry (status, category, subject_id, since/until, query), platby `POST/DELETE /expenses/{id}/payments`,
+akce `lock/unlock`. Přílohy viz 7.12. Dashboard doplnit o `expenses_by_month`, `profit_total`.
+
+### 7.3 Pravidelné faktury (recurring) a šablony
+`InvoiceTemplate` (`Generator`): všechna „obsahová“ pole faktury (subject, lines, note, měna, platba, due_days, tags…) + `name`.
+`Recurring`: šablona + `start_on, next_occurrence_on, end_on?, months_period (1=měsíčně, 3, 12…), day_of_month?,
+issue_as (invoice|proforma), send_email (bool), active (bool), last_invoice_id`.
+CRUD `/templates`, `/recurring`, `POST /templates/{id}/create-invoice`, `POST /recurring/{id}/run-now`.
+Plánovač: goroutine v serveru, 1× za hodinu (+ při startu) vytvoří faktury pro `next_occurrence_on <= dnes` (idempotentně, v transakci),
+posune `next_occurrence_on`. Placeholdery v textech řádků: `{MONTH}`, `{MONTH_NAME}`, `{YEAR}`, `{PREV_MONTH_NAME}` apod. (podle data vystavení, česky/anglicky dle jazyka).
+Scheduler má interface s `Now()` → testovatelný.
+
+### 7.4 E-maily a upomínky
+SMTP konfigurace per instance (env `NANOFAKTURA_SMTP_*`, `NANOFAKTURA_MAIL_FROM`) + per account override (`smtp_*`, reply-to, podpis).
+`POST /invoices/{id}/send` `{to[], cc[], subject?, body?, attach_pdf=true, attach_isdoc=false, kind: invoice|reminder|paid_thanks}` →
+odešle, zapíše `EmailLog` (`id, account_id, invoice_id, kind, to, subject, sent_at, error`), při kind=invoice provede `mark_as_sent`.
+Šablony textů v nastavení účtu (`email_templates`: invoice/reminder/paid_thanks × cs/en) s placeholdery `{number} {total} {due_on} {public_url} {account_name}…`.
+**Automatické upomínky**: nastavení účtu `reminders_enabled`, `reminder_days_after_due: [3, 14, 30]` — plánovač posílá.
+`GET /invoices/{id}/emails` historie. Mailer je interface (`Mailer.Send`), v testech fake; v dev režimu bez SMTP loguje do stdout.
+
+### 7.5 Veřejný odkaz pro klienta
+Každá faktura má `public_token` (náhodný, 24+ znaků). `GET /api/public/invoices/{token}` (bez auth) → omezený výpis (údaje z PDF),
+`GET /api/public/invoices/{token}/pdf`, `…/isdoc`. Frontend `/p/$token` — mobile-first stránka s fakturou, QR platbou, tlačítkem PDF.
+Zaznamenat první zobrazení (`public_viewed_at`) → událost. Token lze přegenerovat (`POST /invoices/{id}/regenerate-public-token`).
+
+### 7.6 Banka — import a párování plateb
+`BankAccount` doplnit o `sync_provider (none|fio)`, `fio_token` (šifrovaně, AES-GCM klíčem z `NANOFAKTURA_SECRET_KEY`), `last_synced_at`.
+`BankTransaction`: `id, account_id, bank_account_id, external_id (unique per bank account), booked_on, amount (±), currency, counterparty_account,
+counterparty_name, variable_symbol, constant_symbol, specific_symbol, message, matched_invoice_id?, matched_expense_id?, payment_id?, ignored (bool)`.
+Zdroje: **Fio API** (`/sync` ruční + plánovač každé 2 h), **import CSV** (Fio, ČSOB, KB, Air Bank, generický s mapováním sloupců) a **ABO/GPC** formát.
+**Párování**: příchozí platba → neuhrazená faktura se stejným VS a přesnou částkou (remaining) → automaticky vytvoří Payment;
+jinak návrhy (VS sedí/částka sedí/jméno) k ručnímu potvrzení. Odchozí → náklady obdobně.
+Endpointy `/bank-accounts/{id}/sync`, `/bank-accounts/{id}/import` (multipart), `/bank-transactions` (filtry: unmatched…),
+`POST /bank-transactions/{id}/match {invoice_id|expense_id}`, `/unmatch`, `/ignore`. Fio klient za interfacem (testy s fake serverem).
+
+### 7.7 Měny a kurzy ČNB
+`GET /api/exchange-rates?date=&currency=` → kurz ČNB (denní kurzovní lístek, cache v DB `ExchangeRate(date, currency, rate, amount)`).
+Při vytvoření dokladu v cizí měně a nezadaném kurzu se použije kurz ČNB ke dni DUZP (resp. vystavení). Klient za interfacem.
+PDF u plátce v cizí měně zobrazí rekapitulaci DPH i v CZK.
+
+### 7.8 Ověřování subjektů
+- ARES (4.4) + **registr plátců DPH** (MFČR, služba „nespolehlivý plátce“ / zveřejněné účty): `GET /api/vat-registry/{dic}` →
+  `{reliable: bool|null, published_accounts: [...]}`. Při vytváření nákladu upozornit, pokud je dodavatel nespolehlivý nebo účet není zveřejněný.
+- **VIES** pro EU DIČ: `GET /api/vies/{vat_no}` → `{valid, name, address}`.
+- Oba klienti za interfacem, výsledek cache 24 h.
+
+### 7.9 Události (activity log) a úkoly
+`Event`: `id, account_id, user_id?, name (invoice.created, invoice.sent, invoice.paid, invoice.overdue, payment.created, expense.created,
+recurring.generated, email.sent, public.viewed, bank.matched, stock.low …), subject_type, subject_id, text, data (JSON), created_at`.
+Zapisuje doménová vrstva (jedna funkce `events.Record`). `GET /events` (filtry typu/subjektu, stránkování), na detailu faktury/kontaktu timeline.
+`Todo`: `id, account_id, name, text, related (type,id), due_on?, completed_at?`, auto-generované (faktura po splatnosti, nespárovaná platba,
+nízký sklad, nepotvrzený návrh párování) + ruční. `GET/POST/PATCH /todos`, `POST /todos/{id}/toggle`.
+
+### 7.10 Webhooky
+`Webhook`: `id, account_id, url, events ([]string, "*"), secret, active, last_status, last_delivered_at`.
+Doručení asynchronně (fronta v DB `WebhookDelivery` s retry 1m/5m/30m/2h), podpis `X-NanoFaktura-Signature: sha256=HMAC(secret, body)`.
+CRUD `/webhooks`, `POST /webhooks/{id}/test`, `GET /webhooks/{id}/deliveries`.
+
+### 7.11 Exporty a reporty
+- **ISDOC 6.0.2** XML pro faktury (`GET /invoices/{id}/isdoc`), volitelně přílohou e-mailu; hromadně ZIP.
+- **CSV/XLSX export** seznamů faktur, nákladů, kontaktů (se stejnými filtry jako seznam) `GET /exports/{kind}.csv|.xlsx`.
+- **Hromadný ZIP PDF** za období (pro účetní) `GET /exports/pdf.zip?since=&until=`.
+- **DPH (jen plátci)**: `GET /reports/vat?period=2026-09|2026-Q3` → podklad přiznání (řádky 1–2, 40–41, 46…) a **kontrolní hlášení** (A.4/A.5/B.2/B.3)
+  + export XML ve formátu EPO (DPHDP3, DPHKH1). Periodicita v nastavení účtu (`vat_period: month|quarter`).
+- **Přehledy**: tržby/náklady/zisk po měsících, top odběratelé, průměrná doba úhrady, přehled pro daňové přiznání OSVČ (příjmy, výdaje, paušál 60/40/80/30 %).
+
+### 7.12 Přílohy a úložiště
+`Attachment`: `id, account_id, owner_type (invoice|expense|subject), owner_id, filename, content_type, size, storage_key, created_at`.
+Úložiště přes interface (lokální disk `NANOFAKTURA_DATA_DIR/attachments`, volitelně S3-kompatibilní). Limit 20 MB, povolené typy pdf/obrázky/xml.
+`POST /attachments` (multipart), `GET /attachments/{id}` (download), `DELETE`. Upload na mobilu umožní fotit (`accept="image/*,application/pdf" capture`).
+Logo účtu a podpis/razítko (obrázek) do PDF — přes stejné úložiště, pole `logo_attachment_id`, `stamp_attachment_id` na Account.
+
+### 7.13 Uživatelé účtu a role
+Pozvánky: `POST /members/invite {email, role}` → e-mail s odkazem (`/invite/$token`), registrace/přihlášení a přijetí.
+Role: `owner` (vše), `admin` (vše kromě mazání účtu a správy ownerů), `accountant` (čtení vše + exporty + reporty, bez úprav dokladů),
+`member` (doklady, kontakty, náklady; bez nastavení). `GET/PATCH/DELETE /members`. Kontrola rolí centrálně (deklarativně při registraci operace).
+
+### 7.14 Vzhled a jazyk dokladů
+Nastavení účtu: PDF šablona (`classic|modern|minimal`), barva akcentu, logo, razítko, zobrazení QR, jazyk (cs/en/sk/de), vlastní patička.
+Náhled PDF v nastavení (`GET /accounts/{slug}/pdf-preview?template=` s ukázkovými daty).
+
+### 7.15 UX navíc
+- Globální hledání + command palette (`⌘K`/tlačítko na mobilu): faktury, kontakty, náklady, akce („Nová faktura pro …“). `GET /search?q=`.
+- Klávesové zkratky na desktopu (N = nová faktura, / = hledat).
+- Onboarding po registraci: průvodce (IČO → ARES předvyplní firmu, bankovní účet, plátcovství DPH, logo) + ukázková první faktura.
+- Dashboard: tržby vs. náklady graf, neuhrazené/po splatnosti, cashflow očekávaných příjmů (dle due_on), úkoly, poslední aktivita.
+- Kopírování údajů klientovi jedním klepnutím, sdílení veřejného odkazu přes Web Share API na mobilu.
+
+### 7.16 Mimo rozsah
+EET (zrušeno), účetnictví (podvojné), mzdy, OCR účtenek (jen příprava: přílohy nákladu).
 
 ## Otevřené otázky
 (sem zapisují implementátoři odchylky a nejasnosti)
+
+**Backend základ (auth, účty) — rozhodnutí a odchylky:**
+- Seznamy tokenů (`GET /api/auth/tokens`) a účtů (`GET /api/accounts`) používají také stránkovanou obálku `{items,page,per_page,total}` (jednotnost; `Me.accounts` zůstává plné pole).
+- Výstup `Account` nemá `id` (identifikátor je `slug`) a obsahuje `role` aktuálního uživatele. `POST /api/accounts` přijímá jen `{name}`, profil se doplní přes PATCH. PATCH účtu členem (ne ownerem) → 403 (člen existenci účtu zná). Slug: max 50 znaků, prázdný → `ucet`, kolize → `-2`, `-3`…
+- Statusy: register 201, login 200, špatné přihlašovací údaje 401 (`invalid email or password`), bez přihlášení 401, logout 204 a nevyžaduje přihlášení (idempotentní; maže session z cookie). Změna hesla bez/špatné `current_password` → 422 (`body.current_password`). Změna hesla zatím nezneplatňuje ostatní sessions.
+- Session: expirace se posouvá nejvýš jednou za 24 h (při posunu server pošle obnovenou cookie). Bearer token má přednost před cookie.
+- Texty chyb (`detail`) jsou anglicky, stejně jako validační chyby z huma; frontend si je případně přeloží.
+- OpenAPI na `/api/openapi.json`, dokumentace `/api/docs` (pod `/api`, aby nekolidovaly se SPA). Pole `$schema` se do odpovědí nepřidává.
+- SQLite běží s jedním připojením (`MaxOpenConns=1`) → zápisy (i přidělování čísel) jsou serializované; uvnitř transakce se smí používat jen `tx`.
+- `NumberCounter` a `InvoiceLine` nemají `account_id` (patří pod `NumberFormat` resp. `Invoice`, které ho mají). Výchozí řady se zakládají s `is_default=true`.
+- `go.mod` obsahuje `ignore ./web` (v `web/node_modules` je Go balíček, který by jinak spadl do `./...`).

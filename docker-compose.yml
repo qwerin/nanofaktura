@@ -21,7 +21,7 @@ services:
       - "${APP_PORT:-8080}:8080"
     environment:
       NANOFAKTURA_DB_DRIVER: postgres
-      NANOFAKTURA_DB_PATH: >-
+      NANOFAKTURA_DB_DSN: >-
         host=db
         user=nanofaktura
         password=${POSTGRES_PASSWORD}
@@ -29,8 +29,8 @@ services:
         sslmode=disable
       NANOFAKTURA_STATIC_DIR: /app/dist
       # Volitelné přepisy:
-      # NANOFAKTURA_MULTI_USER: "true"
-      # NANOFAKTURA_SESSION_TTL: "720"
+      # NANOFAKTURA_ALLOW_SIGNUP: "true"
+      # NANOFAKTURA_SECURE_COOKIES: "true"
     depends_on:
       db:
         condition: service_healthy

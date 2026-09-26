@@ -16,13 +16,15 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.25"
+          go-version: "1.26"
 
-      - name: Install gcc (required for SQLite CGO driver)
-        run: sudo apt-get update && sudo apt-get install -y gcc
+      - name: Vet
+        run: go vet ./...
 
       - name: Run tests
-        run: go test ./cmd/... ./internal/... -count=1
+        run: go test ./... -count=1
+        env:
+          CGO_ENABLED: "0"
 
   test-frontend:
     name: TypeScript typecheck
