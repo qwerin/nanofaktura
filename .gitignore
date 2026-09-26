@@ -27,3 +27,7 @@ nanofaktura.json
 .env
 .env.local
 openapi.json
+
+# Claude Code lokální stav
+.claude/worktrees/
+.claude/settings.local.json
