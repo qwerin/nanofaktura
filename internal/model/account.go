@@ -43,7 +43,12 @@ type BankAccount struct {
 	UpdatedAt time.Time
 }
 
+// DocExpense is the number-format document type of expenses (milestone 2);
+// the other document types are in enums.go.
+const DocExpense = "expense"
+
 // NumberFormat is a document numbering series, e.g. "{YYYY}-{NNNN}".
+// DocumentType is one of DocInvoice, DocProforma, DocCorrection, DocExpense.
 type NumberFormat struct {
 	ID           uint
 	AccountID    uint   `gorm:"not null;index"`

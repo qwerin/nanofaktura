@@ -27,6 +27,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -35,14 +36,21 @@ import (
 	"github.com/go-chi/chi/v5"
 	"gorm.io/gorm"
 
+	"github.com/qwerin/nanofaktura/internal/ares"
 	"github.com/qwerin/nanofaktura/internal/auth"
 	"github.com/qwerin/nanofaktura/internal/config"
 )
 
 // Deps holds swappable dependencies (tests replace them).
-// The ARES client will be added here together with internal/ares.
 type Deps struct {
-	Now func() time.Time // defaults to time.Now
+	Now  func() time.Time // defaults to time.Now
+	ARES ARES             // defaults to ares.New(cfg.AresURL)
+}
+
+// ARES looks up subjects in the Czech business register (see internal/ares
+// for the error contract: ares.ErrInvalidICO, ares.ErrNotFound, other = unavailable).
+type ARES interface {
+	Lookup(ctx context.Context, ico string) (*ares.Result, error)
 }
 
 type server struct {
@@ -56,6 +64,9 @@ type server struct {
 func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 	if deps.Now == nil {
 		deps.Now = time.Now
+	}
+	if deps.ARES == nil {
+		deps.ARES = ares.New(cfg.AresURL)
 	}
 	s := &server{db: db, cfg: cfg, deps: deps, auth: auth.NewService(db, deps.Now, cfg.SecureCookies)}
 
@@ -87,6 +98,10 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 	s.registerAuth(public, authed)
 	s.registerTokens(authed)
 	s.registerAccounts(authed, account)
+	s.registerAres(authed)
+	s.registerBankAccounts(account)
+	s.registerNumberFormats(account)
+	s.registerSubjects(account)
 
 	return router, api
 }

@@ -28,8 +28,9 @@ func TestAccountDefaults(t *testing.T) {
 		}
 		got[f.DocumentType] = f.Format
 	}
-	want := map[string]string{"invoice": "{YYYY}-{NNNN}", "proforma": "Z{YYYY}-{NNNN}", "correction": "D{YYYY}-{NNNN}"}
-	if len(got) != 3 || got["invoice"] != want["invoice"] || got["proforma"] != want["proforma"] || got["correction"] != want["correction"] {
+	want := map[string]string{"invoice": "{YYYY}-{NNNN}", "proforma": "Z{YYYY}-{NNNN}", "correction": "D{YYYY}-{NNNN}", "expense": "N{YYYY}-{NNNN}"}
+	if len(got) != len(want) || got["invoice"] != want["invoice"] || got["proforma"] != want["proforma"] ||
+		got["correction"] != want["correction"] || got["expense"] != want["expense"] {
 		t.Fatalf("number formats: %v", got)
 	}
 }
