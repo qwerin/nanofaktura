@@ -15,6 +15,7 @@ type Invoice struct {
 	Status         string `gorm:"not null;index"`
 	SubjectID      uint   `gorm:"not null;index"`
 	RelatedID      *uint  `gorm:"index"`
+	PublicToken    string `gorm:"size:64;uniqueIndex"` // random, for the public client link
 
 	ClientName           string
 	ClientFullName       string
@@ -81,6 +82,7 @@ type Invoice struct {
 type InvoiceLine struct {
 	ID            uint
 	InvoiceID     uint   `gorm:"not null;index"`
+	PriceItemID   *uint  `gorm:"index"` // price list item the line came from (optional)
 	Position      int    `gorm:"not null"`
 	Name          string `gorm:"not null"`
 	QuantityMilli int64  `gorm:"not null"` // 1500 = 1.5

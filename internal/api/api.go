@@ -39,12 +39,18 @@ import (
 	"github.com/qwerin/nanofaktura/internal/ares"
 	"github.com/qwerin/nanofaktura/internal/auth"
 	"github.com/qwerin/nanofaktura/internal/config"
+	"github.com/qwerin/nanofaktura/internal/numbering"
 )
 
 // Deps holds swappable dependencies (tests replace them).
 type Deps struct {
 	Now  func() time.Time // defaults to time.Now
 	ARES ARES             // defaults to ares.New(cfg.AresURL)
+
+	// NextNumber assigns the next document number of docType for a document
+	// issued on issuedOn ("YYYY-MM-DD") inside the creating transaction tx.
+	// Defaults to numbering.Next.
+	NextNumber func(tx *gorm.DB, accountID uint, docType, issuedOn string) (string, error)
 }
 
 // ARES looks up subjects in the Czech business register (see internal/ares
@@ -67,6 +73,9 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 	}
 	if deps.ARES == nil {
 		deps.ARES = ares.New(cfg.AresURL)
+	}
+	if deps.NextNumber == nil {
+		deps.NextNumber = numbering.Next
 	}
 	s := &server{db: db, cfg: cfg, deps: deps, auth: auth.NewService(db, deps.Now, cfg.SecureCookies)}
 
@@ -102,6 +111,10 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 	s.registerBankAccounts(account)
 	s.registerNumberFormats(account)
 	s.registerSubjects(account)
+	s.registerInvoices(account)
+	s.registerInvoiceActions(account)
+	s.registerPayments(account)
+	s.registerDashboard(account)
 
 	return router, api
 }
