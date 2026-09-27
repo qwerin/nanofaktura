@@ -14,6 +14,14 @@ Položky nalezené během implementace, určené k vyřešení v úklidové vln�
 - [ ] Filtr `status=unpaid` (open+sent+overdue) — pro záložku „Neuhrazené“; obecně víc stavů najednou.
 - [ ] **`identified_person`**: identifikovaná osoba tuzemsky DPH neúčtuje → backend musí vynutit sazbu 0 jako u neplátce (PDF už to tak zobrazuje, výpočet ne). Opravit v billing/invoices + frontend calc.
 - [ ] Rozhodnout: platby na zamčené faktuře jsou povolené (zámek blokuje jen PATCH/DELETE) — ponechat, zdokumentovat v UI.
+- [ ] Seznam nákladů: součty za filtr (per měna) — stejně jako u faktur.
+- [ ] Náklad: PATCH nejde odpojit dodavatele (`subject_id` → null) při přechodu na volný text.
+- [ ] Počáteční skladový pohyb má anglickou poznámku „initial stock“ → česky / prázdná.
+- [ ] Chybové `detail` texty jsou anglicky a propadají k uživateli — zavést `code` (viz 409) a překládat na frontendu, nebo lokalizovat.
+- [ ] Output nákladu bez `attachments[]` (SPEC §7.2) — sjednotit s fakturou.
+- [ ] `ExpenseCreate` bez `due_days`.
+- [ ] Generické CSV s mapováním sloupců přes API (parser existuje).
+- [ ] Mazání kontaktu použitého jen v šabloně není blokováno → recurring selže.
 - [ ] Per-account SMTP nastavení; text pozvánky jen česky.
 
 ## Dev
