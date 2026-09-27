@@ -48,4 +48,24 @@ export const keys = {
   invoiceList: (slug: string, filters: object) => [...keys.invoices(slug), 'list', filters] as const,
   invoiceDetail: (slug: string, id: number) => [...keys.invoices(slug), 'detail', id] as const,
   dashboard: (slug: string, year?: number) => [...keys.account(slug), 'dashboard', year ?? 'current'] as const,
+  // --- Náklady ---
+  expenses: (slug: string) => [...keys.account(slug), 'expenses'] as const,
+  expenseList: (slug: string, filters: object) => [...keys.expenses(slug), 'list', filters] as const,
+  expenseDetail: (slug: string, id: number) => [...keys.expenses(slug), 'detail', id] as const,
+  expenseCategories: (slug: string, query: string) => [...keys.expenses(slug), 'categories', query] as const,
+  /** Našeptávač dodavatelů ve formuláři nákladu (pod prefixem `subjects` → zneplatní se se změnou kontaktů). */
+  expenseSupplierSearch: (slug: string, query: string) =>
+    [...keys.account(slug), 'subjects', 'expense-supplier-search', query] as const,
+  expenseSupplier: (slug: string, id: number) => [...keys.account(slug), 'subjects', 'expense-supplier', id] as const,
+
+  // --- Ceník a sklad ---
+  priceItems: (slug: string) => [...keys.account(slug), 'price-items'] as const,
+  priceItemList: (slug: string, filters: object) => [...keys.priceItems(slug), 'list', filters] as const,
+  priceItemDetail: (slug: string, id: number) => [...keys.priceItems(slug), 'detail', id] as const,
+  stockMoves: (slug: string, id: number) => [...keys.priceItems(slug), 'stock-moves', id] as const,
+
+  // --- Přílohy ---
+  attachments: (slug: string) => [...keys.account(slug), 'attachments'] as const,
+  attachmentList: (slug: string, ownerType: string, ownerId: number) =>
+    [...keys.attachments(slug), 'list', ownerType, ownerId] as const,
 }
