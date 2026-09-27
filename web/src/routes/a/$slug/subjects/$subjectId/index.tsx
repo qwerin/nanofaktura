@@ -81,7 +81,7 @@ function SubjectDetailPage() {
       label: 'Nová faktura',
       icon: FilePlusIcon,
       variant: 'default',
-      render: <Link to="/a/$slug/invoices/new" params={{ slug }} search={{ subject_id: subjectId } as never} />,
+      render: <Link to="/a/$slug/invoices/new" params={{ slug }} search={{ subject_id: subjectId }} />,
     },
   ]
 

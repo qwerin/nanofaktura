@@ -10,6 +10,10 @@ Položky nalezené během implementace, určené k vyřešení v úklidové vln�
 - [ ] Smazání dokladu, na který odkazuje jiný přes `related_id`, není blokováno.
 - [ ] Smazání faktury/kontaktu nemaže přílohy.
 - [ ] Změna hesla neinvaliduje ostatní sessions.
+- [ ] Seznam faktur: součty za celý filtr (`sum_total`, `sum_remaining`) v odpovědi seznamu.
+- [ ] Filtr `status=unpaid` (open+sent+overdue) — pro záložku „Neuhrazené“; obecně víc stavů najednou.
+- [ ] **`identified_person`**: identifikovaná osoba tuzemsky DPH neúčtuje → backend musí vynutit sazbu 0 jako u neplátce (PDF už to tak zobrazuje, výpočet ne). Opravit v billing/invoices + frontend calc.
+- [ ] Rozhodnout: platby na zamčené faktuře jsou povolené (zámek blokuje jen PATCH/DELETE) — ponechat, zdokumentovat v UI.
 - [ ] Per-account SMTP nastavení; text pozvánky jen česky.
 
 ## Dev

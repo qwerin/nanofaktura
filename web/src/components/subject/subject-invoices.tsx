@@ -44,7 +44,7 @@ export function SubjectInvoices({ slug, subjectId, canCreate = true }: { slug: s
     <Button
       variant="outline"
       nativeButton={false}
-      render={<Link to="/a/$slug/invoices/new" params={{ slug }} search={{ subject_id: subjectId } as never} />}
+      render={<Link to="/a/$slug/invoices/new" params={{ slug }} search={{ subject_id: subjectId }} />}
     >
       <FilePlusIcon data-icon="inline-start" />
       Nová faktura
