@@ -38,11 +38,13 @@ func (s *server) createPayment(ctx context.Context, in *struct {
 	Body PaymentCreate
 }) (*Out[PaymentResult], error) {
 	var res PaymentResult
+	wasPaid := false
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		m, err := loadInvoice(ctx, tx, in.ID)
 		if err != nil {
 			return err
 		}
+		wasPaid = m.Status == model.StatusPaid
 		if m.Status == model.StatusCancelled || m.Status == model.StatusUncollectible {
 			return conflict("cannot add a payment to a " + m.Status + " invoice")
 		}
@@ -99,6 +101,9 @@ func (s *server) createPayment(ctx context.Context, in *struct {
 	})
 	if err != nil {
 		return nil, err
+	}
+	if !wasPaid && res.Invoice.Status == model.StatusPaid {
+		s.sendPaidThanks(ctx, res.Invoice.ID) // best effort, after commit
 	}
 	return &Out[PaymentResult]{Body: res}, nil
 }

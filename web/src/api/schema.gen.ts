@@ -165,6 +165,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/accounts/{slug}/email-templates/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug email templates preview */
+        get: operations["get-api-accounts-by-slug-email-templates-preview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/accounts/{slug}/expenses": {
         parameters: {
             query?: never;
@@ -434,6 +451,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/accounts/{slug}/invoices/{id}/emails": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug invoices by ID emails */
+        get: operations["get-api-accounts-by-slug-invoices-by-id-emails"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/accounts/{slug}/invoices/{id}/payments": {
         parameters: {
             query?: never;
@@ -505,6 +539,46 @@ export interface paths {
          * @description Allowed roles: owner, admin, member.
          */
         post: operations["post-api-accounts-by-slug-invoices-by-id-regenerate-public-token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/invoices/{id}/save-as-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug invoices by ID save as template
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-invoices-by-id-save-as-template"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/invoices/{id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug invoices by ID send
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-invoices-by-id-send"];
         delete?: never;
         options?: never;
         head?: never;
@@ -719,6 +793,112 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/accounts/{slug}/recurring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug recurring */
+        get: operations["get-api-accounts-by-slug-recurring"];
+        put?: never;
+        /**
+         * Post API accounts by slug recurring
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-recurring"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/recurring/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug recurring by ID */
+        get: operations["get-api-accounts-by-slug-recurring-by-id"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete API accounts by slug recurring by ID
+         * @description Allowed roles: owner, admin, member.
+         */
+        delete: operations["delete-api-accounts-by-slug-recurring-by-id"];
+        options?: never;
+        head?: never;
+        /**
+         * Patch API accounts by slug recurring by ID
+         * @description Allowed roles: owner, admin, member.
+         */
+        patch: operations["patch-api-accounts-by-slug-recurring-by-id"];
+        trace?: never;
+    };
+    "/api/accounts/{slug}/recurring/{id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug recurring by ID activate
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-recurring-by-id-activate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/recurring/{id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug recurring by ID deactivate
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-recurring-by-id-deactivate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/recurring/{id}/run-now": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug recurring by ID run now
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-recurring-by-id-run-now"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/accounts/{slug}/subjects": {
         parameters: {
             query?: never;
@@ -763,6 +943,72 @@ export interface paths {
          * @description Allowed roles: owner, admin, member.
          */
         patch: operations["patch-api-accounts-by-slug-subjects-by-id"];
+        trace?: never;
+    };
+    "/api/accounts/{slug}/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug templates */
+        get: operations["get-api-accounts-by-slug-templates"];
+        put?: never;
+        /**
+         * Post API accounts by slug templates
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-templates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug templates by ID */
+        get: operations["get-api-accounts-by-slug-templates-by-id"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete API accounts by slug templates by ID
+         * @description Allowed roles: owner, admin, member.
+         */
+        delete: operations["delete-api-accounts-by-slug-templates-by-id"];
+        options?: never;
+        head?: never;
+        /**
+         * Patch API accounts by slug templates by ID
+         * @description Allowed roles: owner, admin, member.
+         */
+        patch: operations["patch-api-accounts-by-slug-templates-by-id"];
+        trace?: never;
+    };
+    "/api/accounts/{slug}/templates/{id}/create-invoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug templates by ID create invoice
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-templates-by-id-create-invoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/ares/{ico}": {
@@ -1040,15 +1286,26 @@ export interface components {
             /** Format: int32 */
             default_vat_rate_bps: number;
             email: string;
+            /** @description Reply-To of invoice e-mails; empty = account email */
+            email_reply_to: string;
+            /** @description Appended to template texts */
+            email_signature: string;
+            /** @description Effective texts (kind × language) */
+            email_templates: components["schemas"]["EmailTemplate"][];
             /**
              * Format: int64
              * @description Logo image attachment (PNG/JPEG)
              */
             logo_attachment_id?: number;
             name: string;
+            /** @description Send a thank-you e-mail when an invoice gets fully paid */
+            paid_thanks_enabled: boolean;
             phone: string;
             registered_by: string;
             registration_no: string;
+            /** @description Automatic reminder steps (days after due_on) */
+            reminder_days_after_due: number[];
+            reminders_enabled: boolean;
             /**
              * @description Current user's role
              * @enum {string}
@@ -1090,15 +1347,23 @@ export interface components {
             /** Format: int32 */
             default_vat_rate_bps?: number;
             email?: string;
+            email_reply_to?: string;
+            email_signature?: string;
+            /** @description Replaces all overrides; entries equal to the default (or empty) are not stored */
+            email_templates?: components["schemas"]["EmailTemplateInput"][] | null;
             /**
              * Format: int64
              * @description PNG/JPEG attachment of this account; 0 removes the logo
              */
             logo_attachment_id?: number;
             name?: string;
+            paid_thanks_enabled?: boolean;
             phone?: string;
             registered_by?: string;
             registration_no?: string;
+            /** @description Days after due_on, 1–365 */
+            reminder_days_after_due?: number[] | null;
+            reminders_enabled?: boolean;
             round_total?: boolean;
             /**
              * Format: int64
@@ -1225,6 +1490,62 @@ export interface components {
             unpaid_total: number;
             /** Format: int64 */
             year: number;
+        };
+        EmailLog: {
+            attachments: string[];
+            /** @description Sent by the scheduler or an automatic rule */
+            automatic: boolean;
+            body: string;
+            cc: string[];
+            /** Format: date-time */
+            created_at: string;
+            error: string;
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            invoice_id: number;
+            /** @enum {string} */
+            kind: "invoice" | "reminder" | "paid_thanks";
+            /**
+             * Format: int64
+             * @description Automatic reminder: days after due; 0 otherwise
+             */
+            reminder_step: number;
+            /**
+             * Format: date-time
+             * @description Omitted when sending failed
+             */
+            sent_at?: string;
+            subject: string;
+            to: string[];
+        };
+        EmailPreview: {
+            body: string;
+            cc: string[];
+            kind: string;
+            lang: string;
+            subject: string;
+            to: string[];
+        };
+        EmailTemplate: {
+            body: string;
+            /** @description false = built-in default text */
+            custom: boolean;
+            /** @enum {string} */
+            kind: "invoice" | "reminder" | "paid_thanks";
+            /** @enum {string} */
+            lang: "cs" | "en";
+            subject: string;
+        };
+        EmailTemplateInput: {
+            /** @description Empty = default body */
+            body?: string;
+            /** @enum {string} */
+            kind: "invoice" | "reminder" | "paid_thanks";
+            /** @enum {string} */
+            lang: "cs" | "en";
+            /** @description Empty = default subject */
+            subject?: string;
         };
         ErrorDetail: {
             /** @description Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
@@ -1878,6 +2199,22 @@ export interface components {
             your_vat_no?: string;
             your_zip?: string;
         };
+        InvoiceSend: {
+            /** @description Default true */
+            attach_pdf?: boolean;
+            /** @description Default: the template + signature; placeholders are rendered here too */
+            body?: string;
+            cc?: string[] | null;
+            /**
+             * @description Default invoice; invoice marks an open invoice as sent
+             * @enum {string}
+             */
+            kind?: "invoice" | "reminder" | "paid_thanks";
+            /** @description Default: the account template of kind in the invoice language */
+            subject?: string;
+            /** @description Default: client_email of the invoice (+ the subject's email_copy as cc) */
+            to?: string[] | null;
+        };
         InvoiceSummary: {
             bank_account: string;
             /** Format: int64 */
@@ -2008,6 +2345,15 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        ListResponseEmailLog: {
+            items: components["schemas"]["EmailLog"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            per_page: number;
+            /** Format: int64 */
+            total: number;
+        };
         ListResponseExpenseSummary: {
             items: components["schemas"]["ExpenseSummary"][];
             /** Format: int64 */
@@ -2062,6 +2408,15 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        ListResponseRecurring: {
+            items: components["schemas"]["Recurring"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            per_page: number;
+            /** Format: int64 */
+            total: number;
+        };
         ListResponseStockMove: {
             items: components["schemas"]["StockMove"][];
             /** Format: int64 */
@@ -2073,6 +2428,15 @@ export interface components {
         };
         ListResponseSubject: {
             items: components["schemas"]["Subject"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            per_page: number;
+            /** Format: int64 */
+            total: number;
+        };
+        ListResponseTemplate: {
+            items: components["schemas"]["Template"][];
             /** Format: int64 */
             page: number;
             /** Format: int64 */
@@ -2252,6 +2616,91 @@ export interface components {
             /** Format: int32 */
             vat_rate_bps?: number;
         };
+        Recurring: {
+            active: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /**
+             * Format: int64
+             * @description Day of every occurrence (clamped to the month length); omitted = day of start_on
+             */
+            day_of_month?: number;
+            /** @description Last possible issue date; empty = no end */
+            end_on: string;
+            /** Format: int64 */
+            id: number;
+            /** @enum {string} */
+            issue_as: "invoice" | "proforma";
+            /** @description Error of the last failed generation (cleared by the next success) */
+            last_error: string;
+            /** Format: int64 */
+            last_invoice_id?: number;
+            /** Format: date-time */
+            last_run_at?: string;
+            /** Format: int64 */
+            months_period: number;
+            name: string;
+            /** @description Issue date of the next invoice */
+            next_occurrence_on: string;
+            send_email: boolean;
+            start_on: string;
+            /** Format: int64 */
+            template_id: number;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        RecurringCreate: {
+            /** @description Default true */
+            active?: boolean;
+            /**
+             * Format: int64
+             * @description 31 = last day of every month
+             */
+            day_of_month?: number;
+            /** Format: date */
+            end_on?: string;
+            /**
+             * @description Default invoice
+             * @enum {string}
+             */
+            issue_as?: "invoice" | "proforma";
+            /**
+             * Format: int64
+             * @description Default 1 (monthly)
+             */
+            months_period?: number;
+            name: string;
+            /** @description E-mail every generated invoice to the client */
+            send_email?: boolean;
+            /**
+             * Format: date
+             * @description Default today
+             */
+            start_on?: string;
+            /** Format: int64 */
+            template_id: number;
+        };
+        RecurringPatch: {
+            /**
+             * Format: int64
+             * @description 0 = day of start_on
+             */
+            day_of_month?: number;
+            /** @description YYYY-MM-DD or "" (no end) */
+            end_on?: string;
+            /** @enum {string} */
+            issue_as?: "invoice" | "proforma";
+            /** Format: int64 */
+            months_period?: number;
+            name?: string;
+            /** Format: date */
+            next_occurrence_on?: string;
+            send_email?: boolean;
+            /** Format: date */
+            start_on?: string;
+            /** Format: int64 */
+            template_id?: number;
+        };
         RegisterRequest: {
             /** @description Name of the new account; required unless invitation_token is given */
             account_name?: string;
@@ -2260,6 +2709,10 @@ export interface components {
             invitation_token?: string;
             name: string;
             password: string;
+        };
+        SaveAsTemplate: {
+            /** @description Default: client name and invoice number */
+            name?: string;
         };
         StockMove: {
             /** Format: date-time */
@@ -2398,6 +2851,147 @@ export interface components {
             vat_no?: string;
             web?: string;
             zip?: string;
+        };
+        Template: {
+            /** Format: int64 */
+            bank_account_id?: number;
+            /** Format: date-time */
+            created_at: string;
+            /** @description Empty = account default */
+            currency: string;
+            custom_payment_method: string;
+            /** @enum {string} */
+            document_type: "invoice" | "proforma";
+            /** Format: int64 */
+            due_days?: number;
+            /** @description Empty = 1 */
+            exchange_rate: string;
+            /** @description Omitted = account default_footer_note */
+            footer_note?: string;
+            /** Format: int64 */
+            id: number;
+            /** @description cs|en; empty = account default */
+            language: string;
+            lines: components["schemas"]["TemplateLine"][];
+            name: string;
+            /** @description Omitted = account default_note */
+            note?: string;
+            order_number: string;
+            /** @description Empty = account default */
+            payment_method: string;
+            prices_include_vat: boolean;
+            private_note: string;
+            reverse_charge: boolean;
+            /** @description Omitted = account round_total */
+            round_total?: boolean;
+            /** Format: int64 */
+            subject_id: number;
+            tags: string[];
+            /** Format: date-time */
+            updated_at: string;
+        };
+        TemplateCreate: {
+            /** Format: int64 */
+            bank_account_id?: number;
+            currency?: string;
+            custom_payment_method?: string;
+            /**
+             * @description Default invoice
+             * @enum {string}
+             */
+            document_type?: "invoice" | "proforma";
+            /** Format: int64 */
+            due_days?: number;
+            exchange_rate?: string;
+            footer_note?: string;
+            /** @enum {string} */
+            language?: "cs" | "en";
+            lines: components["schemas"]["TemplateLineInput"][] | null;
+            name: string;
+            note?: string;
+            order_number?: string;
+            /** @enum {string} */
+            payment_method?: "bank" | "cash" | "card" | "cod" | "paypal" | "custom";
+            prices_include_vat?: boolean;
+            private_note?: string;
+            reverse_charge?: boolean;
+            round_total?: boolean;
+            /** Format: int64 */
+            subject_id: number;
+            tags?: string[] | null;
+        };
+        TemplateIssue: {
+            /**
+             * @description Default: the template's document_type
+             * @enum {string}
+             */
+            document_type?: "invoice" | "proforma";
+            /**
+             * Format: date
+             * @description Default today; also the date of the placeholders
+             */
+            issued_on?: string;
+        };
+        TemplateLine: {
+            name: string;
+            /** Format: int64 */
+            price_item_id?: number;
+            /** @example 1 */
+            quantity: string;
+            unit_name: string;
+            /** Format: int64 */
+            unit_price: number;
+            /**
+             * Format: int32
+             * @description Omitted = account default_vat_rate_bps at issue time
+             */
+            vat_rate_bps?: number;
+        };
+        TemplateLineInput: {
+            name: string;
+            /** Format: int64 */
+            price_item_id?: number;
+            /**
+             * @description Decimal, default 1
+             * @example 1.5
+             */
+            quantity?: string;
+            unit_name?: string;
+            /** Format: int64 */
+            unit_price: number;
+            /** Format: int32 */
+            vat_rate_bps?: number;
+        };
+        TemplatePatch: {
+            /**
+             * Format: int64
+             * @description 0 = default bank account of the currency
+             */
+            bank_account_id?: number;
+            /** @description "" = account default */
+            currency?: string;
+            custom_payment_method?: string;
+            /** @enum {string} */
+            document_type?: "invoice" | "proforma";
+            /** Format: int64 */
+            due_days?: number;
+            exchange_rate?: string;
+            footer_note?: string;
+            /** @enum {string} */
+            language?: "cs" | "en" | "";
+            lines?: components["schemas"]["TemplateLineInput"][] | null;
+            name?: string;
+            note?: string;
+            order_number?: string;
+            /** @enum {string} */
+            payment_method?: "bank" | "cash" | "card" | "cod" | "paypal" | "custom" | "";
+            prices_include_vat?: boolean;
+            private_note?: string;
+            reverse_charge?: boolean;
+            round_total?: boolean;
+            /** Format: int64 */
+            subject_id?: number;
+            tags?: string[] | null;
         };
         User: {
             email: string;
@@ -2972,6 +3566,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Dashboard"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-email-templates-preview": {
+        parameters: {
+            query?: {
+                kind?: "invoice" | "reminder" | "paid_thanks";
+                /** @description Default: the invoice language (or the account default) */
+                lang?: "cs" | "en";
+                /** @description Render with this invoice; omitted = sample data */
+                invoice_id?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailPreview"];
                 };
             };
             /** @description Error */
@@ -3656,6 +4288,42 @@ export interface operations {
             };
         };
     };
+    "get-api-accounts-by-slug-invoices-by-id-emails": {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListResponseEmailLog"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "post-api-accounts-by-slug-invoices-by-id-payments": {
         parameters: {
             query?: never;
@@ -3785,6 +4453,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Invoice"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-invoices-by-id-save-as-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SaveAsTemplate"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Template"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-invoices-by-id-send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceSend"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailLog"];
                 };
             };
             /** @description Error */
@@ -4429,6 +5171,280 @@ export interface operations {
             };
         };
     };
+    "get-api-accounts-by-slug-recurring": {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+                /** @description Filter by active flag */
+                active?: "true" | "false";
+                template_id?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListResponseRecurring"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-recurring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecurringCreate"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Recurring"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-recurring-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Recurring"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-api-accounts-by-slug-recurring-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "patch-api-accounts-by-slug-recurring-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecurringPatch"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Recurring"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-recurring-by-id-activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Recurring"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-recurring-by-id-deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Recurring"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-recurring-by-id-run-now": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invoice"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "get-api-accounts-by-slug-subjects": {
         parameters: {
             query?: {
@@ -4592,6 +5608,218 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Subject"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-templates": {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+                /** @description Name (case-insensitive substring) */
+                query?: string;
+                subject_id?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListResponseTemplate"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateCreate"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Template"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-templates-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Template"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-api-accounts-by-slug-templates-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "patch-api-accounts-by-slug-templates-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplatePatch"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Template"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-templates-by-id-create-invoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TemplateIssue"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invoice"];
                 };
             };
             /** @description Error */

@@ -94,6 +94,23 @@ func TestRoleMatrix(t *testing.T) {
 		{"GET", "/attachments", nil, all},
 		{"POST", "/attachments", map[string]any{}, editors},
 		{"DELETE", "/attachments" + missing, nil, editors},
+
+		{"GET", "/templates", nil, all},
+		{"POST", "/templates", map[string]any{}, editors},
+		{"PATCH", "/templates" + missing, map[string]any{}, editors},
+		{"DELETE", "/templates" + missing, nil, editors},
+		{"POST", "/templates" + missing + "/create-invoice", map[string]any{}, editors},
+		{"POST", "/invoices" + missing + "/save-as-template", map[string]any{}, editors},
+		{"GET", "/recurring", nil, all},
+		{"POST", "/recurring", map[string]any{}, editors},
+		{"PATCH", "/recurring" + missing, map[string]any{}, editors},
+		{"DELETE", "/recurring" + missing, nil, editors},
+		{"POST", "/recurring" + missing + "/activate", nil, editors},
+		{"POST", "/recurring" + missing + "/deactivate", nil, editors},
+		{"POST", "/recurring" + missing + "/run-now", nil, editors},
+		{"POST", "/invoices" + missing + "/send", map[string]any{}, editors},
+		{"GET", "/invoices" + missing + "/emails", nil, all},
+		{"GET", "/email-templates/preview", nil, all},
 	} {
 		for role, c := range clients {
 			res, body := c.do(op.method, c.acct(op.path), op.body)
