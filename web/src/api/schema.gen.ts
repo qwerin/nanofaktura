@@ -148,6 +148,180 @@ export interface paths {
         patch: operations["patch-api-accounts-by-slug-bank-accounts-by-id"];
         trace?: never;
     };
+    "/api/accounts/{slug}/bank-accounts/{id}/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import a bank statement file (Fio JSON/CSV, ČSOB, KB, Air Bank CSV, ABO/GPC)
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-bank-accounts-by-id-import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/bank-accounts/{id}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Download new transactions from the bank API (Fio)
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-bank-accounts-by-id-sync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/bank-transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug bank transactions */
+        get: operations["get-api-accounts-by-slug-bank-transactions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/bank-transactions/rematch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug bank transactions rematch
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-bank-transactions-rematch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/bank-transactions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug bank transactions by ID */
+        get: operations["get-api-accounts-by-slug-bank-transactions-by-id"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/bank-transactions/{id}/ignore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug bank transactions by ID ignore
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-bank-transactions-by-id-ignore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/bank-transactions/{id}/match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug bank transactions by ID match
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-bank-transactions-by-id-match"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/bank-transactions/{id}/unignore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug bank transactions by ID unignore
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-bank-transactions-by-id-unignore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/bank-transactions/{id}/unmatch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug bank transactions by ID unmatch
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-bank-transactions-by-id-unmatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/accounts/{slug}/dashboard": {
         parameters: {
             query?: never;
@@ -1199,6 +1373,23 @@ export interface paths {
         patch: operations["patch-api-accounts-by-slug-subjects-by-id"];
         trace?: never;
     };
+    "/api/accounts/{slug}/subjects/{id}/vat-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** VAT payer registry status of the subject's DIČ */
+        get: operations["get-api-accounts-by-slug-subjects-by-id-vat-status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/accounts/{slug}/templates": {
         parameters: {
             query?: never;
@@ -1736,21 +1927,34 @@ export interface components {
             /** Format: date-time */
             created_at: string;
             currency: string;
+            /** @description A Fio API token is stored (the token itself is never returned) */
+            has_fio_token: boolean;
             iban: string;
             /** Format: int64 */
             id: number;
             /** @description Default account for invoices in its currency */
             is_default: boolean;
+            /** Format: date-time */
+            last_synced_at?: string;
             name: string;
             /** @description Czech account number, e.g. 19-2000145399/0800; empty for foreign accounts */
             number: string;
             swift_bic: string;
+            /** @description First day of the initial sync (YYYY-MM-DD); empty = 30 days back */
+            sync_from: string;
+            /**
+             * @description Automatic transaction download
+             * @enum {string}
+             */
+            sync_provider: "none" | "fio";
             /** Format: date-time */
             updated_at: string;
         };
         BankAccountCreate: {
             /** @description ISO 4217; default is the account's default currency */
             currency?: string;
+            /** @description Fio API token (read-only token is enough); stored encrypted, write-only */
+            fio_token?: string;
             iban?: string;
             /** @description The first account of a currency is always default */
             is_default?: boolean;
@@ -1758,14 +1962,109 @@ export interface components {
             /** @description Czech account number; IBAN and SWIFT are derived when empty */
             number?: string;
             swift_bic?: string;
+            /**
+             * Format: date
+             * @description First day of the initial sync; default 30 days back
+             */
+            sync_from?: string;
+            /**
+             * @description Default none; fio requires fio_token
+             * @enum {string}
+             */
+            sync_provider?: "none" | "fio";
         };
         BankAccountPatch: {
             currency?: string;
+            /** @description New token; "" removes the stored token */
+            fio_token?: string;
             iban?: string;
             is_default?: boolean;
             name?: string;
             number?: string;
             swift_bic?: string;
+            /** @description YYYY-MM-DD or "" */
+            sync_from?: string;
+            /** @enum {string} */
+            sync_provider?: "none" | "fio";
+        };
+        BankImportResult: {
+            /**
+             * Format: int64
+             * @description Transactions already imported before (skipped)
+             */
+            duplicates: number;
+            /** @description Detected or given statement format */
+            format: string;
+            /**
+             * Format: int64
+             * @description New transactions
+             */
+            imported: number;
+            /**
+             * Format: date-time
+             * @description Sync only
+             */
+            last_synced_at?: string;
+            /**
+             * Format: int64
+             * @description New transactions paired automatically
+             */
+            matched: number;
+            /**
+             * Format: int64
+             * @description New transactions with suggestions to confirm
+             */
+            suggestions: number;
+        };
+        BankTransaction: {
+            /**
+             * Format: int64
+             * @description Minor units, + incoming / − outgoing
+             */
+            amount: number;
+            auto_matched: boolean;
+            /** Format: int64 */
+            bank_account_id: number;
+            booked_on: string;
+            constant_symbol: string;
+            counterparty_account: string;
+            counterparty_name: string;
+            /** Format: date-time */
+            created_at: string;
+            currency: string;
+            /** @description Bank's movement ID ("h:…" hash when the source has none) */
+            external_id: string;
+            /** Format: int64 */
+            id: number;
+            ignored: boolean;
+            /** Format: int64 */
+            matched_expense_id?: number;
+            /** Format: int64 */
+            matched_invoice_id?: number;
+            message: string;
+            /**
+             * Format: int64
+             * @description Payment (invoice) or expense payment created by the match
+             */
+            payment_id?: number;
+            specific_symbol: string;
+            /** @enum {string} */
+            state: "unmatched" | "suggested" | "matched" | "ignored";
+            /** @description Best candidates (max 3) of an unmatched transaction */
+            suggestions: components["schemas"]["MatchSuggestion"][];
+            variable_symbol: string;
+        };
+        BankTransactionMatch: {
+            /**
+             * Format: int64
+             * @description Expense (typically for outgoing payments)
+             */
+            expense_id?: number;
+            /**
+             * Format: int64
+             * @description Invoice or proforma (typically for incoming payments)
+             */
+            invoice_id?: number;
         };
         ControlStatement: {
             a1: components["schemas"]["A1Row"][];
@@ -2015,6 +2314,7 @@ export interface components {
             vat_recap: components["schemas"]["VatRecapItem"][];
             /** Format: int64 */
             vat_total: number;
+            warnings?: string[] | null;
         };
         ExpenseCategories: {
             items: string[];
@@ -2739,6 +3039,15 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        ListResponseBankTransaction: {
+            items: components["schemas"]["BankTransaction"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            per_page: number;
+            /** Format: int64 */
+            total: number;
+        };
         ListResponseEmailLog: {
             items: components["schemas"]["EmailLog"][];
             /** Format: int64 */
@@ -2841,6 +3150,28 @@ export interface components {
         LoginRequest: {
             email: string;
             password: string;
+        };
+        MatchSuggestion: {
+            /** Format: int64 */
+            expense_id?: number;
+            /** Format: int64 */
+            invoice_id?: number;
+            /** @description Client / supplier name */
+            name: string;
+            number: string;
+            /**
+             * @example [
+             *       "VS sedí"
+             *     ]
+             */
+            reasons: string[];
+            /**
+             * Format: int64
+             * @description Remaining amount when suggested
+             */
+            remaining: number;
+            /** Format: int64 */
+            score: number;
         };
         Me: {
             accounts: components["schemas"]["MeAccount"][];
@@ -3231,6 +3562,17 @@ export interface components {
             invitation_token?: string;
             name: string;
             password: string;
+        };
+        RematchResult: {
+            /** Format: int64 */
+            matched: number;
+            /**
+             * Format: int64
+             * @description Unmatched, not ignored transactions examined
+             */
+            processed: number;
+            /** Format: int64 */
+            suggestions: number;
         };
         SaveAsTemplate: {
             /** @description Default: client name and invoice number */
@@ -4134,6 +4476,366 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BankAccount"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-bank-accounts-by-id-import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description Statement file, max 10 MB
+                     */
+                    file: string;
+                    /** @description fio_json, gpc, fio_csv, csob_csv, kb_csv, airbank_csv; empty = detect */
+                    format?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BankImportResult"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-bank-accounts-by-id-sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BankImportResult"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-bank-transactions": {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+                bank_account_id?: number;
+                /** @description unmatched includes suggested */
+                state?: "unmatched" | "suggested" | "matched" | "ignored";
+                direction?: "in" | "out";
+                /** @description booked_on ≥ since */
+                since?: string;
+                /** @description booked_on ≤ until */
+                until?: string;
+                /** @description Counterparty name/account, message or variable symbol (case-insensitive substring) */
+                query?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListResponseBankTransaction"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-bank-transactions-rematch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RematchResult"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-bank-transactions-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BankTransaction"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-bank-transactions-by-id-ignore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BankTransaction"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-bank-transactions-by-id-match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BankTransactionMatch"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BankTransaction"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-bank-transactions-by-id-unignore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BankTransaction"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-bank-transactions-by-id-unmatch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BankTransaction"];
                 };
             };
             /** @description Error */
@@ -6733,6 +7435,66 @@ export interface operations {
             };
             /** @description Error */
             default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-subjects-by-id-vat-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VatRegistryResult"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };
