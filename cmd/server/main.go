@@ -16,6 +16,7 @@ import (
 	"github.com/qwerin/nanofaktura/internal/api"
 	"github.com/qwerin/nanofaktura/internal/config"
 	"github.com/qwerin/nanofaktura/internal/db"
+	"github.com/qwerin/nanofaktura/internal/scheduler"
 )
 
 func main() {
@@ -46,6 +47,14 @@ func run() error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	// background jobs (recurring invoices, reminders …): at start + hourly,
+	// stopped by ctx on shutdown
+	sched := scheduler.New(nil, time.Hour, slog.Default())
+	sched.Register(api.Jobs(gdb, cfg, api.Deps{})...)
+	schedDone := make(chan struct{})
+	go func() { sched.Start(ctx); close(schedDone) }()
+	defer func() { stop(); <-schedDone }()
 
 	errc := make(chan error, 1)
 	go func() {

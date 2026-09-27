@@ -42,6 +42,8 @@ type Account struct {
 	StampAttachmentID    *uint     `json:"stamp_attachment_id,omitempty" doc:"Signature/stamp image attachment (PNG/JPEG)"`
 	CreatedAt            time.Time `json:"created_at"`
 	UpdatedAt            time.Time `json:"updated_at"`
+
+	AccountEmailSettings // emails.go
 }
 
 type AccountCreate struct {
@@ -72,6 +74,8 @@ type AccountPatch struct {
 	DefaultVatRateBps    *int32  `json:"default_vat_rate_bps,omitempty" minimum:"0" maximum:"10000"`
 	LogoAttachmentID     *uint   `json:"logo_attachment_id,omitempty" doc:"PNG/JPEG attachment of this account; 0 removes the logo"`
 	StampAttachmentID    *uint   `json:"stamp_attachment_id,omitempty" doc:"PNG/JPEG attachment of this account; 0 removes the stamp"`
+
+	AccountEmailSettingsPatch // emails.go
 }
 
 func toAccount(a *model.Account, role string) Account {
@@ -83,6 +87,7 @@ func toAccount(a *model.Account, role string) Account {
 		DefaultLanguage: a.DefaultLanguage, DefaultNote: a.DefaultNote, DefaultFooterNote: a.DefaultFooterNote,
 		RoundTotal: a.RoundTotal, DefaultVatRateBps: a.DefaultVatRateBps,
 		LogoAttachmentID: a.LogoAttachmentID, StampAttachmentID: a.StampAttachmentID, CreatedAt: a.CreatedAt, UpdatedAt: a.UpdatedAt,
+		AccountEmailSettings: toAccountEmailSettings(a),
 	}
 }
 
@@ -189,6 +194,9 @@ func (s *server) patchAccount(ctx context.Context, in *struct{ Body AccountPatch
 	apply(&acc.DefaultVatRateBps, p.DefaultVatRateBps)
 	if acc.Name == "" {
 		return nil, invalid("name", "name must not be empty")
+	}
+	if err := applyEmailSettings(&acc, &p.AccountEmailSettingsPatch); err != nil {
+		return nil, err
 	}
 	for _, img := range []struct {
 		field string

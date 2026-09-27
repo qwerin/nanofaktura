@@ -94,35 +94,7 @@ type server struct {
 
 // New builds the API router. db may be nil when only the OpenAPI document is needed.
 func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
-	if deps.Now == nil {
-		deps.Now = time.Now
-	}
-	if deps.ARES == nil {
-		deps.ARES = ares.New(cfg.AresURL)
-	}
-	if deps.NextNumber == nil {
-		deps.NextNumber = numbering.Next
-	}
-	if deps.Mailer == nil {
-		deps.Mailer = defaultMailer(cfg)
-	}
-	if deps.Storage == nil {
-		dir := cfg.DataDir
-		if dir == "" {
-			dir = "./data"
-		}
-		deps.Storage = storage.NewLocal(filepath.Join(dir, "attachments"))
-	}
-	if deps.CNB == nil {
-		deps.CNB = cnb.NewService(db, cnb.New(cfg.CNBURL), deps.Now)
-	}
-	if deps.VIES == nil {
-		deps.VIES = vies.NewCached(vies.New(cfg.ViesURL), 24*time.Hour, deps.Now)
-	}
-	if deps.VatRegistry == nil {
-		deps.VatRegistry = vatreg.NewCached(vatreg.New(cfg.VatRegURL), 24*time.Hour, deps.Now)
-	}
-	s := &server{db: db, cfg: cfg, deps: deps, auth: auth.NewService(db, deps.Now, cfg.SecureCookies)}
+	s := newServer(db, cfg, deps)
 
 	router := chi.NewRouter()
 	hc := huma.DefaultConfig("NanoFaktura API", "1.0.0")
@@ -169,8 +141,44 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 	s.registerPriceItems(account)
 	s.registerStockMoves(account)
 	s.registerExpenses(account)
+	s.registerTemplates(account)
+	s.registerRecurring(account)
+	s.registerEmails(account)
 
 	return router, api
+}
+
+// newServer applies the dependency defaults (shared by New and Jobs).
+func newServer(db *gorm.DB, cfg config.Config, deps Deps) *server {
+	if deps.Now == nil {
+		deps.Now = time.Now
+	}
+	if deps.ARES == nil {
+		deps.ARES = ares.New(cfg.AresURL)
+	}
+	if deps.NextNumber == nil {
+		deps.NextNumber = numbering.Next
+	}
+	if deps.Mailer == nil {
+		deps.Mailer = defaultMailer(cfg)
+	}
+	if deps.Storage == nil {
+		dir := cfg.DataDir
+		if dir == "" {
+			dir = "./data"
+		}
+		deps.Storage = storage.NewLocal(filepath.Join(dir, "attachments"))
+	}
+	if deps.CNB == nil {
+		deps.CNB = cnb.NewService(db, cnb.New(cfg.CNBURL), deps.Now)
+	}
+	if deps.VIES == nil {
+		deps.VIES = vies.NewCached(vies.New(cfg.ViesURL), 24*time.Hour, deps.Now)
+	}
+	if deps.VatRegistry == nil {
+		deps.VatRegistry = vatreg.NewCached(vatreg.New(cfg.VatRegURL), 24*time.Hour, deps.Now)
+	}
+	return &server{db: db, cfg: cfg, deps: deps, auth: auth.NewService(db, deps.Now, cfg.SecureCookies)}
 }
 
 func defaultMailer(cfg config.Config) mail.Mailer {

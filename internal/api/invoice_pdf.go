@@ -49,7 +49,22 @@ func (s *server) getInvoicePDF(ctx context.Context, in *InvoicePDFInput) (*Invoi
 	if err != nil {
 		return nil, err
 	}
-	opt := pdf.Options{Template: in.Template, Language: in.Lang, ShowQR: true}
+	b, err := s.renderInvoicePDF(ctx, inv, pdf.Options{Template: in.Template, Language: in.Lang})
+	if err != nil {
+		return nil, huma.Error500InternalServerError("pdf rendering failed", err)
+	}
+	return &InvoicePDFOutput{
+		ContentType:        "application/pdf",
+		ContentDisposition: `inline; filename="` + pdfFilename(inv.Number) + `"`,
+		Body:               b,
+	}, nil
+}
+
+// renderInvoicePDF renders inv (loaded with lines and payments) of the
+// current account with its logo, stamp, QR and related document number;
+// opt supplies template/language overrides.
+func (s *server) renderInvoicePDF(ctx context.Context, inv *model.Invoice, opt pdf.Options) ([]byte, error) {
+	opt.ShowQR = true
 	if inv.RelatedID != nil {
 		var rel model.Invoice
 		if err := s.scoped(ctx).Select("number").First(&rel, *inv.RelatedID).Error; err == nil {
@@ -59,15 +74,7 @@ func (s *server) getInvoicePDF(ctx context.Context, in *InvoicePDFInput) (*Invoi
 	acc := auth.AccountFrom(ctx)
 	opt.Logo = s.attachmentBytes(ctx, acc.LogoAttachmentID)
 	opt.Stamp = s.attachmentBytes(ctx, acc.StampAttachmentID)
-	b, err := pdf.Render(inv, acc, opt)
-	if err != nil {
-		return nil, huma.Error500InternalServerError("pdf rendering failed", err)
-	}
-	return &InvoicePDFOutput{
-		ContentType:        "application/pdf",
-		ContentDisposition: `inline; filename="` + pdfFilename(inv.Number) + `"`,
-		Body:               b,
-	}, nil
+	return pdf.Render(inv, acc, opt)
 }
 
 // pdfFilename returns "faktura-<number>.pdf" with only [A-Za-z0-9._-] kept.

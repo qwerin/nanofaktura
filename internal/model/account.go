@@ -30,6 +30,8 @@ type Account struct {
 	StampAttachmentID    *uint // signature/stamp image Attachment
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
+
+	AccountMailSettings // e-mail & reminder settings (email.go)
 }
 
 type BankAccount struct {

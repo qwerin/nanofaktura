@@ -32,6 +32,7 @@ internal/db/      Open(driver, dsn) (glebarez pure-Go SQLite or Postgres) + Migr
 internal/model/   GORM structs + enum constants; no API concerns
 internal/auth/    bcrypt, sessions, API tokens, huma middlewares, auth.UserFrom/AccountFrom/RoleFrom, roles (auth.Allow/ForEditors/ForManagers/RequireRole)
 internal/mail/    Mailer interface + SMTP / LogMailer (dev, no SMTP host) + mail.Render("{placeholder}" templates); tests: mail/mailtest.New()
+internal/scheduler/ periodic background jobs (Job{Name, Run(ctx, now), Every}), started from cmd/server — see "Scheduler"
 internal/storage/ Storage interface (Put/Get/Delete by key) + Local disk implementation (NANOFAKTURA_DATA_DIR/attachments)
 internal/api/     api.New + one file per resource (DTOs next to handlers) + *_test.go (package api_test)
 ```
@@ -146,3 +147,30 @@ fails for any account-scoped POST/PUT/PATCH/DELETE without a declaration — add
 - Files go through `s.deps.Storage` (keys `"{account_id}/{random}"`); metadata in `model.Attachment`
   (owner_type invoice|expense|subject|account). Small files into memory: `s.attachmentBytes(ctx, id)`.
   When deleting an owner record, its attachments are not removed automatically yet.
+- Invoice e-mails (send, recurring, reminders, paid thanks) all go through `s.sendInvoiceEmail(ctx, inv, emailRequest{…})`
+  (renders the account template, attaches the PDF via `s.renderInvoicePDF`, writes `EmailLog`, marks as sent).
+  Code creating payments outside `POST /payments` (bank matching) calls `s.sendPaidThanks(ctx, invoiceID)` after commit.
+
+## Scheduler (background jobs)
+
+`cmd/server` runs `scheduler.New(nil, time.Hour, slog.Default())` in a goroutine: every registered job runs at
+start and then hourly, sequentially; the context is cancelled on shutdown. Errors/panics are logged only.
+A job is `scheduler.Job{Name, Run: func(ctx context.Context, now time.Time) error, Every}` (`Every` > 0 = run at most
+that often, e.g. `24 * time.Hour`). API jobs come from `api.Jobs(db, cfg, deps)` (same deps defaults as `api.New`):
+
+```go
+// internal/api/<feature>.go
+func (s *server) RunBankSync(ctx context.Context, now time.Time) error {
+	var accs []model.Account // no account in ctx: find the work across accounts first …
+	…
+	actx, err := s.systemContext(ctx, acc.ID) // … then act in one account: auth.AccountFrom(actx) works,
+	…                                          // so s.scoped / inAccount / createInvoiceTx can be reused
+}
+// and add {Name: "bank-sync", Run: s.RunBankSync, Every: …} to the list in Jobs (recurring.go).
+```
+
+Rules: **jobs must be idempotent** — use `now` (never `time.Now()`), do each unit of work in its own transaction that
+re-reads and locks its row (`clause.Locking{Strength: clause.LockingStrengthUpdate}`) and re-checks the condition
+before acting, and record what was done (e.g. `EmailLog.reminder_step`, `next_occurrence_on`) so a second run is a no-op.
+Tests call the job directly: `runJob(ts, "reminders")` (recurring_test.go) runs it at `ts.now`; move the clock with
+`ts.now = day(2026, 4, 1)` (note: a jump > 30 days expires the test session — assert via `ts.db` then).

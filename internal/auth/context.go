@@ -28,6 +28,12 @@ func AccountFrom(ctx context.Context) *model.Account {
 	return a
 }
 
+// WithAccount returns ctx acting in acc with role — for background jobs that
+// reuse account-scoped code outside an HTTP request (no user is set).
+func WithAccount(ctx context.Context, acc *model.Account, role string) context.Context {
+	return context.WithValue(context.WithValue(ctx, accountKey, acc), roleKey, role)
+}
+
 // RoleFrom returns the current user's role in AccountFrom(ctx).
 func RoleFrom(ctx context.Context) string {
 	r, _ := ctx.Value(roleKey).(string)
