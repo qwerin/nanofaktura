@@ -22,4 +22,24 @@ export const keys = {
   /** Prefix všech dat účtu. */
   account: (slug: string) => ['a', slug] as const,
   accountDetail: (slug: string) => [...keys.account(slug), 'detail'] as const,
+
+  subjects: (slug: string) => [...keys.account(slug), 'subjects'] as const,
+  subjectList: (slug: string, filters: { query?: string; type?: string }) =>
+    [...keys.subjects(slug), 'list', filters] as const,
+  /** Jednorázové hledání (kontrola duplicit, našeptávač) — nestránkované. */
+  subjectSearch: (slug: string, query: string, perPage: number) =>
+    [...keys.subjects(slug), 'list', 'search', query, perPage] as const,
+  subjectDetail: (slug: string, id: number) => [...keys.subjects(slug), 'detail', id] as const,
+  /** Faktury kontaktu — pod prefixem `invoices`, aby je zneplatnily i mutace faktur. */
+  subjectInvoices: (slug: string, subjectId: number) =>
+    [...keys.account(slug), 'invoices', 'by-subject', subjectId] as const,
+
+  bankAccounts: (slug: string) => [...keys.account(slug), 'bank-accounts'] as const,
+
+  numberFormats: (slug: string) => [...keys.account(slug), 'number-formats'] as const,
+  numberFormatPreview: (slug: string, id: number, format: string) =>
+    [...keys.numberFormats(slug), 'preview', id, format] as const,
+
+  /** ARES nezávisí na účtu. */
+  ares: (ico: string) => ['ares', ico] as const,
 }

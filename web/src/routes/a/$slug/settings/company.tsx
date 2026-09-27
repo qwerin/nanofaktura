@@ -149,7 +149,7 @@ function CompanyPage() {
 }
 
 function CompanyForm({ slug, account }: { slug: string; account: Account }) {
-  const { isOwner } = useCurrentAccount()
+  const { canManageSettings } = useCurrentAccount()
   const update = useUpdateAccount(slug)
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -178,14 +178,14 @@ function CompanyForm({ slug, account }: { slug: string; account: Account }) {
 
   return (
     <form onSubmit={onSubmit} noValidate className="max-w-4xl">
-      {!isOwner && (
+      {!canManageSettings && (
         <Alert className="mb-6">
           <LockIcon />
-          <AlertDescription>Údaje firmy může měnit jen vlastník účtu.</AlertDescription>
+          <AlertDescription>Údaje firmy může měnit jen vlastník nebo administrátor účtu.</AlertDescription>
         </Alert>
       )}
 
-      <fieldset disabled={!isOwner || update.isPending} className="contents">
+      <fieldset disabled={!canManageSettings || update.isPending} className="contents">
         <FormSection title="Základní údaje" description="Jak se firma zobrazuje na fakturách.">
           <TextField control={control} name="name" label="Název firmy / jméno" autoComplete="organization" />
           <div className="grid gap-5 sm:grid-cols-2">
@@ -335,7 +335,7 @@ function CompanyForm({ slug, account }: { slug: string; account: Account }) {
         </FormSection>
       </fieldset>
 
-      {isOwner && (
+      {canManageSettings && (
         <StickyActionBar start={formState.isDirty ? 'Máte neuložené změny.' : 'Vše uloženo.'}>
           {formState.isDirty && (
             <Button type="button" variant="outline" onClick={() => form.reset()} disabled={update.isPending}>

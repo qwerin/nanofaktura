@@ -43,3 +43,22 @@ export type Account = ResponseBody<'/api/accounts/{slug}', 'get'>
 export type UpdateAccountInput = RequestBody<'/api/accounts/{slug}', 'patch'>
 export type CreateAccountInput = RequestBody<'/api/accounts', 'post'>
 export type VatMode = Account['vat_mode']
+
+// --- Subjects (kontakty) ---
+export type SubjectListResponse = ResponseBody<'/api/accounts/{slug}/subjects', 'get'>
+export type Subject = ListItem<SubjectListResponse>
+export type SubjectType = Subject['type']
+export type CreateSubjectInput = RequestBody<'/api/accounts/{slug}/subjects', 'post'>
+export type UpdateSubjectInput = RequestBody<'/api/accounts/{slug}/subjects/{id}', 'patch'>
+export type AresSubject = ResponseBody<'/api/ares/{ico}', 'get'>
+
+// --- Bank accounts ---
+export type BankAccount = ListItem<ResponseBody<'/api/accounts/{slug}/bank-accounts', 'get'>>
+export type CreateBankAccountInput = RequestBody<'/api/accounts/{slug}/bank-accounts', 'post'>
+export type UpdateBankAccountInput = RequestBody<'/api/accounts/{slug}/bank-accounts/{id}', 'patch'>
+
+// --- Number formats (číselné řady) ---
+export type NumberFormat = ListItem<ResponseBody<'/api/accounts/{slug}/number-formats', 'get'>>
+export type NumberFormatDocumentType = NumberFormat['document_type']
+export type CreateNumberFormatInput = RequestBody<'/api/accounts/{slug}/number-formats', 'post'>
+export type UpdateNumberFormatInput = RequestBody<'/api/accounts/{slug}/number-formats/{id}', 'patch'>

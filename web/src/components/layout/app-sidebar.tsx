@@ -36,6 +36,7 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar'
 import { useCurrentAccount } from '@/hooks/use-current-account'
+import { roleLabel } from '@/lib/roles'
 import { initials, mainNav } from './nav'
 import { useLogoutAction } from './use-logout-action'
 
@@ -138,7 +139,7 @@ function AccountSwitcher() {
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">{name}</span>
                 <span className="truncate text-xs text-muted-foreground">
-                  {membership?.role === 'owner' ? 'Vlastník' : 'Člen'}
+                  {roleLabel(membership?.role)}
                 </span>
               </div>
               <ChevronsUpDownIcon className="ml-auto text-muted-foreground" />

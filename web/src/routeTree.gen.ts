@@ -15,6 +15,7 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ASlugRouteRouteImport } from './routes/a/$slug/route'
 import { Route as ASlugIndexRouteImport } from './routes/a/$slug/index'
 import { Route as ASlugDashboardRouteImport } from './routes/a/$slug/dashboard'
+import { Route as ASlugOnboardingRouteImport } from './routes/a/$slug/onboarding'
 import { Route as ASlugSettingsRouteRouteImport } from './routes/a/$slug/settings/route'
 import { Route as ASlugInvoicesIndexRouteImport } from './routes/a/$slug/invoices/index'
 import { Route as ASlugInvoicesNewRouteImport } from './routes/a/$slug/invoices/new'
@@ -25,10 +26,11 @@ import { Route as ASlugSettingsNumberFormatsRouteImport } from './routes/a/$slug
 import { Route as ASlugSettingsProfileRouteImport } from './routes/a/$slug/settings/profile'
 import { Route as ASlugSettingsTokensRouteImport } from './routes/a/$slug/settings/tokens'
 import { Route as ASlugSubjectsIndexRouteImport } from './routes/a/$slug/subjects/index'
-import { Route as ASlugSubjectsSubjectIdRouteImport } from './routes/a/$slug/subjects/$subjectId'
 import { Route as ASlugSubjectsNewRouteImport } from './routes/a/$slug/subjects/new'
 import { Route as ASlugInvoicesInvoiceIdIndexRouteImport } from './routes/a/$slug/invoices/$invoiceId/index'
 import { Route as ASlugInvoicesInvoiceIdEditRouteImport } from './routes/a/$slug/invoices/$invoiceId/edit'
+import { Route as ASlugSubjectsSubjectIdIndexRouteImport } from './routes/a/$slug/subjects/$subjectId/index'
+import { Route as ASlugSubjectsSubjectIdEditRouteImport } from './routes/a/$slug/subjects/$subjectId/edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -58,6 +60,11 @@ const ASlugIndexRoute = ASlugIndexRouteImport.update({
 const ASlugDashboardRoute = ASlugDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => ASlugRouteRoute,
+} as any)
+const ASlugOnboardingRoute = ASlugOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => ASlugRouteRoute,
 } as any)
 const ASlugSettingsRouteRoute = ASlugSettingsRouteRouteImport.update({
@@ -112,11 +119,6 @@ const ASlugSubjectsIndexRoute = ASlugSubjectsIndexRouteImport.update({
   path: '/subjects/',
   getParentRoute: () => ASlugRouteRoute,
 } as any)
-const ASlugSubjectsSubjectIdRoute = ASlugSubjectsSubjectIdRouteImport.update({
-  id: '/subjects/$subjectId',
-  path: '/subjects/$subjectId',
-  getParentRoute: () => ASlugRouteRoute,
-} as any)
 const ASlugSubjectsNewRoute = ASlugSubjectsNewRouteImport.update({
   id: '/subjects/new',
   path: '/subjects/new',
@@ -134,6 +136,18 @@ const ASlugInvoicesInvoiceIdEditRoute =
     path: '/invoices/$invoiceId/edit',
     getParentRoute: () => ASlugRouteRoute,
   } as any)
+const ASlugSubjectsSubjectIdIndexRoute =
+  ASlugSubjectsSubjectIdIndexRouteImport.update({
+    id: '/subjects/$subjectId/',
+    path: '/subjects/$subjectId/',
+    getParentRoute: () => ASlugRouteRoute,
+  } as any)
+const ASlugSubjectsSubjectIdEditRoute =
+  ASlugSubjectsSubjectIdEditRouteImport.update({
+    id: '/subjects/$subjectId/edit',
+    path: '/subjects/$subjectId/edit',
+    getParentRoute: () => ASlugRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -142,6 +156,7 @@ export interface FileRoutesByFullPath {
   '/a/$slug': typeof ASlugRouteRouteWithChildren
   '/a/$slug/settings': typeof ASlugSettingsRouteRouteWithChildren
   '/a/$slug/dashboard': typeof ASlugDashboardRoute
+  '/a/$slug/onboarding': typeof ASlugOnboardingRoute
   '/a/$slug/': typeof ASlugIndexRoute
   '/a/$slug/invoices/new': typeof ASlugInvoicesNewRoute
   '/a/$slug/settings/bank-accounts': typeof ASlugSettingsBankAccountsRoute
@@ -149,19 +164,21 @@ export interface FileRoutesByFullPath {
   '/a/$slug/settings/number-formats': typeof ASlugSettingsNumberFormatsRoute
   '/a/$slug/settings/profile': typeof ASlugSettingsProfileRoute
   '/a/$slug/settings/tokens': typeof ASlugSettingsTokensRoute
-  '/a/$slug/subjects/$subjectId': typeof ASlugSubjectsSubjectIdRoute
   '/a/$slug/subjects/new': typeof ASlugSubjectsNewRoute
   '/a/$slug/invoices/': typeof ASlugInvoicesIndexRoute
   '/a/$slug/settings/': typeof ASlugSettingsIndexRoute
   '/a/$slug/subjects/': typeof ASlugSubjectsIndexRoute
   '/a/$slug/invoices/$invoiceId/edit': typeof ASlugInvoicesInvoiceIdEditRoute
+  '/a/$slug/subjects/$subjectId/edit': typeof ASlugSubjectsSubjectIdEditRoute
   '/a/$slug/invoices/$invoiceId/': typeof ASlugInvoicesInvoiceIdIndexRoute
+  '/a/$slug/subjects/$subjectId/': typeof ASlugSubjectsSubjectIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/a/$slug/dashboard': typeof ASlugDashboardRoute
+  '/a/$slug/onboarding': typeof ASlugOnboardingRoute
   '/a/$slug': typeof ASlugIndexRoute
   '/a/$slug/invoices/new': typeof ASlugInvoicesNewRoute
   '/a/$slug/settings/bank-accounts': typeof ASlugSettingsBankAccountsRoute
@@ -169,13 +186,14 @@ export interface FileRoutesByTo {
   '/a/$slug/settings/number-formats': typeof ASlugSettingsNumberFormatsRoute
   '/a/$slug/settings/profile': typeof ASlugSettingsProfileRoute
   '/a/$slug/settings/tokens': typeof ASlugSettingsTokensRoute
-  '/a/$slug/subjects/$subjectId': typeof ASlugSubjectsSubjectIdRoute
   '/a/$slug/subjects/new': typeof ASlugSubjectsNewRoute
   '/a/$slug/invoices': typeof ASlugInvoicesIndexRoute
   '/a/$slug/settings': typeof ASlugSettingsIndexRoute
   '/a/$slug/subjects': typeof ASlugSubjectsIndexRoute
   '/a/$slug/invoices/$invoiceId/edit': typeof ASlugInvoicesInvoiceIdEditRoute
+  '/a/$slug/subjects/$subjectId/edit': typeof ASlugSubjectsSubjectIdEditRoute
   '/a/$slug/invoices/$invoiceId': typeof ASlugInvoicesInvoiceIdIndexRoute
+  '/a/$slug/subjects/$subjectId': typeof ASlugSubjectsSubjectIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -185,6 +203,7 @@ export interface FileRoutesById {
   '/a/$slug': typeof ASlugRouteRouteWithChildren
   '/a/$slug/settings': typeof ASlugSettingsRouteRouteWithChildren
   '/a/$slug/dashboard': typeof ASlugDashboardRoute
+  '/a/$slug/onboarding': typeof ASlugOnboardingRoute
   '/a/$slug/': typeof ASlugIndexRoute
   '/a/$slug/invoices/new': typeof ASlugInvoicesNewRoute
   '/a/$slug/settings/bank-accounts': typeof ASlugSettingsBankAccountsRoute
@@ -192,13 +211,14 @@ export interface FileRoutesById {
   '/a/$slug/settings/number-formats': typeof ASlugSettingsNumberFormatsRoute
   '/a/$slug/settings/profile': typeof ASlugSettingsProfileRoute
   '/a/$slug/settings/tokens': typeof ASlugSettingsTokensRoute
-  '/a/$slug/subjects/$subjectId': typeof ASlugSubjectsSubjectIdRoute
   '/a/$slug/subjects/new': typeof ASlugSubjectsNewRoute
   '/a/$slug/invoices/': typeof ASlugInvoicesIndexRoute
   '/a/$slug/settings/': typeof ASlugSettingsIndexRoute
   '/a/$slug/subjects/': typeof ASlugSubjectsIndexRoute
   '/a/$slug/invoices/$invoiceId/edit': typeof ASlugInvoicesInvoiceIdEditRoute
+  '/a/$slug/subjects/$subjectId/edit': typeof ASlugSubjectsSubjectIdEditRoute
   '/a/$slug/invoices/$invoiceId/': typeof ASlugInvoicesInvoiceIdIndexRoute
+  '/a/$slug/subjects/$subjectId/': typeof ASlugSubjectsSubjectIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -209,6 +229,7 @@ export interface FileRouteTypes {
     | '/a/$slug'
     | '/a/$slug/settings'
     | '/a/$slug/dashboard'
+    | '/a/$slug/onboarding'
     | '/a/$slug/'
     | '/a/$slug/invoices/new'
     | '/a/$slug/settings/bank-accounts'
@@ -216,19 +237,21 @@ export interface FileRouteTypes {
     | '/a/$slug/settings/number-formats'
     | '/a/$slug/settings/profile'
     | '/a/$slug/settings/tokens'
-    | '/a/$slug/subjects/$subjectId'
     | '/a/$slug/subjects/new'
     | '/a/$slug/invoices/'
     | '/a/$slug/settings/'
     | '/a/$slug/subjects/'
     | '/a/$slug/invoices/$invoiceId/edit'
+    | '/a/$slug/subjects/$subjectId/edit'
     | '/a/$slug/invoices/$invoiceId/'
+    | '/a/$slug/subjects/$subjectId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/register'
     | '/a/$slug/dashboard'
+    | '/a/$slug/onboarding'
     | '/a/$slug'
     | '/a/$slug/invoices/new'
     | '/a/$slug/settings/bank-accounts'
@@ -236,13 +259,14 @@ export interface FileRouteTypes {
     | '/a/$slug/settings/number-formats'
     | '/a/$slug/settings/profile'
     | '/a/$slug/settings/tokens'
-    | '/a/$slug/subjects/$subjectId'
     | '/a/$slug/subjects/new'
     | '/a/$slug/invoices'
     | '/a/$slug/settings'
     | '/a/$slug/subjects'
     | '/a/$slug/invoices/$invoiceId/edit'
+    | '/a/$slug/subjects/$subjectId/edit'
     | '/a/$slug/invoices/$invoiceId'
+    | '/a/$slug/subjects/$subjectId'
   id:
     | '__root__'
     | '/'
@@ -251,6 +275,7 @@ export interface FileRouteTypes {
     | '/a/$slug'
     | '/a/$slug/settings'
     | '/a/$slug/dashboard'
+    | '/a/$slug/onboarding'
     | '/a/$slug/'
     | '/a/$slug/invoices/new'
     | '/a/$slug/settings/bank-accounts'
@@ -258,13 +283,14 @@ export interface FileRouteTypes {
     | '/a/$slug/settings/number-formats'
     | '/a/$slug/settings/profile'
     | '/a/$slug/settings/tokens'
-    | '/a/$slug/subjects/$subjectId'
     | '/a/$slug/subjects/new'
     | '/a/$slug/invoices/'
     | '/a/$slug/settings/'
     | '/a/$slug/subjects/'
     | '/a/$slug/invoices/$invoiceId/edit'
+    | '/a/$slug/subjects/$subjectId/edit'
     | '/a/$slug/invoices/$invoiceId/'
+    | '/a/$slug/subjects/$subjectId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -316,6 +342,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/a/$slug/dashboard'
       preLoaderRoute: typeof ASlugDashboardRouteImport
+      parentRoute: typeof ASlugRouteRoute
+    }
+    '/a/$slug/onboarding': {
+      id: '/a/$slug/onboarding'
+      path: '/onboarding'
+      fullPath: '/a/$slug/onboarding'
+      preLoaderRoute: typeof ASlugOnboardingRouteImport
       parentRoute: typeof ASlugRouteRoute
     }
     '/a/$slug/settings': {
@@ -388,13 +421,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ASlugSubjectsIndexRouteImport
       parentRoute: typeof ASlugRouteRoute
     }
-    '/a/$slug/subjects/$subjectId': {
-      id: '/a/$slug/subjects/$subjectId'
-      path: '/subjects/$subjectId'
-      fullPath: '/a/$slug/subjects/$subjectId'
-      preLoaderRoute: typeof ASlugSubjectsSubjectIdRouteImport
-      parentRoute: typeof ASlugRouteRoute
-    }
     '/a/$slug/subjects/new': {
       id: '/a/$slug/subjects/new'
       path: '/subjects/new'
@@ -414,6 +440,20 @@ declare module '@tanstack/react-router' {
       path: '/invoices/$invoiceId/edit'
       fullPath: '/a/$slug/invoices/$invoiceId/edit'
       preLoaderRoute: typeof ASlugInvoicesInvoiceIdEditRouteImport
+      parentRoute: typeof ASlugRouteRoute
+    }
+    '/a/$slug/subjects/$subjectId/': {
+      id: '/a/$slug/subjects/$subjectId/'
+      path: '/subjects/$subjectId'
+      fullPath: '/a/$slug/subjects/$subjectId/'
+      preLoaderRoute: typeof ASlugSubjectsSubjectIdIndexRouteImport
+      parentRoute: typeof ASlugRouteRoute
+    }
+    '/a/$slug/subjects/$subjectId/edit': {
+      id: '/a/$slug/subjects/$subjectId/edit'
+      path: '/subjects/$subjectId/edit'
+      fullPath: '/a/$slug/subjects/$subjectId/edit'
+      preLoaderRoute: typeof ASlugSubjectsSubjectIdEditRouteImport
       parentRoute: typeof ASlugRouteRoute
     }
   }
@@ -443,27 +483,31 @@ const ASlugSettingsRouteRouteWithChildren =
 interface ASlugRouteRouteChildren {
   ASlugSettingsRouteRoute: typeof ASlugSettingsRouteRouteWithChildren
   ASlugDashboardRoute: typeof ASlugDashboardRoute
+  ASlugOnboardingRoute: typeof ASlugOnboardingRoute
   ASlugIndexRoute: typeof ASlugIndexRoute
   ASlugInvoicesNewRoute: typeof ASlugInvoicesNewRoute
-  ASlugSubjectsSubjectIdRoute: typeof ASlugSubjectsSubjectIdRoute
   ASlugSubjectsNewRoute: typeof ASlugSubjectsNewRoute
   ASlugInvoicesIndexRoute: typeof ASlugInvoicesIndexRoute
   ASlugSubjectsIndexRoute: typeof ASlugSubjectsIndexRoute
   ASlugInvoicesInvoiceIdEditRoute: typeof ASlugInvoicesInvoiceIdEditRoute
+  ASlugSubjectsSubjectIdEditRoute: typeof ASlugSubjectsSubjectIdEditRoute
   ASlugInvoicesInvoiceIdIndexRoute: typeof ASlugInvoicesInvoiceIdIndexRoute
+  ASlugSubjectsSubjectIdIndexRoute: typeof ASlugSubjectsSubjectIdIndexRoute
 }
 
 const ASlugRouteRouteChildren: ASlugRouteRouteChildren = {
   ASlugSettingsRouteRoute: ASlugSettingsRouteRouteWithChildren,
   ASlugDashboardRoute: ASlugDashboardRoute,
+  ASlugOnboardingRoute: ASlugOnboardingRoute,
   ASlugIndexRoute: ASlugIndexRoute,
   ASlugInvoicesNewRoute: ASlugInvoicesNewRoute,
-  ASlugSubjectsSubjectIdRoute: ASlugSubjectsSubjectIdRoute,
   ASlugSubjectsNewRoute: ASlugSubjectsNewRoute,
   ASlugInvoicesIndexRoute: ASlugInvoicesIndexRoute,
   ASlugSubjectsIndexRoute: ASlugSubjectsIndexRoute,
   ASlugInvoicesInvoiceIdEditRoute: ASlugInvoicesInvoiceIdEditRoute,
+  ASlugSubjectsSubjectIdEditRoute: ASlugSubjectsSubjectIdEditRoute,
   ASlugInvoicesInvoiceIdIndexRoute: ASlugInvoicesInvoiceIdIndexRoute,
+  ASlugSubjectsSubjectIdIndexRoute: ASlugSubjectsSubjectIdIndexRoute,
 }
 
 const ASlugRouteRouteWithChildren = ASlugRouteRoute._addFileChildren(
