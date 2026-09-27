@@ -42,4 +42,10 @@ export const keys = {
 
   /** ARES nezávisí na účtu. */
   ares: (ico: string) => ['ares', ico] as const,
+
+  // Faktury + přehled
+  invoices: (slug: string) => [...keys.account(slug), 'invoices'] as const,
+  invoiceList: (slug: string, filters: object) => [...keys.invoices(slug), 'list', filters] as const,
+  invoiceDetail: (slug: string, id: number) => [...keys.invoices(slug), 'detail', id] as const,
+  dashboard: (slug: string, year?: number) => [...keys.account(slug), 'dashboard', year ?? 'current'] as const,
 }

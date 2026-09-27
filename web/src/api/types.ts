@@ -62,3 +62,29 @@ export type NumberFormat = ListItem<ResponseBody<'/api/accounts/{slug}/number-fo
 export type NumberFormatDocumentType = NumberFormat['document_type']
 export type CreateNumberFormatInput = RequestBody<'/api/accounts/{slug}/number-formats', 'post'>
 export type UpdateNumberFormatInput = RequestBody<'/api/accounts/{slug}/number-formats/{id}', 'patch'>
+
+// --- Invoices ---
+export type Invoice = ResponseBody<'/api/accounts/{slug}/invoices/{id}', 'get'>
+export type InvoiceList = ResponseBody<'/api/accounts/{slug}/invoices', 'get'>
+export type InvoiceSummary = ListItem<InvoiceList>
+export type InvoiceLine = Invoice['lines'][number]
+export type InvoicePayment = Invoice['payments'][number]
+export type VatRecapItem = Invoice['vat_recap'][number]
+export type CreateInvoiceInput = RequestBody<'/api/accounts/{slug}/invoices', 'post'>
+export type UpdateInvoiceInput = RequestBody<'/api/accounts/{slug}/invoices/{id}', 'patch'>
+export type InvoiceLineInput = NonNullable<CreateInvoiceInput['lines']>[number]
+export type InvoiceStatus = Invoice['status']
+export type DocumentType = Invoice['document_type']
+export type PaymentMethod = Invoice['payment_method']
+export type InvoiceAction = Operation<
+  '/api/accounts/{slug}/invoices/{id}/actions/{action}',
+  'post'
+>['parameters']['path']['action']
+export type InvoiceListQuery = NonNullable<
+  Operation<'/api/accounts/{slug}/invoices', 'get'>['parameters']['query']
+>
+export type CreatePaymentInput = RequestBody<'/api/accounts/{slug}/invoices/{id}/payments', 'post'>
+export type PaymentResult = ResponseBody<'/api/accounts/{slug}/invoices/{id}/payments', 'post'>
+
+// --- Dashboard ---
+export type Dashboard = ResponseBody<'/api/accounts/{slug}/dashboard', 'get'>

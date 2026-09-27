@@ -8,6 +8,12 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from '@/components/ui/drawer'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
 
@@ -20,6 +26,8 @@ export interface PageAction {
   variant?: 'default' | 'outline' | 'secondary' | 'ghost' | 'destructive'
   /** Na mobilu zůstane v hlavičce jako ikonové tlačítko (vyžaduje `icon`); ostatní jdou do menu. */
   primary?: boolean
+  /** Na desktopu schovat do menu „…“ (vedle ostatních tlačítek). */
+  overflow?: boolean
   disabled?: boolean
 }
 
@@ -113,9 +121,12 @@ export function PageHeader({
         </div>
         {actions.length > 0 && (
           <div className="flex shrink-0 items-center gap-2">
-            {actions.map((a) => (
-              <ActionButton key={a.label} action={a} />
-            ))}
+            {actions
+              .filter((a) => !a.overflow)
+              .map((a) => (
+                <ActionButton key={a.label} action={a} />
+              ))}
+            {actions.some((a) => a.overflow) && <OverflowMenu actions={actions.filter((a) => a.overflow)} />}
           </div>
         )}
       </div>
@@ -142,6 +153,34 @@ function ActionButton({ action, iconOnly }: { action: PageAction; iconOnly?: boo
       {Icon && <Icon data-icon="inline-start" className={cn(iconOnly && 'size-5')} />}
       {!iconOnly && action.label}
     </Button>
+  )
+}
+
+function OverflowMenu({ actions }: { actions: PageAction[] }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button variant="outline" size="icon" aria-label="Další akce" />}>
+        <EllipsisIcon />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-auto min-w-52">
+        {actions.map((a) => {
+          const Icon = a.icon
+          return (
+            <DropdownMenuItem
+              key={a.label}
+              variant={a.variant === 'destructive' ? 'destructive' : 'default'}
+              disabled={a.disabled}
+              onClick={a.onClick}
+              render={a.render}
+              className="py-1.5"
+            >
+              {Icon && <Icon />}
+              {a.label}
+            </DropdownMenuItem>
+          )
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
