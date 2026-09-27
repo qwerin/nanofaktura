@@ -279,57 +279,12 @@ type expenseID struct {
 	ID uint `path:"id"`
 }
 
-var expenseSorts = map[string]string{
-	"-issued_on": "issued_on DESC, id DESC",
-	"issued_on":  "issued_on, id",
-	"-number":    "number DESC, id DESC",
-	"due_on":     "due_on, id",
-	"-total":     "total DESC, id DESC",
-}
-
 func (s *server) listExpenses(ctx context.Context, in *struct {
 	PageParams
-	Status    string `query:"status" enum:"open,overdue,paid" doc:"Effective status: open excludes overdue expenses"`
-	Category  string `query:"category" doc:"Exact category"`
-	SubjectID uint   `query:"subject_id"`
-	Since     string `query:"since" format:"date" doc:"issued_on ≥ since"`
-	Until     string `query:"until" format:"date" doc:"issued_on ≤ until"`
-	Query     string `query:"query" doc:"Number, original number, supplier name, variable symbol or description (case-insensitive substring)"`
-	Sort      string `query:"sort" enum:"-issued_on,issued_on,-number,due_on,-total" default:"-issued_on"`
+	ExpenseFilter
 }) (*Out[ListResponse[ExpenseSummary]], error) {
 	today := s.today()
-	q := s.scoped(ctx).Model(&model.Expense{})
-	switch in.Status {
-	case "":
-	case billing.StatusOverdue:
-		q = q.Where("status = ? AND due_on <> '' AND due_on < ?", model.StatusOpen, today)
-	case model.StatusOpen:
-		q = q.Where("status = ? AND (due_on = '' OR due_on >= ?)", model.StatusOpen, today)
-	default:
-		q = q.Where("status = ?", in.Status)
-	}
-	if in.Category != "" {
-		q = q.Where("category = ?", in.Category)
-	}
-	if in.SubjectID != 0 {
-		q = q.Where("subject_id = ?", in.SubjectID)
-	}
-	if in.Since != "" {
-		q = q.Where("issued_on >= ?", in.Since)
-	}
-	if in.Until != "" {
-		q = q.Where("issued_on <= ?", in.Until)
-	}
-	if qs := strings.TrimSpace(in.Query); qs != "" {
-		like := likePattern(qs)
-		q = q.Where(`(LOWER(number) LIKE ? ESCAPE '\' OR LOWER(original_number) LIKE ? ESCAPE '\' OR LOWER(supplier_name) LIKE ? ESCAPE '\'`+
-			` OR variable_symbol LIKE ? ESCAPE '\' OR LOWER(description) LIKE ? ESCAPE '\')`, like, like, like, like, like)
-	}
-	order, ok := expenseSorts[in.Sort]
-	if !ok {
-		order = expenseSorts["-issued_on"]
-	}
-	return paginate(q.Order(order), in.PageParams, func(m *model.Expense) ExpenseSummary {
+	return paginate(in.ExpenseFilter.query(s.scoped(ctx), today), in.PageParams, func(m *model.Expense) ExpenseSummary {
 		return toExpenseSummary(m, today)
 	})
 }

@@ -29,6 +29,7 @@ func TestRoleMatrix(t *testing.T) {
 	all := auth.RolesAll
 	editors := auth.RolesEditors
 	managers := auth.RolesManagers
+	reporters := []string{"owner", "admin", "accountant"}
 	const missing = "/999999"
 
 	for _, op := range []struct {
@@ -111,6 +112,20 @@ func TestRoleMatrix(t *testing.T) {
 		{"POST", "/invoices" + missing + "/send", map[string]any{}, editors},
 		{"GET", "/invoices" + missing + "/emails", nil, all},
 		{"GET", "/email-templates/preview", nil, all},
+
+		{"GET", "/invoices" + missing + "/isdoc", nil, all},
+		{"GET", "/pdf-preview?template=nope", nil, all},
+		{"GET", "/exports/invoices.csv?status=nope", nil, all},
+		{"GET", "/exports/invoices.xlsx?status=nope", nil, all},
+		{"GET", "/exports/subjects.csv?type=nope", nil, all},
+		{"GET", "/exports/subjects.xlsx?type=nope", nil, all},
+		{"GET", "/exports/expenses.csv?status=nope", nil, all},
+		{"GET", "/exports/expenses.xlsx?status=nope", nil, all},
+		{"GET", "/exports/pdf.zip?status=nope", nil, all},
+		{"GET", "/reports/vat", nil, reporters},
+		{"GET", "/reports/vat/dphdp3.xml", nil, reporters},
+		{"GET", "/reports/vat/dphkh1.xml", nil, reporters},
+		{"GET", "/reports/overview?year=1", nil, reporters},
 	} {
 		for role, c := range clients {
 			res, body := c.do(op.method, c.acct(op.path), op.body)

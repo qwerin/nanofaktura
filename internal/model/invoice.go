@@ -46,6 +46,7 @@ type Invoice struct {
 	CancelledAt           *time.Time
 	UncollectibleAt       *time.Time
 	LockedAt              *time.Time
+	PublicViewedAt        *time.Time // first view of the public client link
 
 	Currency            string `gorm:"not null"`
 	ExchangeRate        string `gorm:"not null"`

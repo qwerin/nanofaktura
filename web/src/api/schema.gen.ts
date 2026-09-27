@@ -305,6 +305,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/accounts/{slug}/exports/expenses.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Expenses (csv)
+         * @description Allowed roles: owner, admin, accountant, member.
+         */
+        get: operations["export-expenses-csv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/exports/expenses.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Expenses (xlsx)
+         * @description Allowed roles: owner, admin, accountant, member.
+         */
+        get: operations["export-expenses-xlsx"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/exports/invoices.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Invoices (csv)
+         * @description Allowed roles: owner, admin, accountant, member.
+         */
+        get: operations["export-invoices-csv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/exports/invoices.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Invoices (xlsx)
+         * @description Allowed roles: owner, admin, accountant, member.
+         */
+        get: operations["export-invoices-xlsx"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/exports/pdf.zip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * ZIP of invoice PDFs (optionally with ISDOC)
+         * @description Allowed roles: owner, admin, accountant, member.
+         */
+        get: operations["export-pdf-zip"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/exports/subjects.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Subjects (csv)
+         * @description Allowed roles: owner, admin, accountant, member.
+         */
+        get: operations["export-subjects-csv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/exports/subjects.xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Subjects (xlsx)
+         * @description Allowed roles: owner, admin, accountant, member.
+         */
+        get: operations["export-subjects-xlsx"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/accounts/{slug}/invitations": {
         parameters: {
             query?: never;
@@ -460,6 +600,23 @@ export interface paths {
         };
         /** Get API accounts by slug invoices by ID emails */
         get: operations["get-api-accounts-by-slug-invoices-by-id-emails"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/invoices/{id}/isdoc": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Invoice as ISDOC 6.0.2 XML */
+        get: operations["get-invoice-isdoc"];
         put?: never;
         post?: never;
         delete?: never;
@@ -706,6 +863,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/accounts/{slug}/pdf-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** PDF template preview with sample data */
+        get: operations["get-pdf-preview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/accounts/{slug}/price-items": {
         parameters: {
             query?: never;
@@ -893,6 +1067,86 @@ export interface paths {
          * @description Allowed roles: owner, admin, member.
          */
         post: operations["post-api-accounts-by-slug-recurring-by-id-run-now"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/reports/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get API accounts by slug reports overview
+         * @description Allowed roles: owner, admin, accountant.
+         */
+        get: operations["get-api-accounts-by-slug-reports-overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/reports/vat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get API accounts by slug reports vat
+         * @description Allowed roles: owner, admin, accountant.
+         */
+        get: operations["get-api-accounts-by-slug-reports-vat"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/reports/vat/dphdp3.xml": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * VAT return as EPO XML (DPHDP3)
+         * @description Allowed roles: owner, admin, accountant.
+         */
+        get: operations["get-report-vat-dphdp3"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/reports/vat/dphkh1.xml": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * VAT control statement as EPO XML (DPHKH1)
+         * @description Allowed roles: owner, admin, accountant.
+         */
+        get: operations["get-report-vat-dphkh1"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1217,6 +1471,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/invoices/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Invoice behind a public client link */
+        get: operations["get-public-invoice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/invoices/{token}/isdoc": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** ISDOC of a public invoice */
+        get: operations["get-public-invoice-isdoc"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/invoices/{token}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** PDF of a public invoice */
+        get: operations["get-public-invoice-pdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/vat-registry/{dic}": {
         parameters: {
             query?: never;
@@ -1255,6 +1560,13 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        A1Row: {
+            /** Format: int64 */
+            base: number;
+            customer_vat_no: string;
+            number: string;
+            taxable_fulfillment_due: string;
+        };
         APIToken: {
             /** Format: date-time */
             created_at: string;
@@ -1270,6 +1582,10 @@ export interface components {
             name: string;
         };
         Account: {
+            /** @description EPO code of the territorial workplace, e.g. 2001 */
+            c_pracufo: string;
+            /** @description EPO code of the tax office (finanční úřad), e.g. 451 */
+            c_ufo: string;
             city: string;
             country: string;
             /** Format: date-time */
@@ -1324,6 +1640,11 @@ export interface components {
             /** @enum {string} */
             vat_mode: "non_vat_payer" | "vat_payer" | "identified_person";
             vat_no: string;
+            /**
+             * @description VAT period of a VAT payer (reports)
+             * @enum {string}
+             */
+            vat_period: "month" | "quarter";
             web: string;
             zip: string;
         };
@@ -1331,6 +1652,10 @@ export interface components {
             name: string;
         };
         AccountPatch: {
+            /** @description EPO c_pracufo; empty clears */
+            c_pracufo?: string;
+            /** @description EPO c_ufo; empty clears */
+            c_ufo?: string;
             city?: string;
             /** @description ISO 3166-1 alpha-2 */
             country?: string;
@@ -1374,6 +1699,8 @@ export interface components {
             /** @enum {string} */
             vat_mode?: "non_vat_payer" | "vat_payer" | "identified_person";
             vat_no?: string;
+            /** @enum {string} */
+            vat_period?: "month" | "quarter";
             web?: string;
             zip?: string;
         };
@@ -1440,6 +1767,13 @@ export interface components {
             number?: string;
             swift_bic?: string;
         };
+        ControlStatement: {
+            a1: components["schemas"]["A1Row"][];
+            a4: components["schemas"]["DocumentRow"][];
+            a5: components["schemas"]["RateSums"];
+            b2: components["schemas"]["DocumentRow"][];
+            b3: components["schemas"]["RateSums"];
+        };
         CreatedAPIToken: {
             /** Format: date-time */
             created_at: string;
@@ -1490,6 +1824,16 @@ export interface components {
             unpaid_total: number;
             /** Format: int64 */
             year: number;
+        };
+        DocumentRow: {
+            /** @description 21 % */
+            basic: components["schemas"]["Pair"];
+            number: string;
+            /** @description 12 % */
+            reduced: components["schemas"]["Pair"];
+            taxable_fulfillment_due: string;
+            /** @description Customer (A.4) or supplier (B.2) DIČ */
+            vat_no: string;
         };
         EmailLog: {
             attachments: string[];
@@ -1880,9 +2224,47 @@ export interface components {
             /** Format: int64 */
             vat_total: number;
         };
+        FlatRate: {
+            /**
+             * Format: int64
+             * @description Statutory maximum of the expenses (haléře)
+             */
+            cap: number;
+            /**
+             * Format: int64
+             * @description min(income × percent, cap)
+             */
+            expenses: number;
+            /** Format: int64 */
+            percent: number;
+            /**
+             * Format: int64
+             * @description income − expenses
+             */
+            tax_base: number;
+        };
         Health: {
             /** @example ok */
             status: string;
+        };
+        IncomeTax: {
+            /** @description Flat-rate expense options (paušál) with statutory caps */
+            flat_rates: components["schemas"]["FlatRate"][];
+            /**
+             * Format: int64
+             * @description Payments received in the year (without VAT for VAT payers)
+             */
+            income: number;
+            /**
+             * Format: int64
+             * @description Tax-deductible expenses paid in the year (without deductible VAT for VAT payers)
+             */
+            real_expenses: number;
+            /**
+             * Format: int64
+             * @description income − real_expenses
+             */
+            real_tax_base: number;
         };
         Invitation: {
             /** Format: date-time */
@@ -1964,6 +2346,11 @@ export interface components {
             private_note: string;
             /** @description Token of the public client link */
             public_token: string;
+            /**
+             * Format: date-time
+             * @description First view of the public client link
+             */
+            public_viewed_at?: string;
             /**
              * Format: int64
              * @description Correction → corrected invoice, final invoice → proforma
@@ -2200,6 +2587,8 @@ export interface components {
             your_zip?: string;
         };
         InvoiceSend: {
+            /** @description Also attach the ISDOC XML (default false) */
+            attach_isdoc?: boolean;
             /** @description Default true */
             attach_pdf?: boolean;
             /** @description Default: the template + signature; placeholders are rendered here too */
@@ -2261,6 +2650,11 @@ export interface components {
             private_note: string;
             /** @description Token of the public client link */
             public_token: string;
+            /**
+             * Format: date-time
+             * @description First view of the public client link
+             */
+            public_viewed_at?: string;
             /**
              * Format: int64
              * @description Correction → corrected invoice, final invoice → proforma
@@ -2511,6 +2905,41 @@ export interface components {
             /** @example 2026-0001 */
             number: string;
         };
+        Overview: {
+            /**
+             * Format: double
+             * @description Mean of paid_on − issued_on of invoices issued in the year and paid; null without data
+             */
+            average_days_to_pay: number | null;
+            /** @example CZK */
+            currency: string;
+            /** @description Σ total of expenses by issued_on */
+            expenses_by_month: number[];
+            /** Format: int64 */
+            expenses_total: number;
+            income_tax: components["schemas"]["IncomeTax"];
+            /**
+             * Format: int64
+             * @description Invoices in average_days_to_pay
+             */
+            paid_count: number;
+            profit_by_month: number[];
+            /** Format: int64 */
+            profit_total: number;
+            /** @description Σ total of invoices and corrections by issued_on (not cancelled) */
+            revenue_by_month: number[];
+            /** Format: int64 */
+            revenue_total: number;
+            top_customers: components["schemas"]["TopCustomer"][];
+            /** Format: int64 */
+            year: number;
+        };
+        Pair: {
+            /** Format: int64 */
+            base: number;
+            /** Format: int64 */
+            vat: number;
+        };
         Payment: {
             /** Format: int64 */
             amount: number;
@@ -2615,6 +3044,99 @@ export interface components {
             unit_price?: number;
             /** Format: int32 */
             vat_rate_bps?: number;
+        };
+        PublicInvoice: {
+            bank_account: string;
+            /** @description The document was cancelled (still viewable, show it as void) */
+            cancelled: boolean;
+            currency: string;
+            custom_payment_method: string;
+            customer: components["schemas"]["PublicParty"];
+            /** @enum {string} */
+            document_type: "invoice" | "proforma" | "correction";
+            due_on: string;
+            exchange_rate: string;
+            footer_note: string;
+            iban: string;
+            issued_on: string;
+            language: string;
+            lines: components["schemas"]["PublicInvoiceLine"][];
+            note: string;
+            number: string;
+            order_number: string;
+            /** Format: int64 */
+            paid_amount: number;
+            paid_on: string;
+            /** @enum {string} */
+            payment_method: "bank" | "cash" | "card" | "cod" | "paypal" | "custom";
+            prices_include_vat: boolean;
+            /** @description Corrected invoice / proforma number */
+            related_number?: string;
+            /** Format: int64 */
+            remaining_amount: number;
+            reverse_charge: boolean;
+            /** Format: int64 */
+            rounding: number;
+            /** @description QR Platba (SPAYD) payload; empty when there is nothing to pay by a Czech bank transfer */
+            spayd: string;
+            /** @enum {string} */
+            status: "open" | "sent" | "overdue" | "paid" | "cancelled" | "uncollectible";
+            /** Format: int64 */
+            subtotal: number;
+            supplier: components["schemas"]["PublicParty"];
+            swift_bic: string;
+            taxable_fulfillment_due: string;
+            /** Format: int64 */
+            total: number;
+            variable_symbol: string;
+            vat_recap: components["schemas"]["VatRecapItem"][];
+            /** Format: int64 */
+            vat_total: number;
+        };
+        PublicInvoiceLine: {
+            /** Format: int64 */
+            base: number;
+            name: string;
+            quantity: string;
+            /** Format: int64 */
+            total: number;
+            unit_name: string;
+            /** Format: int64 */
+            unit_price: number;
+            /** Format: int64 */
+            vat: number;
+            /** Format: int32 */
+            vat_rate_bps: number;
+        };
+        PublicParty: {
+            city: string;
+            country: string;
+            /** @description Supplier only: contact e-mail */
+            email?: string;
+            /** @description Customer's contact person */
+            full_name?: string;
+            name: string;
+            /** @description Supplier only */
+            phone?: string;
+            /** @description Supplier's registration (commercial register) */
+            registered_by?: string;
+            registration_no: string;
+            street: string;
+            /**
+             * @description Supplier only
+             * @enum {string}
+             */
+            vat_mode?: "non_vat_payer" | "vat_payer" | "identified_person";
+            vat_no: string;
+            /** @description Supplier only */
+            web?: string;
+            zip: string;
+        };
+        RateSums: {
+            /** @description 21 % */
+            basic: components["schemas"]["Pair"];
+            /** @description 12 % */
+            reduced: components["schemas"]["Pair"];
         };
         Recurring: {
             active: boolean;
@@ -2993,6 +3515,18 @@ export interface components {
             subject_id?: number;
             tags?: string[] | null;
         };
+        TopCustomer: {
+            /** Format: int64 */
+            count: number;
+            name: string;
+            /** Format: int64 */
+            subject_id: number;
+            /**
+             * Format: int64
+             * @description Σ total of invoices and corrections (CZK)
+             */
+            total: number;
+        };
         User: {
             email: string;
             /** Format: int64 */
@@ -3031,6 +3565,75 @@ export interface components {
             /** @example CZ27082440 */
             vat_no: string;
             zip: string;
+        };
+        VatReport: {
+            /** @description Control statement (DPHKH1) */
+            control: components["schemas"]["ControlStatement"];
+            /** @example CZK */
+            currency: string;
+            from: string;
+            /** @example 2026-Q3 */
+            period: string;
+            /** @description Rows of the VAT return (DPHDP3) */
+            return: components["schemas"]["VatReturn"];
+            to: string;
+            /**
+             * @description Account setting
+             * @enum {string}
+             */
+            vat_period: "month" | "quarter";
+            /** @description Documents that could not be classified */
+            warnings: string[];
+        };
+        VatReturn: {
+            /** @description ř. 1: taxable supplies at the basic rate */
+            r1: components["schemas"]["Pair"];
+            /** @description ř. 2: taxable supplies at the reduced rate */
+            r2: components["schemas"]["Pair"];
+            /**
+             * Format: int64
+             * @description ř. 21: services with place of supply in another EU member state (§ 102)
+             */
+            r21: number;
+            /**
+             * Format: int64
+             * @description ř. 25: domestic reverse-charge supplies (§ 92a), supplier
+             */
+            r25: number;
+            /**
+             * Format: int64
+             * @description ř. 26: other supplies with right to deduction (e.g. services outside the EU)
+             */
+            r26: number;
+            /** @description ř. 40: received taxable supplies at the basic rate (full deduction) */
+            r40: components["schemas"]["Pair"];
+            /** @description ř. 41: received taxable supplies at the reduced rate (full deduction) */
+            r41: components["schemas"]["Pair"];
+            /**
+             * Format: int64
+             * @description ř. 46: total deduction in full
+             */
+            r46: number;
+            /**
+             * Format: int64
+             * @description ř. 62: output tax
+             */
+            r62: number;
+            /**
+             * Format: int64
+             * @description ř. 63: deduction
+             */
+            r63: number;
+            /**
+             * Format: int64
+             * @description ř. 64: own tax (62 − 63 when positive)
+             */
+            r64: number;
+            /**
+             * Format: int64
+             * @description ř. 65: excess deduction (63 − 62 when positive)
+             */
+            r65: number;
         };
         ViesResult: {
             /** @description Lines separated by \n; empty when not disclosed */
@@ -3939,6 +4542,304 @@ export interface operations {
             };
         };
     };
+    "export-expenses-csv": {
+        parameters: {
+            query?: {
+                /** @description Effective status: open excludes overdue expenses */
+                status?: "open" | "overdue" | "paid";
+                /** @description Exact category */
+                category?: string;
+                subject_id?: number;
+                /** @description issued_on ≥ since */
+                since?: string;
+                /** @description issued_on ≤ until */
+                until?: string;
+                /** @description Number, original number, supplier name, variable symbol or description (case-insensitive substring) */
+                query?: string;
+                sort?: "-issued_on" | "issued_on" | "-number" | "due_on" | "-total";
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Expenses */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "export-expenses-xlsx": {
+        parameters: {
+            query?: {
+                /** @description Effective status: open excludes overdue expenses */
+                status?: "open" | "overdue" | "paid";
+                /** @description Exact category */
+                category?: string;
+                subject_id?: number;
+                /** @description issued_on ≥ since */
+                since?: string;
+                /** @description issued_on ≤ until */
+                until?: string;
+                /** @description Number, original number, supplier name, variable symbol or description (case-insensitive substring) */
+                query?: string;
+                sort?: "-issued_on" | "issued_on" | "-number" | "due_on" | "-total";
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Expenses */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "export-invoices-csv": {
+        parameters: {
+            query?: {
+                /** @description Effective status: open/sent exclude overdue documents */
+                status?: "open" | "sent" | "overdue" | "paid" | "cancelled" | "uncollectible";
+                document_type?: "invoice" | "proforma" | "correction";
+                subject_id?: number;
+                /** @description issued_on ≥ since */
+                since?: string;
+                /** @description issued_on ≤ until */
+                until?: string;
+                /** @description Number, client name or variable symbol (case-insensitive substring) */
+                query?: string;
+                sort?: "-issued_on" | "issued_on" | "-number" | "due_on" | "-total";
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Invoices */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "export-invoices-xlsx": {
+        parameters: {
+            query?: {
+                /** @description Effective status: open/sent exclude overdue documents */
+                status?: "open" | "sent" | "overdue" | "paid" | "cancelled" | "uncollectible";
+                document_type?: "invoice" | "proforma" | "correction";
+                subject_id?: number;
+                /** @description issued_on ≥ since */
+                since?: string;
+                /** @description issued_on ≤ until */
+                until?: string;
+                /** @description Number, client name or variable symbol (case-insensitive substring) */
+                query?: string;
+                sort?: "-issued_on" | "issued_on" | "-number" | "due_on" | "-total";
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Invoices */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "export-pdf-zip": {
+        parameters: {
+            query?: {
+                /** @description Effective status: open/sent exclude overdue documents */
+                status?: "open" | "sent" | "overdue" | "paid" | "cancelled" | "uncollectible";
+                document_type?: "invoice" | "proforma" | "correction";
+                subject_id?: number;
+                /** @description issued_on ≥ since */
+                since?: string;
+                /** @description issued_on ≤ until */
+                until?: string;
+                /** @description Number, client name or variable symbol (case-insensitive substring) */
+                query?: string;
+                sort?: "-issued_on" | "issued_on" | "-number" | "due_on" | "-total";
+                /** @description Also include the ISDOC XML of every document */
+                isdoc?: boolean;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ZIP archive */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "export-subjects-csv": {
+        parameters: {
+            query?: {
+                /** @description Case-insensitive search in name, IČO and email */
+                query?: string;
+                /** @description customer/supplier also match subjects of type both */
+                type?: "customer" | "supplier" | "both";
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Subjects */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "export-subjects-xlsx": {
+        parameters: {
+            query?: {
+                /** @description Case-insensitive search in name, IČO and email */
+                query?: string;
+                /** @description customer/supplier also match subjects of type both */
+                type?: "customer" | "supplier" | "both";
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Subjects */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "get-api-accounts-by-slug-invitations": {
         parameters: {
             query?: {
@@ -4311,6 +5212,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListResponseEmailLog"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-invoice-isdoc": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ISDOC document */
+            200: {
+                headers: {
+                    "Content-Disposition"?: string;
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/xml": string;
                 };
             };
             /** @description Error */
@@ -4888,6 +5824,47 @@ export interface operations {
             };
         };
     };
+    "get-pdf-preview": {
+        parameters: {
+            query?: {
+                /** @description PDF template (default classic) */
+                template?: "classic" | "modern" | "minimal";
+                /** @description Language (default: account default language) */
+                lang?: "cs" | "en" | "sk" | "de";
+                /** @description Default invoice */
+                document_type?: "invoice" | "proforma" | "correction";
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PDF document */
+            200: {
+                headers: {
+                    "Content-Disposition"?: string;
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "get-api-accounts-by-slug-price-items": {
         parameters: {
             query?: {
@@ -5432,6 +6409,150 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Invoice"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-reports-overview": {
+        parameters: {
+            query?: {
+                /** @description Default: current year */
+                year?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Overview"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-reports-vat": {
+        parameters: {
+            query?: {
+                /** @description YYYY-MM or YYYY-Qn; default: the previous period per the account's vat_period */
+                period?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VatReport"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-report-vat-dphdp3": {
+        parameters: {
+            query?: {
+                /** @description YYYY-MM or YYYY-Qn; default: the previous period per the account's vat_period */
+                period?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description VAT return as EPO XML (DPHDP3) */
+            200: {
+                headers: {
+                    "Content-Disposition"?: string;
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/xml": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-report-vat-dphkh1": {
+        parameters: {
+            query?: {
+                /** @description YYYY-MM or YYYY-Qn; default: the previous period per the account's vat_period */
+                period?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description VAT control statement as EPO XML (DPHKH1) */
+            200: {
+                headers: {
+                    "Content-Disposition"?: string;
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/xml": string;
                 };
             };
             /** @description Error */
@@ -6314,6 +7435,106 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeAccount"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-public-invoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Public token of the invoice */
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicInvoice"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-public-invoice-isdoc": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Public token of the invoice */
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ISDOC document */
+            200: {
+                headers: {
+                    "Content-Disposition"?: string;
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/xml": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-public-invoice-pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Public token of the invoice */
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PDF document */
+            200: {
+                headers: {
+                    "Content-Disposition"?: string;
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
                 };
             };
             /** @description Error */

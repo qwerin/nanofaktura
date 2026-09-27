@@ -26,6 +26,9 @@ type Account struct {
 	DefaultFooterNote    string
 	RoundTotal           bool
 	DefaultVatRateBps    int32
+	VatPeriod            string
+	TaxOffice            string
+	TaxOfficeBranch      string
 	LogoAttachmentID     *uint // image Attachment of this account, used in PDFs
 	StampAttachmentID    *uint // signature/stamp image Attachment
 	CreatedAt            time.Time

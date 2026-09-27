@@ -40,6 +40,9 @@ type Account struct {
 	DefaultVatRateBps    int32     `json:"default_vat_rate_bps"`
 	LogoAttachmentID     *uint     `json:"logo_attachment_id,omitempty" doc:"Logo image attachment (PNG/JPEG)"`
 	StampAttachmentID    *uint     `json:"stamp_attachment_id,omitempty" doc:"Signature/stamp image attachment (PNG/JPEG)"`
+	VatPeriod            string    `json:"vat_period" enum:"month,quarter" doc:"VAT period of a VAT payer (reports)"`
+	TaxOffice            string    `json:"c_ufo" doc:"EPO code of the tax office (finanční úřad), e.g. 451"`
+	TaxOfficeBranch      string    `json:"c_pracufo" doc:"EPO code of the territorial workplace, e.g. 2001"`
 	CreatedAt            time.Time `json:"created_at"`
 	UpdatedAt            time.Time `json:"updated_at"`
 
@@ -74,6 +77,9 @@ type AccountPatch struct {
 	DefaultVatRateBps    *int32  `json:"default_vat_rate_bps,omitempty" minimum:"0" maximum:"10000"`
 	LogoAttachmentID     *uint   `json:"logo_attachment_id,omitempty" doc:"PNG/JPEG attachment of this account; 0 removes the logo"`
 	StampAttachmentID    *uint   `json:"stamp_attachment_id,omitempty" doc:"PNG/JPEG attachment of this account; 0 removes the stamp"`
+	VatPeriod            *string `json:"vat_period,omitempty" enum:"month,quarter"`
+	TaxOffice            *string `json:"c_ufo,omitempty" pattern:"^[0-9]{0,3}$" doc:"EPO c_ufo; empty clears"`
+	TaxOfficeBranch      *string `json:"c_pracufo,omitempty" pattern:"^[0-9]{0,4}$" doc:"EPO c_pracufo; empty clears"`
 
 	AccountEmailSettingsPatch // emails.go
 }
@@ -87,6 +93,7 @@ func toAccount(a *model.Account, role string) Account {
 		DefaultLanguage: a.DefaultLanguage, DefaultNote: a.DefaultNote, DefaultFooterNote: a.DefaultFooterNote,
 		RoundTotal: a.RoundTotal, DefaultVatRateBps: a.DefaultVatRateBps,
 		LogoAttachmentID: a.LogoAttachmentID, StampAttachmentID: a.StampAttachmentID, CreatedAt: a.CreatedAt, UpdatedAt: a.UpdatedAt,
+		VatPeriod: defaultStr(a.VatPeriod, model.VatPeriodMonth), TaxOffice: a.TaxOffice, TaxOfficeBranch: a.TaxOfficeBranch,
 		AccountEmailSettings: toAccountEmailSettings(a),
 	}
 }
@@ -192,6 +199,9 @@ func (s *server) patchAccount(ctx context.Context, in *struct{ Body AccountPatch
 	apply(&acc.DefaultFooterNote, p.DefaultFooterNote)
 	apply(&acc.RoundTotal, p.RoundTotal)
 	apply(&acc.DefaultVatRateBps, p.DefaultVatRateBps)
+	apply(&acc.VatPeriod, p.VatPeriod)
+	apply(&acc.TaxOffice, p.TaxOffice)
+	apply(&acc.TaxOfficeBranch, p.TaxOfficeBranch)
 	if acc.Name == "" {
 		return nil, invalid("name", "name must not be empty")
 	}

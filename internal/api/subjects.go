@@ -162,21 +162,9 @@ func (s *server) registerSubjects(g huma.API) {
 
 func (s *server) listSubjects(ctx context.Context, in *struct {
 	PageParams
-	Query string `query:"query" doc:"Case-insensitive search in name, IČO and email"`
-	Type  string `query:"type" enum:"customer,supplier,both" doc:"customer/supplier also match subjects of type both"`
+	SubjectFilter
 }) (*Out[ListResponse[Subject]], error) {
-	q := s.scoped(ctx).Model(&model.Subject{}).Order("LOWER(name), id")
-	if v := strings.ToLower(strings.TrimSpace(in.Query)); v != "" {
-		like := "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(v) + "%"
-		q = q.Where(`LOWER(name) LIKE ? ESCAPE '\' OR registration_no LIKE ? ESCAPE '\' OR LOWER(email) LIKE ? ESCAPE '\'`, like, like, like)
-	}
-	switch in.Type {
-	case model.SubjectCustomer, model.SubjectSupplier:
-		q = q.Where("type IN ?", []string{in.Type, model.SubjectBoth})
-	case model.SubjectBoth:
-		q = q.Where("type = ?", model.SubjectBoth)
-	}
-	return paginate(q, in.PageParams, toSubject)
+	return paginate(in.SubjectFilter.query(s.scoped(ctx)), in.PageParams, toSubject)
 }
 
 func (s *server) getSubject(ctx context.Context, in *struct {

@@ -15,6 +15,12 @@ const (
 	VatModeIdentifiedPerson = "identified_person"
 )
 
+// VAT periods of a VAT payer (Account.VatPeriod; "" means month).
+const (
+	VatPeriodMonth   = "month"
+	VatPeriodQuarter = "quarter"
+)
+
 // Document types (invoices and number formats).
 const (
 	DocInvoice    = "invoice"

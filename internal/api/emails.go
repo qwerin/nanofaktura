@@ -321,7 +321,9 @@ type InvoiceSend struct {
 	Subject   *string  `json:"subject,omitempty" maxLength:"500" doc:"Default: the account template of kind in the invoice language"`
 	Body      *string  `json:"body,omitempty" maxLength:"20000" doc:"Default: the template + signature; placeholders are rendered here too"`
 	AttachPDF *bool    `json:"attach_pdf,omitempty" doc:"Default true"`
-	Kind      string   `json:"kind,omitempty" enum:"invoice,reminder,paid_thanks" doc:"Default invoice; invoice marks an open invoice as sent"`
+	// ISDOC 6.0.2 XML of the invoice as a second attachment.
+	AttachISDOC bool   `json:"attach_isdoc,omitempty" doc:"Also attach the ISDOC XML (default false)"`
+	Kind        string `json:"kind,omitempty" enum:"invoice,reminder,paid_thanks" doc:"Default invoice; invoice marks an open invoice as sent"`
 }
 
 // EmailPreview is a rendered e-mail (GET /email-templates/preview).
@@ -369,6 +371,7 @@ func (s *server) sendInvoice(ctx context.Context, in *struct {
 	apply(&attach, b.AttachPDF)
 	log, err := s.sendInvoiceEmail(ctx, inv, emailRequest{
 		kind: defaultStr(b.Kind, model.EmailInvoice), to: to, cc: cc, subject: b.Subject, body: b.Body, attachPDF: attach,
+		attachISDOC: b.AttachISDOC,
 	})
 	if err != nil {
 		var se huma.StatusError
@@ -440,6 +443,7 @@ type emailRequest struct {
 	to, cc        []string
 	subject, body *string // nil = template
 	attachPDF     bool
+	attachISDOC   bool
 	reminderStep  int  // automatic reminders
 	automatic     bool // scheduler / automatic rule
 }
@@ -512,6 +516,15 @@ func (s *server) sendInvoiceEmail(ctx context.Context, inv *model.Invoice, req e
 		}
 		name := pdfFilename(inv.Number)
 		msg.Attachments = append(msg.Attachments, mail.Attachment{Filename: name, ContentType: "application/pdf", Data: b})
+		log.Attachments = append(log.Attachments, name)
+	}
+	if sendErr == nil && req.attachISDOC {
+		b, err := s.renderISDOC(ctx, inv)
+		if err != nil {
+			return nil, err
+		}
+		name := docFilename(inv.Number, ".isdoc")
+		msg.Attachments = append(msg.Attachments, mail.Attachment{Filename: name, ContentType: "application/xml", Data: b})
 		log.Attachments = append(log.Attachments, name)
 	}
 	if sendErr == nil {

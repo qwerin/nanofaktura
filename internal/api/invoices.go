@@ -64,6 +64,7 @@ type InvoiceSummary struct {
 	CancelledAt           *time.Time `json:"cancelled_at,omitempty"`
 	UncollectibleAt       *time.Time `json:"uncollectible_at,omitempty"`
 	LockedAt              *time.Time `json:"locked_at,omitempty"`
+	PublicViewedAt        *time.Time `json:"public_viewed_at,omitempty" doc:"First view of the public client link"`
 
 	Currency            string `json:"currency"`
 	ExchangeRate        string `json:"exchange_rate"`
@@ -157,6 +158,7 @@ func toInvoiceSummary(m *model.Invoice, today string) InvoiceSummary {
 
 		IssuedOn: m.IssuedOn, TaxableFulfillmentDue: m.TaxableFulfillmentDue, DueDays: m.DueDays, DueOn: m.DueOn,
 		SentAt: m.SentAt, PaidOn: m.PaidOn, CancelledAt: m.CancelledAt, UncollectibleAt: m.UncollectibleAt, LockedAt: m.LockedAt,
+		PublicViewedAt: m.PublicViewedAt,
 
 		Currency: m.Currency, ExchangeRate: m.ExchangeRate, Language: m.Language, PaymentMethod: m.PaymentMethod,
 		CustomPaymentMethod: m.CustomPaymentMethod, BankAccountID: m.BankAccountID, BankAccount: m.BankAccount,
@@ -342,57 +344,12 @@ type invoiceID struct {
 
 func (s *server) today() string { return billing.Today(s.deps.Now()) }
 
-var invoiceSorts = map[string]string{
-	"-issued_on": "issued_on DESC, id DESC",
-	"issued_on":  "issued_on, id",
-	"-number":    "number DESC, id DESC",
-	"due_on":     "due_on, id",
-	"-total":     "total DESC, id DESC",
-}
-
 func (s *server) listInvoices(ctx context.Context, in *struct {
 	PageParams
-	Status       string `query:"status" enum:"open,sent,overdue,paid,cancelled,uncollectible" doc:"Effective status: open/sent exclude overdue documents"`
-	DocumentType string `query:"document_type" enum:"invoice,proforma,correction"`
-	SubjectID    uint   `query:"subject_id"`
-	Since        string `query:"since" format:"date" doc:"issued_on ≥ since"`
-	Until        string `query:"until" format:"date" doc:"issued_on ≤ until"`
-	Query        string `query:"query" doc:"Number, client name or variable symbol (case-insensitive substring)"`
-	Sort         string `query:"sort" enum:"-issued_on,issued_on,-number,due_on,-total" default:"-issued_on"`
+	InvoiceFilter
 }) (*Out[ListResponse[InvoiceSummary]], error) {
 	today := s.today()
-	q := s.scoped(ctx).Model(&model.Invoice{})
-	notOverdue := "(due_on = '' OR due_on >= ?)"
-	switch in.Status {
-	case "":
-	case billing.StatusOverdue:
-		q = q.Where("status IN ? AND due_on <> '' AND due_on < ?", []string{model.StatusOpen, model.StatusSent}, today)
-	case model.StatusOpen, model.StatusSent:
-		q = q.Where("status = ? AND "+notOverdue, in.Status, today)
-	default:
-		q = q.Where("status = ?", in.Status)
-	}
-	if in.DocumentType != "" {
-		q = q.Where("document_type = ?", in.DocumentType)
-	}
-	if in.SubjectID != 0 {
-		q = q.Where("subject_id = ?", in.SubjectID)
-	}
-	if in.Since != "" {
-		q = q.Where("issued_on >= ?", in.Since)
-	}
-	if in.Until != "" {
-		q = q.Where("issued_on <= ?", in.Until)
-	}
-	if qs := strings.TrimSpace(in.Query); qs != "" {
-		like := "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(strings.ToLower(qs)) + "%"
-		q = q.Where(`(LOWER(number) LIKE ? ESCAPE '\' OR LOWER(client_name) LIKE ? ESCAPE '\' OR variable_symbol LIKE ? ESCAPE '\')`, like, like, like)
-	}
-	order, ok := invoiceSorts[in.Sort]
-	if !ok {
-		order = invoiceSorts["-issued_on"]
-	}
-	return paginate(q.Order(order), in.PageParams, func(m *model.Invoice) InvoiceSummary {
+	return paginate(in.InvoiceFilter.query(s.scoped(ctx), today), in.PageParams, func(m *model.Invoice) InvoiceSummary {
 		return toInvoiceSummary(m, today)
 	})
 }
