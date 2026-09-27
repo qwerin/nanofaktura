@@ -22,6 +22,8 @@ Položky nalezené během implementace, určené k vyřešení v úklidové vln�
 - [ ] `ExpenseCreate` bez `due_days`.
 - [ ] Generické CSV s mapováním sloupců přes API (parser existuje).
 - [ ] Mazání kontaktu použitého jen v šabloně není blokováno → recurring selže.
+- [ ] Account: uložit PDF šablonu, barvu akcentu, zobrazení QR, vlastní patičku (§7.14) + použít v PDF; `default_language` rozšířit na cs/en/sk/de (PDF to umí).
+- [ ] Pozvánky: vracet odkaz (pro kopírování) a jméno zvoucího; „Poslat znovu“ bez zneplatnění.
 - [ ] Per-account SMTP nastavení; text pozvánky jen česky.
 
 ## Dev
