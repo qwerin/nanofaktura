@@ -88,3 +88,34 @@ export type PaymentResult = ResponseBody<'/api/accounts/{slug}/invoices/{id}/pay
 
 // --- Dashboard ---
 export type Dashboard = ResponseBody<'/api/accounts/{slug}/dashboard', 'get'>
+// --- Expenses (náklady) ---
+export type Expense = ResponseBody<'/api/accounts/{slug}/expenses/{id}', 'get'>
+export type ExpenseSummary = ListItem<ResponseBody<'/api/accounts/{slug}/expenses', 'get'>>
+export type ExpenseStatus = Expense['status']
+export type ExpenseLine = Expense['lines'][number]
+export type ExpensePayment = Expense['payments'][number]
+export type ExpenseVatRecapItem = Expense['vat_recap'][number]
+export type CreateExpenseInput = RequestBody<'/api/accounts/{slug}/expenses', 'post'>
+export type UpdateExpenseInput = RequestBody<'/api/accounts/{slug}/expenses/{id}', 'patch'>
+export type ExpenseLineInput = NonNullable<CreateExpenseInput['lines']>[number]
+export type CreateExpensePaymentInput = RequestBody<'/api/accounts/{slug}/expenses/{id}/payments', 'post'>
+export type ExpensePaymentMethod = NonNullable<CreateExpenseInput['payment_method']>
+export type ExpenseListFilters = Omit<
+  NonNullable<paths['/api/accounts/{slug}/expenses']['get']['parameters']['query']>,
+  'page' | 'per_page'
+>
+
+// --- Price items (ceník) a sklad ---
+export type PriceItem = ResponseBody<'/api/accounts/{slug}/price-items/{id}', 'get'>
+export type CreatePriceItemInput = RequestBody<'/api/accounts/{slug}/price-items', 'post'>
+export type UpdatePriceItemInput = RequestBody<'/api/accounts/{slug}/price-items/{id}', 'patch'>
+export type PriceItemListFilters = Omit<
+  NonNullable<paths['/api/accounts/{slug}/price-items']['get']['parameters']['query']>,
+  'page' | 'per_page'
+>
+export type StockMove = ListItem<ResponseBody<'/api/accounts/{slug}/price-items/{id}/stock-moves', 'get'>>
+export type CreateStockMoveInput = RequestBody<'/api/accounts/{slug}/price-items/{id}/stock-moves', 'post'>
+
+// --- Attachments (přílohy) ---
+export type Attachment = ResponseBody<'/api/accounts/{slug}/attachments/{id}', 'get'>
+export type AttachmentOwnerType = Attachment['owner_type']

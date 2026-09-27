@@ -18,7 +18,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/u
 import { useCurrentAccount } from '@/hooks/use-current-account'
 import { cn } from '@/lib/utils'
 import { AccountAvatar } from './app-sidebar'
-import { settingsNav } from './nav'
+import { moreNav, settingsNav } from './nav'
 import { useLogoutAction } from './use-logout-action'
 
 const tabClass =
@@ -64,7 +64,7 @@ export function BottomTabBar() {
           <button
             type="button"
             className={tabClass}
-            data-active={is('/a/$slug/settings') || moreOpen}
+            data-active={is('/a/$slug/settings') || moreNav.some((i) => is(i.to)) || moreOpen}
             onClick={() => setMoreOpen(true)}
           >
             <EllipsisIcon className="size-6" />
@@ -139,6 +139,22 @@ function MoreDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (open
               >
                 Nový účet
               </Row>
+            </Section>
+
+            <Section title="Doklady">
+              {moreNav.map((item) => (
+                <Row
+                  key={item.to}
+                  onClick={() => {
+                    close()
+                    void navigate({ to: item.to, params: { slug } })
+                  }}
+                  leading={<item.icon className="size-5 text-muted-foreground" />}
+                  trailing={<ChevronRightIcon className="size-4 text-muted-foreground" />}
+                >
+                  {item.label}
+                </Row>
+              ))}
             </Section>
 
             <Section title="Nastavení">

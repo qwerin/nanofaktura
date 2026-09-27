@@ -5,16 +5,25 @@ import {
   KeyRoundIcon,
   LandmarkIcon,
   LayoutDashboardIcon,
+  PackageIcon,
+  ReceiptIcon,
   UserIcon,
   UsersIcon,
 } from 'lucide-react'
 
 // Jediný zdroj pravdy pro navigaci (sidebar, tab bar, „Více“, nastavení).
 
+/** Položky, které na mobilu nejsou v tab baru — zobrazují se v menu „Více“ (na desktopu v sidebaru). */
+export const moreNav = [
+  { label: 'Náklady', to: '/a/$slug/expenses', icon: ReceiptIcon },
+  { label: 'Ceník', to: '/a/$slug/price-items', icon: PackageIcon },
+] as const
+
 export const mainNav = [
   { label: 'Přehled', to: '/a/$slug/dashboard', icon: LayoutDashboardIcon },
   { label: 'Faktury', to: '/a/$slug/invoices', icon: FileTextIcon },
   { label: 'Kontakty', to: '/a/$slug/subjects', icon: UsersIcon },
+  ...moreNav,
 ] as const
 
 export const settingsNav = [
