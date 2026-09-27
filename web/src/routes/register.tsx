@@ -53,7 +53,7 @@ function RegisterPage() {
           description={
             status.isError
               ? errorMessage(status.error)
-              : 'Nové účty na této instanci zakládá administrátor. Pokud už účet máte, přihlaste se.'
+              : 'Nové účty na této instanci zakládá administrátor. Máte-li pozvánku, otevřete odkaz z e-mailu. Pokud už účet máte, přihlaste se.'
           }
           action={<ButtonLink to="/login">Přihlásit se</ButtonLink>}
         />

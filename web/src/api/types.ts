@@ -119,3 +119,16 @@ export type CreateStockMoveInput = RequestBody<'/api/accounts/{slug}/price-items
 // --- Attachments (přílohy) ---
 export type Attachment = ResponseBody<'/api/accounts/{slug}/attachments/{id}', 'get'>
 export type AttachmentOwnerType = Attachment['owner_type']
+
+// --- Tým: členové a pozvánky ---
+export type Member = ListItem<ResponseBody<'/api/accounts/{slug}/members', 'get'>>
+export type MemberRole = Member['role']
+export type UpdateMemberInput = RequestBody<'/api/accounts/{slug}/members/{user_id}', 'patch'>
+export type Invitation = ListItem<ResponseBody<'/api/accounts/{slug}/invitations', 'get'>>
+export type CreateInvitationInput = RequestBody<'/api/accounts/{slug}/members/invite', 'post'>
+export type InvitationInfo = ResponseBody<'/api/invitations/{token}', 'get'>
+
+// --- Vzhled dokladů ---
+export type PdfPreviewQuery = NonNullable<
+  Operation<'/api/accounts/{slug}/pdf-preview', 'get'>['parameters']['query']
+>

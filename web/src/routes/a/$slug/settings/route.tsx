@@ -13,7 +13,7 @@ function SettingsLayout() {
     <>
       {/* Desktop: titulek + záložky. Mobil: seznam sekcí na /settings, podstránky mají vlastní hlavičku. */}
       <PageHeader title="Nastavení" show="desktop">
-        <nav aria-label="Sekce nastavení" className="-mb-px flex gap-1 overflow-x-auto border-b">
+        <nav aria-label="Sekce nastavení" className="-mb-px flex gap-1 overflow-x-auto border-b [scrollbar-width:none]">
           {settingsNav.map((item) => (
             <Link
               key={item.to}

@@ -68,4 +68,13 @@ export const keys = {
   attachments: (slug: string) => [...keys.account(slug), 'attachments'] as const,
   attachmentList: (slug: string, ownerType: string, ownerId: number) =>
     [...keys.attachments(slug), 'list', ownerType, ownerId] as const,
+
+  // Tým: členové a pozvánky
+  members: (slug: string) => [...keys.account(slug), 'members'] as const,
+  invitations: (slug: string) => [...keys.account(slug), 'invitations'] as const,
+  /** Veřejný detail pozvánky podle tokenu z e-mailu (nezávislé na účtu). */
+  invitationInfo: (token: string) => ['invitation', token] as const,
+
+  // Vzhled dokladů (náhled PDF)
+  pdfPreview: (slug: string, params: object) => [...keys.account(slug), 'pdf-preview', params] as const,
 }

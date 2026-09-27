@@ -1,10 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, redirect, useRouter } from '@tanstack/react-router'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { errorMessage, isApiError } from '@/api/errors'
 import { authQueries, useLogin } from '@/api/queries/auth'
+import { invitationQueries } from '@/api/queries/invitations'
 import { AuthLayout } from '@/components/auth-layout'
 import { TextField } from '@/components/form/fields'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -16,6 +18,12 @@ import { safeRedirect } from '@/lib/safe-redirect'
 const searchSchema = z.object({
   redirect: z.string().optional().catch(undefined),
 })
+
+/** Token pozvánky z `redirect=/invite/<token>` (přihlášení z odkazu v pozvánce). */
+function inviteTokenFrom(redirect: string | undefined): string | undefined {
+  if (!redirect?.startsWith('/invite/')) return undefined
+  return redirect.slice('/invite/'.length).split(/[/?#]/)[0] || undefined
+}
 
 export const Route = createFileRoute('/login')({
   validateSearch: searchSchema,
@@ -43,6 +51,15 @@ function LoginPage() {
     resolver: zodResolver(schema),
     defaultValues: { email: '', password: '' },
   })
+  // Přihlášení z pozvánky: e-mail předvyplníme z pozvánky (ne z URL) a po přihlášení se vrátíme na /invite/$token.
+  const inviteToken = inviteTokenFrom(search.redirect)
+  const invitation = useQuery({ ...invitationQueries.info(inviteToken ?? ''), enabled: Boolean(inviteToken) })
+  const invitedEmail = invitation.data?.email
+  useEffect(() => {
+    if (!invitedEmail || form.getValues('email')) return
+    form.setValue('email', invitedEmail)
+    form.setFocus('password')
+  }, [invitedEmail, form])
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
@@ -65,7 +82,11 @@ function LoginPage() {
   return (
     <AuthLayout
       title="Přihlášení"
-      description="Vítejte zpět. Přihlaste se ke svému účtu."
+      description={
+        inviteToken
+          ? 'Přihlaste se a pak pozvánku přijmete.'
+          : 'Vítejte zpět. Přihlaste se ke svému účtu.'
+      }
       footer={
         status.data?.signup_allowed ? (
           <>

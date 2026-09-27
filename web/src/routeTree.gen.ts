@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ASlugRouteRouteImport } from './routes/a/$slug/route'
+import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as ASlugIndexRouteImport } from './routes/a/$slug/index'
 import { Route as ASlugDashboardRouteImport } from './routes/a/$slug/dashboard'
 import { Route as ASlugOnboardingRouteImport } from './routes/a/$slug/onboarding'
@@ -24,8 +25,10 @@ import { Route as ASlugInvoicesNewRouteImport } from './routes/a/$slug/invoices/
 import { Route as ASlugPriceItemsIndexRouteImport } from './routes/a/$slug/price-items/index'
 import { Route as ASlugPriceItemsNewRouteImport } from './routes/a/$slug/price-items/new'
 import { Route as ASlugSettingsIndexRouteImport } from './routes/a/$slug/settings/index'
+import { Route as ASlugSettingsAppearanceRouteImport } from './routes/a/$slug/settings/appearance'
 import { Route as ASlugSettingsBankAccountsRouteImport } from './routes/a/$slug/settings/bank-accounts'
 import { Route as ASlugSettingsCompanyRouteImport } from './routes/a/$slug/settings/company'
+import { Route as ASlugSettingsMembersRouteImport } from './routes/a/$slug/settings/members'
 import { Route as ASlugSettingsNumberFormatsRouteImport } from './routes/a/$slug/settings/number-formats'
 import { Route as ASlugSettingsProfileRouteImport } from './routes/a/$slug/settings/profile'
 import { Route as ASlugSettingsTokensRouteImport } from './routes/a/$slug/settings/tokens'
@@ -58,6 +61,11 @@ const RegisterRoute = RegisterRouteImport.update({
 const ASlugRouteRoute = ASlugRouteRouteImport.update({
   id: '/a/$slug',
   path: '/a/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ASlugIndexRoute = ASlugIndexRouteImport.update({
@@ -115,6 +123,11 @@ const ASlugSettingsIndexRoute = ASlugSettingsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ASlugSettingsRouteRoute,
 } as any)
+const ASlugSettingsAppearanceRoute = ASlugSettingsAppearanceRouteImport.update({
+  id: '/appearance',
+  path: '/appearance',
+  getParentRoute: () => ASlugSettingsRouteRoute,
+} as any)
 const ASlugSettingsBankAccountsRoute =
   ASlugSettingsBankAccountsRouteImport.update({
     id: '/bank-accounts',
@@ -124,6 +137,11 @@ const ASlugSettingsBankAccountsRoute =
 const ASlugSettingsCompanyRoute = ASlugSettingsCompanyRouteImport.update({
   id: '/company',
   path: '/company',
+  getParentRoute: () => ASlugSettingsRouteRoute,
+} as any)
+const ASlugSettingsMembersRoute = ASlugSettingsMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
   getParentRoute: () => ASlugSettingsRouteRoute,
 } as any)
 const ASlugSettingsNumberFormatsRoute =
@@ -206,6 +224,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/a/$slug': typeof ASlugRouteRouteWithChildren
+  '/invite/$token': typeof InviteTokenRoute
   '/a/$slug/settings': typeof ASlugSettingsRouteRouteWithChildren
   '/a/$slug/dashboard': typeof ASlugDashboardRoute
   '/a/$slug/onboarding': typeof ASlugOnboardingRoute
@@ -213,8 +232,10 @@ export interface FileRoutesByFullPath {
   '/a/$slug/expenses/new': typeof ASlugExpensesNewRoute
   '/a/$slug/invoices/new': typeof ASlugInvoicesNewRoute
   '/a/$slug/price-items/new': typeof ASlugPriceItemsNewRoute
+  '/a/$slug/settings/appearance': typeof ASlugSettingsAppearanceRoute
   '/a/$slug/settings/bank-accounts': typeof ASlugSettingsBankAccountsRoute
   '/a/$slug/settings/company': typeof ASlugSettingsCompanyRoute
+  '/a/$slug/settings/members': typeof ASlugSettingsMembersRoute
   '/a/$slug/settings/number-formats': typeof ASlugSettingsNumberFormatsRoute
   '/a/$slug/settings/profile': typeof ASlugSettingsProfileRoute
   '/a/$slug/settings/tokens': typeof ASlugSettingsTokensRoute
@@ -237,14 +258,17 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/a/$slug/dashboard': typeof ASlugDashboardRoute
   '/a/$slug/onboarding': typeof ASlugOnboardingRoute
   '/a/$slug': typeof ASlugIndexRoute
   '/a/$slug/expenses/new': typeof ASlugExpensesNewRoute
   '/a/$slug/invoices/new': typeof ASlugInvoicesNewRoute
   '/a/$slug/price-items/new': typeof ASlugPriceItemsNewRoute
+  '/a/$slug/settings/appearance': typeof ASlugSettingsAppearanceRoute
   '/a/$slug/settings/bank-accounts': typeof ASlugSettingsBankAccountsRoute
   '/a/$slug/settings/company': typeof ASlugSettingsCompanyRoute
+  '/a/$slug/settings/members': typeof ASlugSettingsMembersRoute
   '/a/$slug/settings/number-formats': typeof ASlugSettingsNumberFormatsRoute
   '/a/$slug/settings/profile': typeof ASlugSettingsProfileRoute
   '/a/$slug/settings/tokens': typeof ASlugSettingsTokensRoute
@@ -269,6 +293,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/a/$slug': typeof ASlugRouteRouteWithChildren
+  '/invite/$token': typeof InviteTokenRoute
   '/a/$slug/settings': typeof ASlugSettingsRouteRouteWithChildren
   '/a/$slug/dashboard': typeof ASlugDashboardRoute
   '/a/$slug/onboarding': typeof ASlugOnboardingRoute
@@ -276,8 +301,10 @@ export interface FileRoutesById {
   '/a/$slug/expenses/new': typeof ASlugExpensesNewRoute
   '/a/$slug/invoices/new': typeof ASlugInvoicesNewRoute
   '/a/$slug/price-items/new': typeof ASlugPriceItemsNewRoute
+  '/a/$slug/settings/appearance': typeof ASlugSettingsAppearanceRoute
   '/a/$slug/settings/bank-accounts': typeof ASlugSettingsBankAccountsRoute
   '/a/$slug/settings/company': typeof ASlugSettingsCompanyRoute
+  '/a/$slug/settings/members': typeof ASlugSettingsMembersRoute
   '/a/$slug/settings/number-formats': typeof ASlugSettingsNumberFormatsRoute
   '/a/$slug/settings/profile': typeof ASlugSettingsProfileRoute
   '/a/$slug/settings/tokens': typeof ASlugSettingsTokensRoute
@@ -303,6 +330,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/a/$slug'
+    | '/invite/$token'
     | '/a/$slug/settings'
     | '/a/$slug/dashboard'
     | '/a/$slug/onboarding'
@@ -310,8 +338,10 @@ export interface FileRouteTypes {
     | '/a/$slug/expenses/new'
     | '/a/$slug/invoices/new'
     | '/a/$slug/price-items/new'
+    | '/a/$slug/settings/appearance'
     | '/a/$slug/settings/bank-accounts'
     | '/a/$slug/settings/company'
+    | '/a/$slug/settings/members'
     | '/a/$slug/settings/number-formats'
     | '/a/$slug/settings/profile'
     | '/a/$slug/settings/tokens'
@@ -334,14 +364,17 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/register'
+    | '/invite/$token'
     | '/a/$slug/dashboard'
     | '/a/$slug/onboarding'
     | '/a/$slug'
     | '/a/$slug/expenses/new'
     | '/a/$slug/invoices/new'
     | '/a/$slug/price-items/new'
+    | '/a/$slug/settings/appearance'
     | '/a/$slug/settings/bank-accounts'
     | '/a/$slug/settings/company'
+    | '/a/$slug/settings/members'
     | '/a/$slug/settings/number-formats'
     | '/a/$slug/settings/profile'
     | '/a/$slug/settings/tokens'
@@ -365,6 +398,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/a/$slug'
+    | '/invite/$token'
     | '/a/$slug/settings'
     | '/a/$slug/dashboard'
     | '/a/$slug/onboarding'
@@ -372,8 +406,10 @@ export interface FileRouteTypes {
     | '/a/$slug/expenses/new'
     | '/a/$slug/invoices/new'
     | '/a/$slug/price-items/new'
+    | '/a/$slug/settings/appearance'
     | '/a/$slug/settings/bank-accounts'
     | '/a/$slug/settings/company'
+    | '/a/$slug/settings/members'
     | '/a/$slug/settings/number-formats'
     | '/a/$slug/settings/profile'
     | '/a/$slug/settings/tokens'
@@ -398,6 +434,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
   ASlugRouteRoute: typeof ASlugRouteRouteWithChildren
+  InviteTokenRoute: typeof InviteTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -428,6 +465,13 @@ declare module '@tanstack/react-router' {
       path: '/a/$slug'
       fullPath: '/a/$slug'
       preLoaderRoute: typeof ASlugRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/a/$slug/': {
@@ -507,6 +551,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ASlugSettingsIndexRouteImport
       parentRoute: typeof ASlugSettingsRouteRoute
     }
+    '/a/$slug/settings/appearance': {
+      id: '/a/$slug/settings/appearance'
+      path: '/appearance'
+      fullPath: '/a/$slug/settings/appearance'
+      preLoaderRoute: typeof ASlugSettingsAppearanceRouteImport
+      parentRoute: typeof ASlugSettingsRouteRoute
+    }
     '/a/$slug/settings/bank-accounts': {
       id: '/a/$slug/settings/bank-accounts'
       path: '/bank-accounts'
@@ -519,6 +570,13 @@ declare module '@tanstack/react-router' {
       path: '/company'
       fullPath: '/a/$slug/settings/company'
       preLoaderRoute: typeof ASlugSettingsCompanyRouteImport
+      parentRoute: typeof ASlugSettingsRouteRoute
+    }
+    '/a/$slug/settings/members': {
+      id: '/a/$slug/settings/members'
+      path: '/members'
+      fullPath: '/a/$slug/settings/members'
+      preLoaderRoute: typeof ASlugSettingsMembersRouteImport
       parentRoute: typeof ASlugSettingsRouteRoute
     }
     '/a/$slug/settings/number-formats': {
@@ -616,8 +674,10 @@ declare module '@tanstack/react-router' {
 }
 
 interface ASlugSettingsRouteRouteChildren {
+  ASlugSettingsAppearanceRoute: typeof ASlugSettingsAppearanceRoute
   ASlugSettingsBankAccountsRoute: typeof ASlugSettingsBankAccountsRoute
   ASlugSettingsCompanyRoute: typeof ASlugSettingsCompanyRoute
+  ASlugSettingsMembersRoute: typeof ASlugSettingsMembersRoute
   ASlugSettingsNumberFormatsRoute: typeof ASlugSettingsNumberFormatsRoute
   ASlugSettingsProfileRoute: typeof ASlugSettingsProfileRoute
   ASlugSettingsTokensRoute: typeof ASlugSettingsTokensRoute
@@ -625,8 +685,10 @@ interface ASlugSettingsRouteRouteChildren {
 }
 
 const ASlugSettingsRouteRouteChildren: ASlugSettingsRouteRouteChildren = {
+  ASlugSettingsAppearanceRoute: ASlugSettingsAppearanceRoute,
   ASlugSettingsBankAccountsRoute: ASlugSettingsBankAccountsRoute,
   ASlugSettingsCompanyRoute: ASlugSettingsCompanyRoute,
+  ASlugSettingsMembersRoute: ASlugSettingsMembersRoute,
   ASlugSettingsNumberFormatsRoute: ASlugSettingsNumberFormatsRoute,
   ASlugSettingsProfileRoute: ASlugSettingsProfileRoute,
   ASlugSettingsTokensRoute: ASlugSettingsTokensRoute,
@@ -691,6 +753,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
   ASlugRouteRoute: ASlugRouteRouteWithChildren,
+  InviteTokenRoute: InviteTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

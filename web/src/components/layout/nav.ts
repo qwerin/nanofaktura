@@ -7,6 +7,8 @@ import {
   LayoutDashboardIcon,
   PackageIcon,
   ReceiptIcon,
+  PaletteIcon,
+  UserCogIcon,
   UserIcon,
   UsersIcon,
 } from 'lucide-react'
@@ -30,6 +32,8 @@ export const settingsNav = [
   { label: 'Firma', to: '/a/$slug/settings/company', icon: BuildingIcon, description: 'Fakturační údaje a výchozí hodnoty' },
   { label: 'Bankovní účty', to: '/a/$slug/settings/bank-accounts', icon: LandmarkIcon, description: 'Účty pro platby a QR kód' },
   { label: 'Číselné řady', to: '/a/$slug/settings/number-formats', icon: HashIcon, description: 'Formát čísel dokladů' },
+  { label: 'Vzhled dokladů', to: '/a/$slug/settings/appearance', icon: PaletteIcon, description: 'Logo, podpis a náhled PDF' },
+  { label: 'Tým', to: '/a/$slug/settings/members', icon: UserCogIcon, description: 'Uživatelé účtu, role a pozvánky' },
   { label: 'Můj profil', to: '/a/$slug/settings/profile', icon: UserIcon, description: 'Jméno a heslo' },
   { label: 'API tokeny', to: '/a/$slug/settings/tokens', icon: KeyRoundIcon, description: 'Přístup pro integrace' },
 ] as const
