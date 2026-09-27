@@ -29,6 +29,8 @@ type Config struct {
 	CNBURL       string // NANOFAKTURA_CNB_URL: ČNB daily rates URL override (tests)
 	ViesURL      string // NANOFAKTURA_VIES_URL: VIES REST API base URL override (tests)
 	VatRegURL    string // NANOFAKTURA_VATREG_URL: VAT payer registry SOAP endpoint override (tests)
+	FioURL       string // NANOFAKTURA_FIO_URL: Fio banka API base URL override (tests)
+	SecretKey    string // NANOFAKTURA_SECRET_KEY: 32-byte key (base64/hex) encrypting stored secrets; empty = DataDir/secret.key
 }
 
 // Load reads the configuration from the environment and applies defaults.
@@ -50,6 +52,8 @@ func Load() (Config, error) {
 		CNBURL:       os.Getenv("NANOFAKTURA_CNB_URL"),
 		ViesURL:      os.Getenv("NANOFAKTURA_VIES_URL"),
 		VatRegURL:    os.Getenv("NANOFAKTURA_VATREG_URL"),
+		FioURL:       os.Getenv("NANOFAKTURA_FIO_URL"),
+		SecretKey:    os.Getenv("NANOFAKTURA_SECRET_KEY"),
 	}
 	if cfg.DBDriver != "sqlite" && cfg.DBDriver != "postgres" {
 		return Config{}, fmt.Errorf("NANOFAKTURA_DB_DRIVER: unsupported driver %q (sqlite|postgres)", cfg.DBDriver)

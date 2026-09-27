@@ -54,9 +54,13 @@ func newTestServer(t *testing.T, opts ...func(*config.Config)) *testServer {
 		o(&cfg)
 	}
 	ts := &testServer{t: t, db: gdb, now: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC), mail: mailtest.New(), dataDir: t.TempDir()}
-	ts.handler, _ = api.New(gdb, cfg, api.Deps{
+	deps := api.Deps{
 		Now: func() time.Time { return ts.now }, Mailer: ts.mail, Storage: storage.NewLocal(ts.dataDir),
-	})
+	}
+	if cfg.CNBURL == "" {
+		deps.CNB = &fakeRates{} // never call the real ČNB (foreign-currency documents fetch a rate)
+	}
+	ts.handler, _ = api.New(gdb, cfg, deps)
 	return ts
 }
 

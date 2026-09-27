@@ -14,9 +14,11 @@ import (
 	"time"
 
 	"github.com/qwerin/nanofaktura/internal/api"
+	"github.com/qwerin/nanofaktura/internal/bankimport"
 	"github.com/qwerin/nanofaktura/internal/config"
 	"github.com/qwerin/nanofaktura/internal/db"
 	"github.com/qwerin/nanofaktura/internal/scheduler"
+	"github.com/qwerin/nanofaktura/internal/secret"
 )
 
 func main() {
@@ -39,7 +41,22 @@ func run() error {
 		return err
 	}
 
-	handler, _ := api.New(gdb, cfg, api.Deps{})
+	key, generated, err := secret.LoadOrCreateKey(cfg.SecretKey, cfg.DataDir)
+	if err != nil {
+		return err
+	}
+	if generated {
+		slog.Warn("NANOFAKTURA_SECRET_KEY is not set; generated a key for stored secrets — back it up with the database",
+			"file", filepath.Join(cfg.DataDir, secret.KeyFile))
+	}
+	secrets, err := secret.New(key)
+	if err != nil {
+		return err
+	}
+
+	// one Fio client for requests and jobs, so its 30 s per-token limit is shared
+	deps := api.Deps{Secrets: secrets, Fio: bankimport.NewFioClient(cfg.FioURL)}
+	handler, _ := api.New(gdb, cfg, deps)
 	if cfg.StaticDir != "" {
 		handler = withSPA(handler, cfg.StaticDir)
 	}
@@ -51,7 +68,7 @@ func run() error {
 	// background jobs (recurring invoices, reminders …): at start + hourly,
 	// stopped by ctx on shutdown
 	sched := scheduler.New(nil, time.Hour, slog.Default())
-	sched.Register(api.Jobs(gdb, cfg, api.Deps{})...)
+	sched.Register(api.Jobs(gdb, cfg, deps)...)
 	schedDone := make(chan struct{})
 	go func() { sched.Start(ctx); close(schedDone) }()
 	defer func() { stop(); <-schedDone }()

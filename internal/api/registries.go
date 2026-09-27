@@ -123,11 +123,15 @@ func (s *server) checkVatRegistry(ctx context.Context, in *struct {
 	case err != nil:
 		return nil, huma.NewError(http.StatusBadGateway, "VAT payer registry is unavailable, try again later")
 	}
+	return &Out[VatRegistryResult]{Body: toVatRegistryResult(r)}, nil
+}
+
+func toVatRegistryResult(r *vatreg.Result) VatRegistryResult {
 	out := VatRegistryResult{VatNo: r.VatNo, Registered: r.Registered, Reliable: r.Reliable,
 		UnreliableSince: r.UnreliableSince, Name: r.Name, Address: r.Address(), Street: r.Street, City: r.City, Zip: r.Zip,
 		PublishedAccounts: make([]VatRegistryAccount, 0, len(r.Accounts))}
 	for _, a := range r.Accounts {
 		out.PublishedAccounts = append(out.PublishedAccounts, VatRegistryAccount{Number: a.Number, IBAN: a.IBAN, PublishedOn: a.PublishedOn})
 	}
-	return &Out[VatRegistryResult]{Body: out}, nil
+	return out
 }

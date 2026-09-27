@@ -396,6 +396,11 @@ func (s *server) mutateInvoice(ctx context.Context, fn func(tx *gorm.DB) (uint, 
 }
 
 func (s *server) createInvoice(ctx context.Context, in *struct{ Body InvoiceCreate }) (*Out[Invoice], error) {
+	b := &in.Body
+	var err error
+	if b.ExchangeRate, err = s.defaultExchangeRate(ctx, b.Currency, b.ExchangeRate, strOrEmpty(b.TaxableFulfillmentDue), b.IssuedOn); err != nil {
+		return nil, err
+	}
 	return s.mutateInvoice(ctx, func(tx *gorm.DB) (uint, error) {
 		m, err := s.createInvoiceTx(ctx, tx, &in.Body)
 		if err != nil {

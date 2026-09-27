@@ -79,6 +79,9 @@ type Expense struct {
 	Lines    []ExpenseLine    `json:"lines" nullable:"false"`
 	Payments []ExpensePayment `json:"payments" nullable:"false"`
 	VatRecap []VatRecapItem   `json:"vat_recap" nullable:"false"`
+	// Warnings from the VAT payer registry (unreliable supplier, unpublished
+	// bank account); only on GET /expenses/{id}, omitted when there are none.
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 type ExpenseLine struct {
@@ -321,7 +324,9 @@ func (s *server) getExpense(ctx context.Context, in *expenseID) (*Out[Expense], 
 	if err != nil {
 		return nil, err
 	}
-	return &Out[Expense]{Body: toExpense(m, s.today())}, nil
+	out := toExpense(m, s.today())
+	out.Warnings = s.expenseWarnings(ctx, m)
+	return &Out[Expense]{Body: out}, nil
 }
 
 // mutateExpense runs fn in a transaction and returns the expense whose id fn
@@ -346,6 +351,10 @@ func (s *server) mutateExpense(ctx context.Context, fn func(tx *gorm.DB) (uint, 
 func (s *server) createExpense(ctx context.Context, in *struct{ Body ExpenseCreate }) (*Out[Expense], error) {
 	b := &in.Body
 	acc := auth.AccountFrom(ctx)
+	var err error
+	if b.ExchangeRate, err = s.defaultExchangeRate(ctx, b.Currency, b.ExchangeRate, strOrEmpty(b.TaxableFulfillmentDue), b.IssuedOn); err != nil {
+		return nil, err
+	}
 	return s.mutateExpense(ctx, func(tx *gorm.DB) (uint, error) {
 		m := &model.Expense{
 			AccountID: acc.ID, Status: model.StatusOpen, OriginalNumber: strings.TrimSpace(b.OriginalNumber),
@@ -547,19 +556,14 @@ func (s *server) createExpensePayment(ctx context.Context, in *struct {
 		} else if amount == 0 {
 			return conflict("nothing to pay: the remaining amount is 0")
 		}
-		p := model.ExpensePayment{AccountID: m.AccountID, ExpenseID: m.ID, PaidOn: paidOn, Amount: amount, Note: in.Body.Note}
-		if err := tx.Create(&p).Error; err != nil {
-			return dbErr(err, "payment")
-		}
-		m.Payments = append(m.Payments, p)
-		applyExpensePayments(m)
-		if err := tx.Omit(clause.Associations).Save(m).Error; err != nil {
-			return dbErr(err, "expense")
+		p, err := addExpensePayment(tx, m, paidOn, amount, in.Body.Note)
+		if err != nil {
+			return err
 		}
 		if m, err = loadExpense(ctx, tx, m.ID); err != nil {
 			return err
 		}
-		res = ExpensePaymentResult{Payment: toExpensePayment(&p), Expense: toExpense(m, s.today())}
+		res = ExpensePaymentResult{Payment: toExpensePayment(p), Expense: toExpense(m, s.today())}
 		return nil
 	})
 	if err != nil {
@@ -589,6 +593,9 @@ func (s *server) deleteExpensePayment(ctx context.Context, in *struct {
 		if err := tx.Delete(&model.ExpensePayment{}, in.PaymentID).Error; err != nil {
 			return dbErr(err, "payment")
 		}
+		if err := unlinkBankPayment(tx, "matched_expense_id", m.ID, in.PaymentID); err != nil {
+			return err
+		}
 		m.Payments = append(m.Payments[:idx], m.Payments[idx+1:]...)
 		applyExpensePayments(m)
 		return dbErrOrNil(tx.Omit(clause.Associations).Save(m).Error, "expense")
@@ -600,6 +607,20 @@ func (s *server) deleteExpensePayment(ctx context.Context, in *struct {
 }
 
 // ---- helpers ----
+
+// addExpensePayment stores a payment of m and recomputes m's paid amount and status.
+func addExpensePayment(tx *gorm.DB, m *model.Expense, paidOn string, amount int64, note string) (*model.ExpensePayment, error) {
+	p := model.ExpensePayment{AccountID: m.AccountID, ExpenseID: m.ID, PaidOn: paidOn, Amount: amount, Note: note}
+	if err := tx.Create(&p).Error; err != nil {
+		return nil, dbErr(err, "payment")
+	}
+	m.Payments = append(m.Payments, p)
+	applyExpensePayments(m)
+	if err := tx.Omit(clause.Associations).Save(m).Error; err != nil {
+		return nil, dbErr(err, "expense")
+	}
+	return &p, nil
+}
 
 func snapshotSupplier(m *model.Expense, s *model.Subject) {
 	m.SupplierName, m.SupplierFullName = s.Name, s.FullName

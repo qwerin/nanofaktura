@@ -403,6 +403,7 @@ func Jobs(db *gorm.DB, cfg config.Config, deps Deps) []scheduler.Job {
 	return []scheduler.Job{
 		{Name: "recurring", Run: s.RunRecurring},
 		{Name: "reminders", Run: s.RunReminders},
+		{Name: "bank-sync", Run: s.RunBankSync, Every: 2 * time.Hour},
 	}
 }
 

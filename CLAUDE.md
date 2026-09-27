@@ -34,6 +34,8 @@ internal/auth/    bcrypt, sessions, API tokens, huma middlewares, auth.UserFrom/
 internal/mail/    Mailer interface + SMTP / LogMailer (dev, no SMTP host) + mail.Render("{placeholder}" templates); tests: mail/mailtest.New()
 internal/scheduler/ periodic background jobs (Job{Name, Run(ctx, now), Every}), started from cmd/server — see "Scheduler"
 internal/storage/ Storage interface (Put/Get/Delete by key) + Local disk implementation (NANOFAKTURA_DATA_DIR/attachments)
+internal/secret/  AES-256-GCM Box for secrets stored in the DB (Fio tokens) — see "Secrets"
+internal/bankimport/ bank statement parsers + Fio API client; internal/matching/ pure bank-transaction ↔ document matching
 internal/api/     api.New + one file per resource (DTOs next to handlers) + *_test.go (package api_test)
 ```
 
@@ -150,6 +152,15 @@ fails for any account-scoped POST/PUT/PATCH/DELETE without a declaration — add
 - Invoice e-mails (send, recurring, reminders, paid thanks) all go through `s.sendInvoiceEmail(ctx, inv, emailRequest{…})`
   (renders the account template, attaches the PDF via `s.renderInvoicePDF`, writes `EmailLog`, marks as sent).
   Code creating payments outside `POST /payments` (bank matching) calls `s.sendPaidThanks(ctx, invoiceID)` after commit.
+
+## Secrets
+
+Credentials we must store (bank API tokens …) are encrypted with `s.deps.Secrets` (`*secret.Box`):
+`enc, err := s.deps.Secrets.Encrypt(token)` before saving, `Decrypt` right before use. They are **write-only**
+in the API: inputs accept them, outputs only expose `has_<name> bool`; never log them or put them in errors.
+`cmd/server` builds the box from `NANOFAKTURA_SECRET_KEY` (32 bytes base64/hex) or generates
+`NANOFAKTURA_DATA_DIR/secret.key` on first start (`secret.LoadOrCreateKey`); `api.New`/`api.Jobs` without
+`Deps.Secrets` use a random per-process key (tests, gen-schema) — pass the same box to both when they must agree.
 
 ## Scheduler (background jobs)
 

@@ -46,9 +46,23 @@ type BankAccount struct {
 	IBAN      string
 	SwiftBIC  string
 	IsDefault bool
+
+	// Automatic import (SPEC §7.6): SyncProvider is SyncNone ("" = none) or
+	// SyncFio. FioToken is encrypted (internal/secret), never returned by the API.
+	SyncProvider string
+	FioToken     string
+	SyncFrom     string // YYYY-MM-DD: first day of the initial sync ("" = 30 days back)
+	LastSyncedAt *time.Time
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
+
+// BankAccount.SyncProvider values.
+const (
+	SyncNone = "none"
+	SyncFio  = "fio"
+)
 
 // DocExpense is the number-format document type of expenses (milestone 2);
 // the other document types are in enums.go.

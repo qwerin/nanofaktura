@@ -43,10 +43,12 @@ import (
 
 	"github.com/qwerin/nanofaktura/internal/ares"
 	"github.com/qwerin/nanofaktura/internal/auth"
+	"github.com/qwerin/nanofaktura/internal/bankimport"
 	"github.com/qwerin/nanofaktura/internal/cnb"
 	"github.com/qwerin/nanofaktura/internal/config"
 	"github.com/qwerin/nanofaktura/internal/mail"
 	"github.com/qwerin/nanofaktura/internal/numbering"
+	"github.com/qwerin/nanofaktura/internal/secret"
 	"github.com/qwerin/nanofaktura/internal/storage"
 	"github.com/qwerin/nanofaktura/internal/vatreg"
 	"github.com/qwerin/nanofaktura/internal/vies"
@@ -70,6 +72,14 @@ type Deps struct {
 	CNB         ExchangeRates  // defaults to cnb.NewService(db, cnb.New(cfg.CNBURL), Now)
 	VIES        vies.Checker   // defaults to vies.New(cfg.ViesURL) cached 24 h
 	VatRegistry vatreg.Checker // defaults to vatreg.New(cfg.VatRegURL) cached 24 h
+
+	// Fio is the Fio banka API client. Defaults to bankimport.NewFioClient(cfg.FioURL)
+	// (enforces Fio's 1 request / 30 s per token locally).
+	Fio bankimport.Fio
+	// Secrets encrypts stored secrets (Fio tokens). cmd/server passes a box
+	// keyed by NANOFAKTURA_SECRET_KEY or DATA_DIR/secret.key (secret.LoadOrCreateKey);
+	// the default is a random per-process key (tests, OpenAPI generation).
+	Secrets *secret.Box
 }
 
 // ExchangeRates returns ČNB rates (see cnb.Service.Rate for the error
@@ -148,6 +158,8 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 	s.registerTemplates(account)
 	s.registerRecurring(account)
 	s.registerEmails(account)
+	s.registerBankTransactions(account)
+	s.registerSubjectVatStatus(account)
 
 	return router, api
 }
@@ -181,6 +193,12 @@ func newServer(db *gorm.DB, cfg config.Config, deps Deps) *server {
 	}
 	if deps.VatRegistry == nil {
 		deps.VatRegistry = vatreg.NewCached(vatreg.New(cfg.VatRegURL), 24*time.Hour, deps.Now)
+	}
+	if deps.Fio == nil {
+		deps.Fio = bankimport.NewFioClient(cfg.FioURL)
+	}
+	if deps.Secrets == nil {
+		deps.Secrets = secret.NewRandom()
 	}
 	return &server{db: db, cfg: cfg, deps: deps, auth: auth.NewService(db, deps.Now, cfg.SecureCookies)}
 }

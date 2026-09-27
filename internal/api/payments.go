@@ -129,6 +129,9 @@ func (s *server) deletePayment(ctx context.Context, in *struct {
 		if err := tx.Delete(&model.Payment{}, in.PaymentID).Error; err != nil {
 			return dbErr(err, "payment")
 		}
+		if err := unlinkBankPayment(tx, "matched_invoice_id", m.ID, in.PaymentID); err != nil {
+			return err
+		}
 		m.Payments = append(m.Payments[:idx], m.Payments[idx+1:]...)
 		applyPayments(m)
 		return dbErrOrNil(tx.Omit(clause.Associations).Save(m).Error, "invoice")

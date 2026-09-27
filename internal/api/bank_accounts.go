@@ -11,19 +11,26 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/qwerin/nanofaktura/internal/auth"
+	"github.com/qwerin/nanofaktura/internal/billing"
 	"github.com/qwerin/nanofaktura/internal/model"
 	"github.com/qwerin/nanofaktura/internal/spayd"
 )
 
 // BankAccount is a bank account of the company (SPEC §4.2).
 type BankAccount struct {
-	ID        uint      `json:"id"`
-	Name      string    `json:"name"`
-	Currency  string    `json:"currency"`
-	Number    string    `json:"number" doc:"Czech account number, e.g. 19-2000145399/0800; empty for foreign accounts"`
-	IBAN      string    `json:"iban"`
-	SwiftBIC  string    `json:"swift_bic"`
-	IsDefault bool      `json:"is_default" doc:"Default account for invoices in its currency"`
+	ID        uint   `json:"id"`
+	Name      string `json:"name"`
+	Currency  string `json:"currency"`
+	Number    string `json:"number" doc:"Czech account number, e.g. 19-2000145399/0800; empty for foreign accounts"`
+	IBAN      string `json:"iban"`
+	SwiftBIC  string `json:"swift_bic"`
+	IsDefault bool   `json:"is_default" doc:"Default account for invoices in its currency"`
+
+	SyncProvider string     `json:"sync_provider" enum:"none,fio" doc:"Automatic transaction download"`
+	HasFioToken  bool       `json:"has_fio_token" doc:"A Fio API token is stored (the token itself is never returned)"`
+	SyncFrom     string     `json:"sync_from" doc:"First day of the initial sync (YYYY-MM-DD); empty = 30 days back"`
+	LastSyncedAt *time.Time `json:"last_synced_at,omitempty"`
+
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -35,6 +42,10 @@ type BankAccountCreate struct {
 	IBAN      string `json:"iban,omitempty" maxLength:"42"`
 	SwiftBIC  string `json:"swift_bic,omitempty" maxLength:"11"`
 	IsDefault bool   `json:"is_default,omitempty" doc:"The first account of a currency is always default"`
+
+	SyncProvider string `json:"sync_provider,omitempty" enum:"none,fio" doc:"Default none; fio requires fio_token"`
+	FioToken     string `json:"fio_token,omitempty" maxLength:"128" doc:"Fio API token (read-only token is enough); stored encrypted, write-only"`
+	SyncFrom     string `json:"sync_from,omitempty" format:"date" doc:"First day of the initial sync; default 30 days back"`
 }
 
 // BankAccountPatch: nil fields are left unchanged. Changing number re-derives
@@ -46,11 +57,48 @@ type BankAccountPatch struct {
 	IBAN      *string `json:"iban,omitempty" maxLength:"42"`
 	SwiftBIC  *string `json:"swift_bic,omitempty" maxLength:"11"`
 	IsDefault *bool   `json:"is_default,omitempty"`
+
+	SyncProvider *string `json:"sync_provider,omitempty" enum:"none,fio"`
+	FioToken     *string `json:"fio_token,omitempty" maxLength:"128" doc:"New token; \"\" removes the stored token"`
+	SyncFrom     *string `json:"sync_from,omitempty" doc:"YYYY-MM-DD or \"\""`
 }
 
 func toBankAccount(m *model.BankAccount) BankAccount {
 	return BankAccount{ID: m.ID, Name: m.Name, Currency: m.Currency, Number: m.Number, IBAN: m.IBAN,
-		SwiftBIC: m.SwiftBIC, IsDefault: m.IsDefault, CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt}
+		SwiftBIC: m.SwiftBIC, IsDefault: m.IsDefault, SyncProvider: defaultStr(m.SyncProvider, model.SyncNone),
+		HasFioToken: m.FioToken != "", SyncFrom: m.SyncFrom, LastSyncedAt: m.LastSyncedAt,
+		CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt}
+}
+
+var fioTokenRe = regexp.MustCompile(`^[A-Za-z0-9]{16,128}$`)
+
+// applyBankSync validates and stores the sync settings; token (when non-nil)
+// replaces the stored token ("" removes it) and is encrypted.
+func (s *server) applyBankSync(m *model.BankAccount, provider, token, syncFrom *string) error {
+	apply(&m.SyncProvider, provider)
+	if m.SyncProvider == "" {
+		m.SyncProvider = model.SyncNone
+	}
+	if token != nil {
+		t := strings.TrimSpace(*token)
+		if t != "" && !fioTokenRe.MatchString(t) {
+			return invalid("fio_token", "invalid Fio API token (16–128 letters and digits)")
+		}
+		enc, err := s.deps.Secrets.Encrypt(t)
+		if err != nil {
+			return huma.Error500InternalServerError("cannot encrypt the token", err)
+		}
+		m.FioToken = enc
+	}
+	if syncFrom != nil {
+		if m.SyncFrom = *syncFrom; m.SyncFrom != "" && !billing.ValidDate(m.SyncFrom) {
+			return invalid("sync_from", "invalid date")
+		}
+	}
+	if m.SyncProvider == model.SyncFio && m.FioToken == "" {
+		return invalid("fio_token", "fio_token is required for sync_provider fio")
+	}
+	return nil
 }
 
 var swiftRe = regexp.MustCompile(`^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$`)
@@ -140,6 +188,9 @@ func (s *server) createBankAccount(ctx context.Context, in *struct{ Body BankAcc
 	if err := normalizeBankAccount(&m, true, b.IBAN != "", b.SwiftBIC != ""); err != nil {
 		return nil, err
 	}
+	if err := s.applyBankSync(&m, &b.SyncProvider, &b.FioToken, &b.SyncFrom); err != nil {
+		return nil, err
+	}
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if !m.IsDefault {
 			var n int64
@@ -185,6 +236,9 @@ func (s *server) patchBankAccount(ctx context.Context, in *struct {
 		if err := normalizeBankAccount(&m, numberChanged, p.IBAN != nil, p.SwiftBIC != nil); err != nil {
 			return err
 		}
+		if err := s.applyBankSync(&m, p.SyncProvider, p.FioToken, p.SyncFrom); err != nil {
+			return err
+		}
 		if err := tx.Save(&m).Error; err != nil {
 			return dbErr(err, "bank account")
 		}
@@ -214,6 +268,10 @@ func (s *server) deleteBankAccount(ctx context.Context, in *struct {
 		}
 		if err := tx.Delete(&m).Error; err != nil {
 			return dbErr(err, "bank account")
+		}
+		// imported transactions go with the account (payments created from them stay)
+		if err := tx.Where("bank_account_id = ?", m.ID).Delete(&model.BankTransaction{}).Error; err != nil {
+			return dbErr(err, "bank transaction")
 		}
 		if !m.IsDefault {
 			return nil

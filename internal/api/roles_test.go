@@ -92,6 +92,17 @@ func TestRoleMatrix(t *testing.T) {
 		{"POST", "/expenses" + missing + "/payments", map[string]any{}, editors},
 		{"DELETE", "/expenses" + missing + "/payments/1", nil, editors},
 
+		{"POST", "/bank-accounts" + missing + "/import", map[string]any{}, editors},
+		{"POST", "/bank-accounts" + missing + "/sync", nil, editors},
+		{"GET", "/bank-transactions", nil, all},
+		{"GET", "/bank-transactions" + missing, nil, all},
+		{"POST", "/bank-transactions/rematch", nil, editors},
+		{"POST", "/bank-transactions" + missing + "/match", map[string]any{}, editors},
+		{"POST", "/bank-transactions" + missing + "/unmatch", nil, editors},
+		{"POST", "/bank-transactions" + missing + "/ignore", nil, editors},
+		{"POST", "/bank-transactions" + missing + "/unignore", nil, editors},
+		{"GET", "/subjects" + missing + "/vat-status", nil, all},
+
 		{"GET", "/attachments", nil, all},
 		{"POST", "/attachments", map[string]any{}, editors},
 		{"DELETE", "/attachments" + missing, nil, editors},
