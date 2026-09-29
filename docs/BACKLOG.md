@@ -27,6 +27,9 @@ Položky nalezené během implementace, určené k vyřešení v úklidové vln�
 - [ ] `GET /email-templates/preview` přijímat `subject`/`body` override + endpoint s výchozími texty (tlačítko „Obnovit výchozí“).
 - [ ] Output `Template`/`Recurring` bez jména odběratele a součtu → frontend dotahuje zvlášť.
 - [ ] Filtr faktur podle `recurring_id` (historie pravidelné faktury).
+- [ ] `BankTransaction` vracet číslo a název spárovaného dokladu (teď N+1 dotazů z frontendu).
+- [ ] Seznamy faktur/nákladů: filtr podle částky a „jen neuhrazené“ (ruční párování).
+- [ ] Zůstatek bankovního účtu z výpisů (opening/closing balance).
 - [ ] Per-account SMTP nastavení; text pozvánky jen česky.
 
 ## Dev
