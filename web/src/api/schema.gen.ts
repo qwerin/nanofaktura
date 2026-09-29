@@ -356,6 +356,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/accounts/{slug}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug events */
+        get: operations["get-api-accounts-by-slug-events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/events/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List API accounts by slug events catalog */
+        get: operations["list-api-accounts-by-slug-events-catalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/accounts/{slug}/expenses": {
         parameters: {
             query?: never;
@@ -1327,6 +1361,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/accounts/{slug}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get API accounts by slug search
+         * @description Case- and diacritics-insensitive search in invoices (number, VS, client name, IČO, DIČ, e-mail), expenses (numbers, VS, supplier, description), contacts (name, IČO, DIČ, e-mail, custom id) and price items (name, SKU).
+         */
+        get: operations["get-api-accounts-by-slug-search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/accounts/{slug}/subjects": {
         parameters: {
             query?: never;
@@ -1450,6 +1504,183 @@ export interface paths {
          * @description Allowed roles: owner, admin, member.
          */
         post: operations["post-api-accounts-by-slug-templates-by-id-create-invoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/todos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug todos */
+        get: operations["get-api-accounts-by-slug-todos"];
+        put?: never;
+        /**
+         * Post API accounts by slug todos
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-todos"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/todos/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete API accounts by slug todos by ID
+         * @description Allowed roles: owner, admin, member.
+         */
+        delete: operations["delete-api-accounts-by-slug-todos-by-id"];
+        options?: never;
+        head?: never;
+        /**
+         * Patch API accounts by slug todos by ID
+         * @description Allowed roles: owner, admin, member.
+         */
+        patch: operations["patch-api-accounts-by-slug-todos-by-id"];
+        trace?: never;
+    };
+    "/api/accounts/{slug}/todos/{id}/toggle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug todos by ID toggle
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-todos-by-id-toggle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get API accounts by slug webhooks
+         * @description Allowed roles: owner, admin.
+         */
+        get: operations["get-api-accounts-by-slug-webhooks"];
+        put?: never;
+        /**
+         * Post API accounts by slug webhooks
+         * @description Allowed roles: owner, admin.
+         */
+        post: operations["post-api-accounts-by-slug-webhooks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/webhooks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get API accounts by slug webhooks by ID
+         * @description Allowed roles: owner, admin.
+         */
+        get: operations["get-api-accounts-by-slug-webhooks-by-id"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete API accounts by slug webhooks by ID
+         * @description Allowed roles: owner, admin.
+         */
+        delete: operations["delete-api-accounts-by-slug-webhooks-by-id"];
+        options?: never;
+        head?: never;
+        /**
+         * Patch API accounts by slug webhooks by ID
+         * @description Allowed roles: owner, admin.
+         */
+        patch: operations["patch-api-accounts-by-slug-webhooks-by-id"];
+        trace?: never;
+    };
+    "/api/accounts/{slug}/webhooks/{id}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get API accounts by slug webhooks by ID deliveries
+         * @description Allowed roles: owner, admin.
+         */
+        get: operations["get-api-accounts-by-slug-webhooks-by-id-deliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/webhooks/{id}/deliveries/{delivery_id}/redeliver": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug webhooks by ID deliveries by delivery ID redeliver
+         * @description Allowed roles: owner, admin.
+         */
+        post: operations["post-api-accounts-by-slug-webhooks-by-id-deliveries-by-delivery-id-redeliver"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/webhooks/{id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug webhooks by ID test
+         * @description Allowed roles: owner, admin.
+         */
+        post: operations["post-api-accounts-by-slug-webhooks-by-id-test"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2066,6 +2297,10 @@ export interface components {
              */
             invoice_id?: number;
         };
+        CatalogEntry: {
+            description: string;
+            name: string;
+        };
         ControlStatement: {
             a1: components["schemas"]["A1Row"][];
             a4: components["schemas"]["DocumentRow"][];
@@ -2230,6 +2465,29 @@ export interface components {
              * @example https://example.com/errors/example
              */
             type: string;
+        };
+        Event: {
+            /** Format: date-time */
+            created_at: string;
+            data: {
+                [key: string]: unknown;
+            };
+            /** Format: int64 */
+            id: number;
+            /** @description e.g. invoice.paid (see GET /events/catalog) */
+            name: string;
+            /** Format: int64 */
+            subject_id: number;
+            /** @description invoice, expense, subject, price_item, bank_transaction, bank_account, recurring, webhook */
+            subject_type: string;
+            /** @description Czech description */
+            text: string;
+            /**
+             * Format: int64
+             * @description Author; missing for the scheduler and public link
+             */
+            user_id?: number;
+            user_name?: string;
         };
         ExchangeRate: {
             /** @example EUR */
@@ -3057,6 +3315,15 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        ListResponseEvent: {
+            items: components["schemas"]["Event"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            per_page: number;
+            /** Format: int64 */
+            total: number;
+        };
         ListResponseExpenseSummary: {
             items: components["schemas"]["ExpenseSummary"][];
             /** Format: int64 */
@@ -3140,6 +3407,33 @@ export interface components {
         };
         ListResponseTemplate: {
             items: components["schemas"]["Template"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            per_page: number;
+            /** Format: int64 */
+            total: number;
+        };
+        ListResponseTodo: {
+            items: components["schemas"]["Todo"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            per_page: number;
+            /** Format: int64 */
+            total: number;
+        };
+        ListResponseWebhook: {
+            items: components["schemas"]["Webhook"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            per_page: number;
+            /** Format: int64 */
+            total: number;
+        };
+        ListResponseWebhookDelivery: {
+            items: components["schemas"]["WebhookDelivery"][];
             /** Format: int64 */
             page: number;
             /** Format: int64 */
@@ -3578,6 +3872,25 @@ export interface components {
             /** @description Default: client name and invoice number */
             name?: string;
         };
+        SearchHit: {
+            /** Format: int64 */
+            id: number;
+            status?: string;
+            /** @description Client, amount, IČO … */
+            subtitle: string;
+            /** @description Number / name */
+            title: string;
+            /** @enum {string} */
+            type: "invoice" | "expense" | "subject" | "price_item";
+            /** @description SPA path of the detail, e.g. /a/{slug}/invoices/12 */
+            url_hint: string;
+        };
+        SearchResults: {
+            expenses: components["schemas"]["SearchHit"][];
+            invoices: components["schemas"]["SearchHit"][];
+            price_items: components["schemas"]["SearchHit"][];
+            subjects: components["schemas"]["SearchHit"][];
+        };
         StockMove: {
             /** Format: date-time */
             created_at: string;
@@ -3857,6 +4170,48 @@ export interface components {
             subject_id?: number;
             tags?: string[] | null;
         };
+        Todo: {
+            /** @description Generated by the system; completed automatically when resolved */
+            automatic: boolean;
+            completed: boolean;
+            /** Format: date-time */
+            completed_at?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date */
+            due_on?: string;
+            /** Format: int64 */
+            id: number;
+            /** @description manual, invoice.overdue, bank.suggested, stock.low, recurring.failed */
+            name: string;
+            /** Format: int64 */
+            related_id?: number;
+            related_type?: string;
+            text: string;
+            /** Format: date-time */
+            updated_at: string;
+            /**
+             * Format: int64
+             * @description Author of a manual todo
+             */
+            user_id?: number;
+        };
+        TodoCreate: {
+            /** Format: date */
+            due_on?: string;
+            /** Format: int64 */
+            related_id?: number;
+            /** @enum {string} */
+            related_type?: "invoice" | "expense" | "subject" | "price_item" | "bank_transaction" | "recurring";
+            text: string;
+        };
+        TodoPatch: {
+            completed?: boolean;
+            /** @description Manual todos only; "" clears */
+            due_on?: string;
+            /** @description Manual todos only */
+            text?: string;
+        };
         TopCustomer: {
             /** Format: int64 */
             count: number;
@@ -3987,6 +4342,102 @@ export interface components {
             valid: boolean;
             /** @example CZ27082440 */
             vat_no: string;
+        };
+        Webhook: {
+            active: boolean;
+            /**
+             * Format: int64
+             * @description Finally failed deliveries in a row; 20 disable the webhook
+             */
+            consecutive_failures: number;
+            /** Format: date-time */
+            created_at: string;
+            description: string;
+            /**
+             * Format: date-time
+             * @description Set when disabled automatically
+             */
+            disabled_at?: string;
+            events: string[];
+            has_secret: boolean;
+            /** Format: int64 */
+            id: number;
+            /** Format: date-time */
+            last_delivered_at?: string;
+            last_error: string;
+            /**
+             * Format: int64
+             * @description HTTP status of the last attempt, 0 = none / network error
+             */
+            last_status: number;
+            /** @description Signing secret; only in the response of create and rotate_secret */
+            secret?: string;
+            /** Format: date-time */
+            updated_at: string;
+            url: string;
+        };
+        WebhookCreate: {
+            /** @description Default true */
+            active?: boolean;
+            description?: string;
+            /** @description Event names, "prefix.*" or "*"; default ["*"] */
+            events?: string[] | null;
+            url: string;
+        };
+        WebhookDelivery: {
+            /** Format: int64 */
+            attempts: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: int64 */
+            duration_ms: number;
+            error: string;
+            event: string;
+            /**
+             * Format: int64
+             * @description Missing for pings
+             */
+            event_id?: number;
+            /** Format: int64 */
+            id: number;
+            /** Format: date-time */
+            last_attempt_at?: string;
+            /** Format: date-time */
+            next_attempt_at?: string;
+            /** @description The exact JSON body sent */
+            payload: string;
+            /** @description First 1 KB */
+            response_body: string;
+            /** Format: int64 */
+            response_status: number;
+            /** @enum {string} */
+            status: "pending" | "delivered" | "failed";
+            /** Format: int64 */
+            webhook_id: number;
+        };
+        WebhookPatch: {
+            /** @description true also resets the failure counter */
+            active?: boolean;
+            description?: string;
+            events?: string[] | null;
+            /** @description Generate a new secret (returned once) */
+            rotate_secret?: boolean;
+            url?: string;
+        };
+        WebhookTestResult: {
+            /** Format: int64 */
+            delivery_id: number;
+            /** Format: int64 */
+            duration_ms: number;
+            error: string;
+            ok: boolean;
+            /** @description First 1 KB */
+            response_body: string;
+            /**
+             * Format: int64
+             * @description 0 = no response
+             */
+            status_code: number;
         };
     };
     responses: never;
@@ -4909,6 +5360,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EmailPreview"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-events": {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+                /** @description Exact name (invoice.paid) or prefix (invoice, invoice.*) */
+                name?: string;
+                subject_type?: string;
+                /** @description With subject_type: the timeline of one record */
+                subject_id?: number;
+                /** @description RFC 3339 instant or YYYY-MM-DD (inclusive) */
+                since?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListResponseEvent"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "list-api-accounts-by-slug-events-catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogEntry"][] | null;
                 };
             };
             /** @description Error */
@@ -7268,6 +7793,41 @@ export interface operations {
             };
         };
     };
+    "get-api-accounts-by-slug-search": {
+        parameters: {
+            query: {
+                q: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResults"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "get-api-accounts-by-slug-subjects": {
         parameters: {
             query?: {
@@ -7703,6 +8263,459 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Invoice"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-todos": {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+                /** @description Empty = all */
+                completed?: "true" | "false" | "";
+                related_type?: string;
+                related_id?: number;
+                name?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListResponseTodo"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-todos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TodoCreate"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Todo"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-api-accounts-by-slug-todos-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "patch-api-accounts-by-slug-todos-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TodoPatch"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Todo"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-todos-by-id-toggle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Todo"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-webhooks": {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListResponseWebhook"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookCreate"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Webhook"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-webhooks-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Webhook"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-api-accounts-by-slug-webhooks-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "patch-api-accounts-by-slug-webhooks-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookPatch"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Webhook"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-webhooks-by-id-deliveries": {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+                status?: "pending" | "delivered" | "failed" | "";
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListResponseWebhookDelivery"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-webhooks-by-id-deliveries-by-delivery-id-redeliver": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+                delivery_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookDelivery"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-webhooks-by-id-test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookTestResult"];
                 };
             };
             /** @description Error */
