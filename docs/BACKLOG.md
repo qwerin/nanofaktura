@@ -24,6 +24,9 @@ Položky nalezené během implementace, určené k vyřešení v úklidové vln�
 - [ ] Mazání kontaktu použitého jen v šabloně není blokováno → recurring selže.
 - [ ] Account: uložit PDF šablonu, barvu akcentu, zobrazení QR, vlastní patičku (§7.14) + použít v PDF; `default_language` rozšířit na cs/en/sk/de (PDF to umí).
 - [ ] Pozvánky: vracet odkaz (pro kopírování) a jméno zvoucího; „Poslat znovu“ bez zneplatnění.
+- [ ] `GET /email-templates/preview` přijímat `subject`/`body` override + endpoint s výchozími texty (tlačítko „Obnovit výchozí“).
+- [ ] Output `Template`/`Recurring` bez jména odběratele a součtu → frontend dotahuje zvlášť.
+- [ ] Filtr faktur podle `recurring_id` (historie pravidelné faktury).
 - [ ] Per-account SMTP nastavení; text pozvánky jen česky.
 
 ## Dev
