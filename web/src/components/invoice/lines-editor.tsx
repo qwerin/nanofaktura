@@ -21,16 +21,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useIsMobile } from '@/hooks/use-mobile'
 import { formatMoney, formatMoneyInput, formatVatRate } from '@/lib/money'
 import { cn } from '@/lib/utils'
-import { convertPrice, emptyLine, type InvoiceFormValues, type LineValues } from './form-model'
+import { convertPrice, emptyLine, type LineValues } from './form-model'
 import { PriceItemPicker, type PriceItem } from './price-item-picker'
 
 const VAT_RATES = [2100, 1200, 0] as const
 const vatItems = VAT_RATES.map((r) => ({ value: String(r), label: formatVatRate(r) }))
 
-interface LinesEditorProps {
-  control: Control<InvoiceFormValues>
-  register: UseFormRegister<InvoiceFormValues>
-  setFocus: UseFormSetFocus<InvoiceFormValues>
+/** Formulář s řádky ve tvaru faktury (faktura, šablona faktury). */
+export interface LinesFormValues {
+  lines: LineValues[]
+}
+
+interface LinesEditorProps<T extends LinesFormValues> {
+  control: Control<T>
+  register: UseFormRegister<T>
+  setFocus: UseFormSetFocus<T>
   /** Vypočtená částka řádku (cena × množství) ve stejném pořadí jako řádky. */
   amounts: number[]
   currency: string
@@ -43,7 +48,11 @@ interface LinesEditorProps {
   pricesIncludeVat: boolean
 }
 
-export function LinesEditor(props: LinesEditorProps) {
+type InnerProps = LinesEditorProps<LinesFormValues>
+
+export function LinesEditor<T extends LinesFormValues>(outerProps: LinesEditorProps<T>) {
+  // Editor pracuje jen s polem `lines`, které má každý T stejné — zúžení typu je bezpečné.
+  const props = outerProps as unknown as InnerProps
   const isMobile = useIsMobile()
   const { control, defaultVat } = props
   // `keyName` ≠ `id` — řádky mají vlastní `id` z API.
@@ -98,7 +107,7 @@ export function LinesEditor(props: LinesEditorProps) {
   )
 }
 
-type FieldArray = ReturnType<typeof useFieldArray<InvoiceFormValues, 'lines', 'key'>>
+type FieldArray = ReturnType<typeof useFieldArray<LinesFormValues, 'lines', 'key'>>
 
 function VatSelect({
   control,
@@ -107,7 +116,7 @@ function VatSelect({
   id,
   disabled,
 }: {
-  control: Control<InvoiceFormValues>
+  control: Control<LinesFormValues>
   index: number
   className?: string
   id?: string
@@ -148,7 +157,7 @@ function DesktopLines({
   disabled,
   lines,
   onAdd,
-}: LinesEditorProps & { lines: FieldArray; onAdd: () => void }) {
+}: InnerProps & { lines: FieldArray; onAdd: () => void }) {
   const { errors } = useFormState({ control, name: 'lines' })
   const [dragFrom, setDragFrom] = useState<number | null>(null)
   const [dragOver, setDragOver] = useState<number | null>(null)
@@ -328,7 +337,7 @@ function MobileLines({
   amountLabel,
   disabled,
   lines,
-}: LinesEditorProps & { lines: FieldArray }) {
+}: InnerProps & { lines: FieldArray }) {
   const { errors } = useFormState({ control, name: 'lines' })
   // Rozbalené karty podle `key`; nové řádky (bez uloženého názvu) jsou rozbalené.
   const [open, setOpen] = useState<Set<string>>(() => new Set(lines.fields.filter((f) => !f.name).map((f) => f.key)))
@@ -478,7 +487,7 @@ function LineSummary({
   amount,
   currency,
 }: {
-  control: Control<InvoiceFormValues>
+  control: Control<LinesFormValues>
   index: number
   amount: number
   currency: string

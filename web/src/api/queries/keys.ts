@@ -77,4 +77,14 @@ export const keys = {
 
   // Vzhled dokladů (náhled PDF)
   pdfPreview: (slug: string, params: object) => [...keys.account(slug), 'pdf-preview', params] as const,
+  // Šablony, pravidelné faktury, e-maily
+  templates: (slug: string) => [...keys.account(slug), 'templates'] as const,
+  templateList: (slug: string, filters: object) => [...keys.templates(slug), 'list', filters] as const,
+  templateDetail: (slug: string, id: number) => [...keys.templates(slug), 'detail', id] as const,
+  recurring: (slug: string) => [...keys.account(slug), 'recurring'] as const,
+  recurringList: (slug: string, filters: object) => [...keys.recurring(slug), 'list', filters] as const,
+  recurringDetail: (slug: string, id: number) => [...keys.recurring(slug), 'detail', id] as const,
+  /** Historie e-mailů faktury — pod prefixem `invoices`, aby ji obnovily i mutace faktur. */
+  invoiceEmails: (slug: string, invoiceId: number) => [...keys.invoices(slug), 'emails', invoiceId] as const,
+  emailPreview: (slug: string, params: object) => [...keys.account(slug), 'email-preview', params] as const,
 }

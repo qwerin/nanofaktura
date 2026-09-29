@@ -16,7 +16,9 @@ import {
   Share2Icon,
   Trash2Icon,
   CircleSlashIcon,
-
+  BellRingIcon,
+  FileStackIcon,
+  MailIcon,
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
@@ -29,7 +31,10 @@ import {
   useDuplicateInvoice,
   useInvoiceAction,
 } from '@/api/queries/invoices'
-import type { Invoice, InvoiceAction, InvoicePayment } from '@/api/types'
+import type { EmailKind, Invoice, InvoiceAction, InvoicePayment } from '@/api/types'
+import { EmailHistory } from '@/components/email/email-history'
+import { sendableKinds } from '@/components/email/placeholders'
+import { SendInvoiceDialog } from '@/components/email/send-invoice-dialog'
 import { AddPaymentDialog } from '@/components/invoice/add-payment-dialog'
 import { DueText } from '@/components/invoice/due-text'
 import { StatusBadge } from '@/components/invoice/status-badge'
@@ -38,6 +43,7 @@ import { TotalsPanel } from '@/components/invoice/totals-panel'
 import { useCanEditDocuments } from '@/components/invoice/use-can-edit'
 import { PageBody, PageHeader, type PageAction } from '@/components/page-header'
 import { PageError } from '@/components/page-states'
+import { SaveAsTemplateDialog } from '@/components/recurring/save-as-template-dialog'
 import { ResponsiveDialog } from '@/components/responsive-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -103,6 +109,8 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [confirm, setConfirm] = useState<Confirm | null>(null)
   const [confirmPending, setConfirmPending] = useState(false)
+  const [send, setSend] = useState<{ open: boolean; kind: EmailKind; key: number }>({ open: false, kind: 'invoice', key: 0 })
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false)
 
   const action = useInvoiceAction(slug, inv.id)
   const duplicate = useDuplicateInvoice(slug, inv.id)
@@ -139,9 +147,40 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
     }
   }
 
+  const openSend = (kind: EmailKind) => setSend((s) => ({ open: true, kind, key: s.key + 1 }))
+  const canSend = canEdit && inv.status !== 'cancelled'
+  const canRemind = canSend && sendableKinds(inv).includes('reminder')
+  const notSent = !inv.sent_at && (inv.status === 'open' || inv.status === 'overdue')
+  const sendActions: PageAction[] = canSend
+    ? [
+        {
+          label: 'Odeslat e-mailem',
+          icon: MailIcon,
+          // U dosud neodeslané faktury je odeslání hlavní akce.
+          primary: notSent,
+          variant: notSent ? 'default' : 'outline',
+          overflow: !notSent,
+          onClick: () => openSend('invoice'),
+        },
+        ...(canRemind
+          ? [
+              {
+                label: 'Poslat upomínku',
+                icon: BellRingIcon,
+                primary: !notSent && inv.status === 'overdue',
+                variant: 'outline',
+                overflow: notSent || inv.status !== 'overdue',
+                onClick: () => openSend('reminder'),
+              } satisfies PageAction,
+            ]
+          : []),
+      ]
+    : []
+
   const act = (key: UiAction, a: Omit<PageAction, 'label'> & { label: string }): PageAction[] => (allowed.has(key) ? [a] : [])
 
   const actions: PageAction[] = [
+    ...sendActions,
     ...act('edit', {
       label: 'Upravit',
       icon: PencilIcon,
@@ -195,6 +234,9 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
               }),
           },
         ]
+      : []),
+    ...(canEdit && inv.document_type !== 'correction'
+      ? [{ label: 'Uložit jako šablonu', icon: FileStackIcon, overflow: true, onClick: () => setSaveTemplateOpen(true) }]
       : []),
     ...act('correction', {
       label: 'Vystavit opravný doklad',
@@ -427,6 +469,20 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
               )}
             </Section>
 
+            <Section
+              title="E-maily"
+              action={
+                canSend && (
+                  <Button variant="ghost" size="sm" onClick={() => openSend(canRemind && !notSent && inv.status === 'overdue' ? 'reminder' : 'invoice')} className="max-md:h-9">
+                    <MailIcon data-icon="inline-start" />
+                    Odeslat
+                  </Button>
+                )
+              }
+            >
+              <EmailHistory slug={slug} invoiceId={inv.id} />
+            </Section>
+
             <Section title="Údaje">
               <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-sm">
                 <Info label="Vystaveno">{formatDate(inv.issued_on)}</Info>
@@ -467,6 +523,18 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
       {allowed.has('add_payment') && (
         <AddPaymentDialog slug={slug} invoice={inv} open={paymentOpen} onOpenChange={setPaymentOpen} />
       )}
+
+      {canSend && (
+        <SendInvoiceDialog
+          key={send.key}
+          slug={slug}
+          invoice={inv}
+          open={send.open}
+          initialKind={send.kind}
+          onOpenChange={(open) => setSend((s) => ({ ...s, open }))}
+        />
+      )}
+      {canEdit && <SaveAsTemplateDialog slug={slug} invoice={inv} open={saveTemplateOpen} onOpenChange={setSaveTemplateOpen} />}
 
       <ResponsiveDialog
         open={confirm !== null}
