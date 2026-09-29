@@ -385,7 +385,7 @@ func (g *gen) taxSubTotals() ([]subTotal, error) {
 	}
 	t, err := billing.Calculate(lines, billing.Options{
 		PricesIncludeVAT: inv.PricesIncludeVat, ReverseCharge: inv.ReverseCharge,
-		NonVATPayer: inv.YourVatMode == model.VatModeNonPayer,
+		NonVATPayer: billing.ChargesNoVAT(inv.YourVatMode, inv.ReverseCharge),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("isdoc: %w", err)

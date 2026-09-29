@@ -37,6 +37,14 @@ export interface CalcResult {
   total: number
 }
 
+/**
+ * Doklad se počítá jako u neplátce (všechny sazby 0 %) — zrcadlí billing.ChargesNoVAT:
+ * neplátce vždy, identifikovaná osoba u tuzemských plnění (bez přenesení daňové povinnosti).
+ */
+export function chargesNoVat(vatMode: string | undefined, reverseCharge: boolean): boolean {
+  return vatMode === 'non_vat_payer' || (vatMode === 'identified_person' && !reverseCharge)
+}
+
 function mulDiv(a: number, b: number, den: number): number {
   return Number(divRoundHalfAway(BigInt(a) * BigInt(b), BigInt(den)))
 }

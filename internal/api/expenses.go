@@ -498,6 +498,7 @@ func (s *server) patchExpense(ctx context.Context, in *struct {
 }
 
 func (s *server) deleteExpense(ctx context.Context, in *expenseID) (*NoContent, error) {
+	var files []string
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		m, err := loadExpense(ctx, tx, in.ID)
 		if err != nil {
@@ -508,6 +509,9 @@ func (s *server) deleteExpense(ctx context.Context, in *expenseID) (*NoContent, 
 		}
 		if len(m.Payments) > 0 {
 			return conflict(CodeHasPayments, "the expense has payments; delete them first")
+		}
+		if files, err = deleteOwnerAttachments(ctx, tx, model.OwnerExpense, m.ID); err != nil {
+			return err
 		}
 		if err := rewriteDocStock(ctx, tx, docStock{"expense_id", m.ID}, false, "", "", nil); err != nil {
 			return err
@@ -523,6 +527,7 @@ func (s *server) deleteExpense(ctx context.Context, in *expenseID) (*NoContent, 
 	if err != nil {
 		return nil, err
 	}
+	s.removeFiles(ctx, files)
 	return &NoContent{}, nil
 }
 

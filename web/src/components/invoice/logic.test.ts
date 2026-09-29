@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calculateTotals, type CalcOptions } from './calc'
+import { calculateTotals, chargesNoVat, type CalcOptions } from './calc'
 import { allowedActions, dueInfo, plural, storedStatus } from './status'
 
 const net: CalcOptions = { pricesIncludeVat: false, reverseCharge: false, roundTotal: false, nonVatPayer: false }
@@ -41,6 +41,13 @@ describe('calculateTotals', () => {
       total: 10000,
     })
     expect(calculateTotals(lines, { ...net, nonVatPayer: true }).vatRecap[0]?.vatRateBps).toBe(0)
+  })
+
+  it('identified person: no domestic VAT, rates kept on reverse charge', () => {
+    expect(chargesNoVat('identified_person', false)).toBe(true)
+    expect(chargesNoVat('identified_person', true)).toBe(false)
+    expect(chargesNoVat('non_vat_payer', true)).toBe(true)
+    expect(chargesNoVat('vat_payer', false)).toBe(false)
   })
 
   it('round_total rounds half away from zero, also for negative totals', () => {

@@ -103,6 +103,23 @@ type Invoice struct {
 	Lines    []InvoiceLine  `json:"lines" nullable:"false"`
 	Payments []Payment      `json:"payments" nullable:"false"`
 	VatRecap []VatRecapItem `json:"vat_recap" nullable:"false"`
+	Warnings []DocWarning   `json:"warnings" nullable:"false" doc:"Things the issuer should check (not errors)"`
+}
+
+// DocWarning is a non-blocking problem of a document.
+type DocWarning struct {
+	Code    string `json:"code" enum:"no_bank_account" doc:"no_bank_account: bank transfer, but no bank account in the invoice currency — the document has no payment details (account number, QR)"`
+	Message string `json:"message"`
+}
+
+// invoiceWarnings derives the warnings of an invoice from its stored data.
+func invoiceWarnings(m *model.Invoice) []DocWarning {
+	out := []DocWarning{}
+	if m.PaymentMethod == "bank" && m.IBAN == "" && m.BankAccount == "" && m.DocumentType != model.DocCorrection {
+		out = append(out, DocWarning{Code: "no_bank_account",
+			Message: "no bank account in " + m.Currency + ": the document has no payment details; add a bank account in this currency"})
+	}
+	return out
 }
 
 type InvoiceLine struct {
@@ -181,6 +198,7 @@ func toInvoice(m *model.Invoice, today string) Invoice {
 		Lines:          make([]InvoiceLine, len(m.Lines)),
 		Payments:       make([]Payment, len(m.Payments)),
 		VatRecap:       []VatRecapItem{},
+		Warnings:       invoiceWarnings(m),
 	}
 	for i, l := range m.Lines {
 		out.Lines[i] = InvoiceLine{
@@ -590,6 +608,7 @@ func (s *server) patchInvoice(ctx context.Context, in *struct {
 }
 
 func (s *server) deleteInvoice(ctx context.Context, in *invoiceID) (*NoContent, error) {
+	var files []string
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		m, err := loadInvoice(ctx, tx, in.ID)
 		if err != nil {
@@ -600,6 +619,17 @@ func (s *server) deleteInvoice(ctx context.Context, in *invoiceID) (*NoContent, 
 		}
 		if len(m.Payments) > 0 {
 			return conflict(CodeHasPayments, "the invoice has payments; delete them first")
+		}
+		var ref model.Invoice
+		res := tx.Scopes(inAccount(ctx)).Select("id", "number").Where("related_id = ?", m.ID).Limit(1).Find(&ref)
+		if res.Error != nil {
+			return dbErr(res.Error, "invoice")
+		}
+		if res.RowsAffected > 0 {
+			return conflict(CodeReferenced, "the document is referenced by "+ref.Number+"; delete that document first")
+		}
+		if files, err = deleteOwnerAttachments(ctx, tx, model.OwnerInvoice, m.ID); err != nil {
+			return err
 		}
 		if err := clearInvoiceStock(ctx, tx, m.ID); err != nil {
 			return err
@@ -615,6 +645,7 @@ func (s *server) deleteInvoice(ctx context.Context, in *invoiceID) (*NoContent, 
 	if err != nil {
 		return nil, err
 	}
+	s.removeFiles(ctx, files)
 	return &NoContent{}, nil
 }
 
@@ -752,7 +783,7 @@ func billingLines(lines []model.InvoiceLine) []billing.Line {
 func billingOptions(m *model.Invoice) billing.Options {
 	return billing.Options{
 		PricesIncludeVAT: m.PricesIncludeVat, ReverseCharge: m.ReverseCharge,
-		RoundTotal: m.RoundTotal, NonVATPayer: m.YourVatMode == model.VatModeNonPayer,
+		RoundTotal: m.RoundTotal, NonVATPayer: billing.ChargesNoVAT(m.YourVatMode, m.ReverseCharge),
 	}
 }
 

@@ -1,6 +1,10 @@
 package billing
 
-import "sort"
+import (
+	"sort"
+
+	"github.com/qwerin/nanofaktura/internal/model"
+)
 
 // Line is the input of Calculate: one document line (invoice, expense…).
 type Line struct {
@@ -41,6 +45,16 @@ type Totals struct {
 	VatTotal int64         // Σ recap vat
 	Rounding int64         // Total − (Subtotal + VatTotal)
 	Total    int64
+}
+
+// ChargesNoVAT reports whether a document issued in vatMode is computed
+// like a non-VAT payer's (every rate forced to 0 %): always for non-payers,
+// and for identified persons (identifikovaná osoba) on domestic supplies —
+// they charge no Czech VAT. An identified person's reverse-charge supply
+// (services to another EU state) keeps its rates for display; the reverse
+// charge already makes the VAT 0.
+func ChargesNoVAT(vatMode string, reverseCharge bool) bool {
+	return vatMode == model.VatModeNonPayer || (vatMode == model.VatModeIdentifiedPerson && !reverseCharge)
 }
 
 // EffectiveRate is the rate actually used for a line: 0 for non-VAT payers.

@@ -255,6 +255,7 @@ func (s *server) patchSubject(ctx context.Context, in *struct {
 func (s *server) deleteSubject(ctx context.Context, in *struct {
 	ID uint `path:"id"`
 }) (*NoContent, error) {
+	var files []string
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var m model.Subject
 		if err := tx.Scopes(inAccount(ctx)).First(&m, in.ID).Error; err != nil {
@@ -267,6 +268,23 @@ func (s *server) deleteSubject(ctx context.Context, in *struct {
 		if n > 0 {
 			return conflict(CodeHasInvoices, "subject has invoices and cannot be deleted")
 		}
+		var tpl model.InvoiceTemplate
+		res := tx.Scopes(inAccount(ctx)).Select("id", "name").Where("subject_id = ?", m.ID).Limit(1).Find(&tpl)
+		if res.Error != nil {
+			return dbErr(res.Error, "template")
+		}
+		if res.RowsAffected > 0 {
+			return conflict(CodeUsedByTemplate, "the subject is used by the template "+tpl.Name+"; delete or change the template first")
+		}
+		// expenses keep their supplier snapshot, only the link goes
+		if err := tx.Model(&model.Expense{}).Scopes(inAccount(ctx)).Where("subject_id = ?", m.ID).
+			Update("subject_id", nil).Error; err != nil {
+			return dbErr(err, "expenses")
+		}
+		var err error
+		if files, err = deleteOwnerAttachments(ctx, tx, model.OwnerSubject, m.ID); err != nil {
+			return err
+		}
 		if err := tx.Delete(&m).Error; err != nil {
 			return dbErr(err, "subject")
 		}
@@ -275,5 +293,6 @@ func (s *server) deleteSubject(ctx context.Context, in *struct {
 	if err != nil {
 		return nil, err
 	}
+	s.removeFiles(ctx, files)
 	return &NoContent{}, nil
 }

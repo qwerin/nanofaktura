@@ -13,7 +13,7 @@ import { bankAccountQueries } from '@/api/queries/bank-accounts'
 import { useCreateTemplate, useUpdateTemplate } from '@/api/queries/templates'
 import type { Account, InvoiceTemplate } from '@/api/types'
 import { SelectField, SwitchField, TextareaField, TextField, type SelectOption } from '@/components/form/fields'
-import { calculateTotals } from '@/components/invoice/calc'
+import { calculateTotals, chargesNoVat } from '@/components/invoice/calc'
 import { apiFieldToFormField, toCalcLine } from '@/components/invoice/form-model'
 import { LinesEditor } from '@/components/invoice/lines-editor'
 import { documentTypeShortLabels, paymentMethodLabels } from '@/components/invoice/status'
@@ -74,7 +74,8 @@ export function TemplateForm({ slug, account, template, subject, onSaved, readOn
   const update = useUpdateTemplate(slug, template?.id ?? 0)
   const pending = create.isPending || update.isPending
   const allowLeave = useRef(false)
-  const payer = account.vat_mode !== 'non_vat_payer'
+  const vatMode = account.vat_mode
+  const payer = vatMode !== 'non_vat_payer'
 
   const defaults = useMemo<TemplateFormValues>(() => {
     if (template) return templateToValues(template, account, subject ?? null)
@@ -108,7 +109,7 @@ export function TemplateForm({ slug, account, template, subject, onSaved, readOn
     pricesIncludeVat,
     reverseCharge: payer && reverseCharge,
     roundTotal,
-    nonVatPayer: !payer,
+    nonVatPayer: chargesNoVat(vatMode, payer && reverseCharge),
   })
   const amounts = (lines ?? []).map(
     (l) => calculateTotals([toCalcLine(l)], { pricesIncludeVat, reverseCharge: true, roundTotal: false, nonVatPayer: true }).total,

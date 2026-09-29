@@ -3,7 +3,7 @@
 
 import { z } from 'zod'
 import type { Account, CreateTemplateInput, InvoiceTemplate, PaymentMethod } from '@/api/types'
-import { calculateTotals } from '@/components/invoice/calc'
+import { calculateTotals, chargesNoVat } from '@/components/invoice/calc'
 import { emptyLine, lineSchema, subjectValueSchema } from '@/components/invoice/form-model'
 import { formatMoneyInput, parseMoney } from '@/lib/money'
 import { parseQuantity } from '@/lib/quantity'
@@ -147,7 +147,7 @@ export function templateTotal(
       pricesIncludeVat: t.prices_include_vat,
       reverseCharge: payer && t.reverse_charge,
       roundTotal: t.round_total ?? account.round_total,
-      nonVatPayer: !payer,
+      nonVatPayer: chargesNoVat(account.vat_mode, payer && t.reverse_charge),
     },
   ).total
 }

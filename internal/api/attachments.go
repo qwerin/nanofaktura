@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime"
 	"net/http"
 	"path"
@@ -295,6 +296,44 @@ func (s *server) downloadAttachment(ctx context.Context, in *struct {
 		hc.SetStatus(http.StatusOK)
 		_, _ = io.Copy(hc.BodyWriter(), rc)
 	}}, nil
+}
+
+// deleteOwnerAttachments deletes the attachment rows of an owner record
+// inside tx and returns their storage keys; the caller removes the files with
+// s.removeFiles only after the transaction commits (a rollback keeps both).
+func deleteOwnerAttachments(ctx context.Context, tx *gorm.DB, ownerType string, ownerID uint) ([]string, error) {
+	var rows []model.Attachment
+	if err := tx.Scopes(inAccount(ctx)).Where("owner_type = ? AND owner_id = ?", ownerType, ownerID).Find(&rows).Error; err != nil {
+		return nil, dbErr(err, "attachments")
+	}
+	if len(rows) == 0 {
+		return nil, nil
+	}
+	keys := make([]string, len(rows))
+	ids := make([]uint, len(rows))
+	for i, r := range rows {
+		keys[i], ids[i] = r.StorageKey, r.ID
+	}
+	acc := auth.AccountFrom(ctx).ID
+	for _, col := range []string{"logo_attachment_id", "stamp_attachment_id"} {
+		if err := tx.Model(&model.Account{}).Where("id = ? AND "+col+" IN ?", acc, ids).Update(col, nil).Error; err != nil {
+			return nil, dbErr(err, "account")
+		}
+	}
+	if err := tx.Where("id IN ?", ids).Delete(&model.Attachment{}).Error; err != nil {
+		return nil, dbErr(err, "attachments")
+	}
+	return keys, nil
+}
+
+// removeFiles deletes stored files best-effort (after the metadata is gone,
+// a leftover file is only wasted space).
+func (s *server) removeFiles(ctx context.Context, keys []string) {
+	for _, k := range keys {
+		if err := s.deps.Storage.Delete(context.WithoutCancel(ctx), k); err != nil && !errors.Is(err, storage.ErrNotFound) {
+			slog.Warn("cannot delete attachment file", "key", k, "err", err)
+		}
+	}
 }
 
 func (s *server) deleteAttachment(ctx context.Context, in *struct {

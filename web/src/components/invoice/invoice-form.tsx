@@ -25,7 +25,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { formatDate, formatDateLong, todayISO } from '@/lib/date'
 import { formatMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
-import { calculateTotals } from './calc'
+import { calculateTotals, chargesNoVat } from './calc'
 import {
   apiFieldToFormField,
   computeDueOn,
@@ -73,7 +73,8 @@ export function InvoiceForm({ slug, account, invoice, preset }: InvoiceFormProps
   const [markSent, setMarkSent] = useState(false)
   const allowLeave = useRef(false)
 
-  const payer = (invoice?.your_vat_mode ?? account.vat_mode) !== 'non_vat_payer'
+  const vatMode = invoice?.your_vat_mode ?? account.vat_mode
+  const payer = vatMode !== 'non_vat_payer'
 
   const defaults = useMemo<InvoiceFormValues>(() => {
     if (invoice) return invoiceToValues(invoice)
@@ -107,7 +108,7 @@ export function InvoiceForm({ slug, account, invoice, preset }: InvoiceFormProps
     pricesIncludeVat,
     reverseCharge: payer && reverseCharge,
     roundTotal,
-    nonVatPayer: !payer,
+    nonVatPayer: chargesNoVat(vatMode, payer && reverseCharge),
   })
   const amounts = (lines ?? []).map((l) => {
     const c = toCalcLine(l)
