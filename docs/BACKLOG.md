@@ -30,6 +30,10 @@ Položky nalezené během implementace, určené k vyřešení v úklidové vln�
 - [ ] `BankTransaction` vracet číslo a název spárovaného dokladu (teď N+1 dotazů z frontendu).
 - [ ] Seznamy faktur/nákladů: filtr podle částky a „jen neuhrazené“ (ruční párování).
 - [ ] Zůstatek bankovního účtu z výpisů (opening/closing balance).
+- [ ] Veřejný DTO faktury: URL loga dodavatele (veřejně dostupný endpoint pro logo přes token).
+- [ ] Varování VAT reportu anglicky → `code` + česky; DIČ v KH A.4/B.2 zobrazovat s prefixem CZ v JSON (XML dle schématu bez).
+- [ ] Faktura v měně bez bankovního účtu v té měně → žádné platební údaje; zvážit fallback (výchozí účet s IBAN) nebo varování při vystavení.
+- [ ] `Me`/account výstup: capability flagy (`can_view_reports`, `can_manage_settings` …) místo odvozování rolí na frontendu.
 - [ ] Per-account SMTP nastavení; text pozvánky jen česky.
 
 ## Dev
