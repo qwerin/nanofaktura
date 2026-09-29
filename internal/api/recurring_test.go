@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/qwerin/nanofaktura/internal/api"
-	"github.com/qwerin/nanofaktura/internal/config"
 	"github.com/qwerin/nanofaktura/internal/model"
 	"github.com/qwerin/nanofaktura/internal/storage"
 )
@@ -19,8 +18,8 @@ import (
 // runJob runs a scheduler job of the API (same DB, clock, mailer) at ts.now.
 func runJob(ts *testServer, name string) error {
 	ts.t.Helper()
-	deps := api.Deps{Now: func() time.Time { return ts.now }, Mailer: ts.mail, Storage: storage.NewLocal(ts.dataDir)}
-	for _, j := range api.Jobs(ts.db, config.Config{}, deps) {
+	deps := api.Deps{Now: func() time.Time { return ts.now }, Mailer: ts.mail, Storage: storage.NewLocal(ts.dataDir), Secrets: ts.secrets}
+	for _, j := range api.Jobs(ts.db, ts.cfg, deps) {
 		if j.Name == name {
 			return j.Run(context.Background(), ts.now)
 		}

@@ -26,6 +26,7 @@ type Subject struct {
 	SwiftBIC       string
 	DueDays        *int // overrides Account.DefaultDueDays
 	Note           string
+	SearchText     string // search.Text(SearchSource()), set by BeforeSave
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }

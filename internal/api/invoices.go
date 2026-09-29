@@ -16,6 +16,7 @@ import (
 
 	"github.com/qwerin/nanofaktura/internal/auth"
 	"github.com/qwerin/nanofaktura/internal/billing"
+	"github.com/qwerin/nanofaktura/internal/events"
 	"github.com/qwerin/nanofaktura/internal/model"
 	"github.com/qwerin/nanofaktura/internal/numbering"
 	"github.com/qwerin/nanofaktura/internal/spayd"
@@ -496,7 +497,7 @@ func (s *server) createInvoiceTx(ctx context.Context, tx *gorm.DB, in *InvoiceCr
 	if err := syncInvoiceStock(ctx, tx, m); err != nil {
 		return nil, err
 	}
-	return m, nil
+	return m, recordInvoice(ctx, tx, events.InvoiceCreated, m)
 }
 
 func (s *server) patchInvoice(ctx context.Context, in *struct {
@@ -581,7 +582,10 @@ func (s *server) patchInvoice(ctx context.Context, in *struct {
 		if err := saveLines(tx, m); err != nil {
 			return 0, err
 		}
-		return m.ID, syncInvoiceStock(ctx, tx, m)
+		if err := syncInvoiceStock(ctx, tx, m); err != nil {
+			return 0, err
+		}
+		return m.ID, recordInvoice(ctx, tx, events.InvoiceUpdated, m)
 	})
 }
 
@@ -603,7 +607,10 @@ func (s *server) deleteInvoice(ctx context.Context, in *invoiceID) (*NoContent, 
 		if err := tx.Where("invoice_id = ?", m.ID).Delete(&model.InvoiceLine{}).Error; err != nil {
 			return dbErr(err, "invoice")
 		}
-		return dbErrOrNil(tx.Delete(m).Error, "invoice")
+		if err := tx.Delete(m).Error; err != nil {
+			return dbErr(err, "invoice")
+		}
+		return recordInvoice(ctx, tx, events.InvoiceDeleted, m)
 	})
 	if err != nil {
 		return nil, err

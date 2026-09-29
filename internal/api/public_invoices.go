@@ -10,6 +10,7 @@ import (
 
 	"github.com/qwerin/nanofaktura/internal/auth"
 	"github.com/qwerin/nanofaktura/internal/billing"
+	"github.com/qwerin/nanofaktura/internal/events"
 	"github.com/qwerin/nanofaktura/internal/model"
 	"github.com/qwerin/nanofaktura/internal/pdf"
 	"github.com/qwerin/nanofaktura/internal/spayd"
@@ -134,16 +135,23 @@ func (s *server) publicInvoice(ctx context.Context, token string) (context.Conte
 	if err := s.db.WithContext(ctx).First(&acc, m.AccountID).Error; err != nil {
 		return nil, nil, dbErr(err, "invoice")
 	}
+	actx := auth.WithAccount(ctx, &acc, "")
 	if m.PublicViewedAt == nil {
 		now := s.deps.Now()
-		res := s.db.WithContext(ctx).Model(&model.Invoice{}).
-			Where("id = ? AND public_viewed_at IS NULL", m.ID).Update("public_viewed_at", now)
-		if res.Error != nil {
-			return nil, nil, dbErr(res.Error, "invoice")
+		err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			res := tx.Model(&model.Invoice{}).
+				Where("id = ? AND public_viewed_at IS NULL", m.ID).Update("public_viewed_at", now)
+			if res.Error != nil || res.RowsAffected == 0 {
+				return dbErrOrNil(res.Error, "invoice")
+			}
+			return recordInvoice(actx, tx, events.PublicViewed, &m) // first view only
+		})
+		if err != nil {
+			return nil, nil, err
 		}
 		m.PublicViewedAt = &now
 	}
-	return auth.WithAccount(ctx, &acc, ""), &m, nil
+	return actx, &m, nil
 }
 
 func (s *server) getPublicInvoice(ctx context.Context, in *publicTokenInput) (*Out[PublicInvoice], error) {

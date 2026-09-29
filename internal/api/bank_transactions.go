@@ -18,6 +18,7 @@ import (
 	"github.com/qwerin/nanofaktura/internal/bankimport"
 	"github.com/qwerin/nanofaktura/internal/cnb"
 	"github.com/qwerin/nanofaktura/internal/matching"
+	"github.com/qwerin/nanofaktura/internal/events"
 	"github.com/qwerin/nanofaktura/internal/model"
 	"github.com/qwerin/nanofaktura/internal/spayd"
 )
@@ -447,7 +448,7 @@ func (s *server) storeStatement(ctx context.Context, tx *gorm.DB, ba *model.Bank
 		fresh = append(fresh, m)
 	}
 	if len(fresh) == 0 {
-		return res, nil
+		return res, recordBankImport(ctx, tx, ba, res)
 	}
 	mt, err := loadMatchCandidates(ctx, tx)
 	if err != nil {
@@ -466,7 +467,7 @@ func (s *server) storeStatement(ctx context.Context, tx *gorm.DB, ba *model.Bank
 		}
 	}
 	res.paid = mt.paid
-	return res, nil
+	return res, recordBankImport(ctx, tx, ba, res)
 }
 
 // ---- matching ----
@@ -571,7 +572,10 @@ func (s *server) matchTransaction(ctx context.Context, tx *gorm.DB, mt *matchCan
 		m.Suggestions = append(m.Suggestions, ms)
 	}
 	m.SuggestionCount = len(m.Suggestions)
-	return false, dbErrOrNil(tx.Save(m).Error, "bank transaction")
+	if err := tx.Save(m).Error; err != nil {
+		return false, dbErr(err, "bank transaction")
+	}
+	return false, syncTodos(ctx, tx, events.SubjectBankTransaction, m.ID)
 }
 
 func abs64(v int64) int64 {
@@ -608,7 +612,7 @@ func (s *server) linkTransaction(ctx context.Context, tx *gorm.DB, m *model.Bank
 		if inv.Currency != m.Currency {
 			return invalid("invoice_id", "the invoice is in "+inv.Currency+", the transaction in "+m.Currency)
 		}
-		p, err := addPayment(tx, inv, m.BookedOn, m.Amount, note)
+		p, err := addPayment(ctx, tx, inv, m.BookedOn, m.Amount, note)
 		if err != nil {
 			return err
 		}
@@ -624,7 +628,7 @@ func (s *server) linkTransaction(ctx context.Context, tx *gorm.DB, m *model.Bank
 		if exp.Currency != m.Currency {
 			return invalid("expense_id", "the expense is in "+exp.Currency+", the transaction in "+m.Currency)
 		}
-		p, err := addExpensePayment(tx, exp, m.BookedOn, -m.Amount, note)
+		p, err := addExpensePayment(ctx, tx, exp, m.BookedOn, -m.Amount, note)
 		if err != nil {
 			return err
 		}
@@ -632,7 +636,24 @@ func (s *server) linkTransaction(ctx context.Context, tx *gorm.DB, m *model.Bank
 	}
 	m.AutoMatched, m.Ignored = auto, false
 	m.Suggestions, m.SuggestionCount = nil, 0
-	return dbErrOrNil(tx.Save(m).Error, "bank transaction")
+	if err := tx.Save(m).Error; err != nil {
+		return dbErr(err, "bank transaction")
+	}
+	return recordBankMatch(ctx, tx, events.BankMatched, m, docLabel(ctx, tx, m.MatchedInvoiceID, m.MatchedExpenseID))
+}
+
+// docLabel names the matched document for event texts ("doklad 2026-0001").
+func docLabel(ctx context.Context, tx *gorm.DB, invoiceID, expenseID *uint) string {
+	var number []string
+	switch {
+	case invoiceID != nil:
+		tx.Model(&model.Invoice{}).Scopes(inAccount(ctx)).Where("id = ?", *invoiceID).Limit(1).Pluck("number", &number)
+		return "doklad " + strings.Join(number, "")
+	case expenseID != nil:
+		tx.Model(&model.Expense{}).Scopes(inAccount(ctx)).Where("id = ?", *expenseID).Limit(1).Pluck("number", &number)
+		return "náklad " + strings.Join(number, "")
+	}
+	return ""
 }
 
 // refErr turns a 404 of a document referenced in the body into a 422.
@@ -696,6 +717,7 @@ func (s *server) unmatchBankTransaction(ctx context.Context, in *bankTxID) (*Out
 		if m.PaymentID == nil {
 			return conflict("the transaction is not matched")
 		}
+		label := docLabel(ctx, tx, m.MatchedInvoiceID, m.MatchedExpenseID)
 		switch {
 		case m.MatchedInvoiceID != nil:
 			if err := removeInvoicePayment(ctx, tx, *m.MatchedInvoiceID, *m.PaymentID); err != nil {
@@ -711,8 +733,10 @@ func (s *server) unmatchBankTransaction(ctx context.Context, in *bankTxID) (*Out
 		if err != nil {
 			return err
 		}
-		_, err = s.matchTransaction(ctx, tx, mt, m, false) // fresh suggestions, never auto-match again
-		return err
+		if _, err = s.matchTransaction(ctx, tx, mt, m, false); err != nil { // fresh suggestions, never auto-match again
+			return err
+		}
+		return recordBankMatch(ctx, tx, events.BankUnmatched, m, label)
 	})
 }
 
@@ -730,7 +754,10 @@ func removeInvoicePayment(ctx context.Context, tx *gorm.DB, invoiceID, paymentID
 			}
 			inv.Payments = append(inv.Payments[:i], inv.Payments[i+1:]...)
 			applyPayments(inv)
-			return dbErrOrNil(tx.Omit(clause.Associations).Save(inv).Error, "invoice")
+			if err := tx.Omit(clause.Associations).Save(inv).Error; err != nil {
+				return dbErr(err, "invoice")
+			}
+			return recordInvoicePayment(ctx, tx, events.PaymentDeleted, inv, &p, model.StatusPaid)
 		}
 	}
 	return nil
@@ -749,7 +776,10 @@ func removeExpensePayment(ctx context.Context, tx *gorm.DB, expenseID, paymentID
 			}
 			exp.Payments = append(exp.Payments[:i], exp.Payments[i+1:]...)
 			applyExpensePayments(exp)
-			return dbErrOrNil(tx.Omit(clause.Associations).Save(exp).Error, "expense")
+			if err := tx.Omit(clause.Associations).Save(exp).Error; err != nil {
+				return dbErr(err, "expense")
+			}
+			return recordExpensePayment(ctx, tx, events.ExpensePaymentDeleted, exp, &p, model.StatusPaid)
 		}
 	}
 	return nil
@@ -761,14 +791,20 @@ func (s *server) ignoreBankTransaction(ctx context.Context, in *bankTxID) (*Out[
 			return conflict("the transaction is matched; unmatch it first")
 		}
 		m.Ignored = true
-		return dbErrOrNil(tx.Save(m).Error, "bank transaction")
+		if err := tx.Save(m).Error; err != nil {
+			return dbErr(err, "bank transaction")
+		}
+		return syncTodos(ctx, tx, events.SubjectBankTransaction, m.ID)
 	})
 }
 
 func (s *server) unignoreBankTransaction(ctx context.Context, in *bankTxID) (*Out[BankTransaction], error) {
 	return s.mutateBankTx(ctx, in.ID, func(tx *gorm.DB, m *model.BankTransaction) error {
 		m.Ignored = false
-		return dbErrOrNil(tx.Save(m).Error, "bank transaction")
+		if err := tx.Save(m).Error; err != nil {
+			return dbErr(err, "bank transaction")
+		}
+		return syncTodos(ctx, tx, events.SubjectBankTransaction, m.ID)
 	})
 }
 

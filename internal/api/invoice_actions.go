@@ -11,6 +11,7 @@ import (
 
 	"github.com/qwerin/nanofaktura/internal/auth"
 	"github.com/qwerin/nanofaktura/internal/billing"
+	"github.com/qwerin/nanofaktura/internal/events"
 	"github.com/qwerin/nanofaktura/internal/model"
 )
 
@@ -45,6 +46,9 @@ func (s *server) invoiceAction(ctx context.Context, in *struct {
 			st.Status, st.SentAt, st.CancelledAt, st.UncollectibleAt, st.LockedAt
 		if err := tx.Omit(clause.Associations).Save(m).Error; err != nil {
 			return 0, dbErr(err, "invoice")
+		}
+		if err := recordInvoice(ctx, tx, invoiceActionEvents[in.Action], m); err != nil {
+			return 0, err
 		}
 		if in.Action == billing.ActionCancel || in.Action == billing.ActionUndoCancel {
 			return m.ID, syncInvoiceStock(ctx, tx, m) // cancelled invoices return their goods
@@ -100,8 +104,10 @@ func (s *server) regeneratePublicToken(ctx context.Context, in *invoiceID) (*Out
 		if err != nil {
 			return 0, err
 		}
-		err = tx.Model(m).Update("public_token", newPublicToken()).Error
-		return m.ID, dbErrOrNil(err, "invoice")
+		if err := tx.Model(m).Update("public_token", newPublicToken()).Error; err != nil {
+			return 0, dbErr(err, "invoice")
+		}
+		return m.ID, recordInvoice(ctx, tx, events.InvoicePublicLinkRegenerate, m)
 	})
 }
 

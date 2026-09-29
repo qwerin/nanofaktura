@@ -11,6 +11,7 @@ import (
 
 	"github.com/qwerin/nanofaktura/internal/auth"
 	"github.com/qwerin/nanofaktura/internal/billing"
+	"github.com/qwerin/nanofaktura/internal/events"
 	"github.com/qwerin/nanofaktura/internal/model"
 )
 
@@ -176,7 +177,7 @@ func (s *server) createPriceItem(ctx context.Context, in *struct{ Body PriceItem
 			return dbErr(err, "price item")
 		}
 		if initial == 0 {
-			return nil
+			return recordPriceItem(ctx, tx, events.PriceItemCreated, m)
 		}
 		mv := &model.StockMove{AccountID: acc.ID, PriceItemID: m.ID, Direction: model.StockIn,
 			QuantityMilli: initial, MovedOn: s.today(), Note: "initial stock"}
@@ -186,7 +187,10 @@ func (s *server) createPriceItem(ctx context.Context, in *struct{ Body PriceItem
 		if err := addStockMove(tx, mv); err != nil {
 			return err
 		}
-		return tx.First(m, m.ID).Error
+		if err := tx.First(m, m.ID).Error; err != nil {
+			return err
+		}
+		return recordPriceItem(ctx, tx, events.PriceItemCreated, m)
 	})
 	if err != nil {
 		return nil, err
@@ -235,8 +239,14 @@ func (s *server) patchPriceItem(ctx context.Context, in *struct {
 		}
 	}
 	// stock_quantity_milli is owned by stock moves; never overwrite it here
-	if err := s.scoped(ctx).Omit("stock_quantity_milli").Save(m).Error; err != nil {
-		return nil, dbErr(err, "price item")
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Scopes(inAccount(ctx)).Omit("stock_quantity_milli").Save(m).Error; err != nil {
+			return dbErr(err, "price item")
+		}
+		return recordPriceItem(ctx, tx, events.PriceItemUpdated, m)
+	})
+	if err != nil {
+		return nil, err
 	}
 	return s.getPriceItem(ctx, &priceItemID{ID: m.ID})
 }
@@ -257,7 +267,10 @@ func (s *server) deletePriceItem(ctx context.Context, in *priceItemID) (*NoConte
 				return dbErr(err, "price item")
 			}
 		}
-		return dbErrOrNil(tx.Delete(m).Error, "price item")
+		if err := tx.Delete(m).Error; err != nil {
+			return dbErr(err, "price item")
+		}
+		return recordPriceItem(ctx, tx, events.PriceItemDeleted, m)
 	})
 	if err != nil {
 		return nil, err

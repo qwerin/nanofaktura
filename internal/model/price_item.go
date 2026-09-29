@@ -20,6 +20,7 @@ type PriceItem struct {
 	MinStockMilli      *int64 // low stock threshold; nil = none
 	ArchivedAt         *time.Time
 	Note               string
+	SearchText         string // search.Text(SearchSource()), set by BeforeSave
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }

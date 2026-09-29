@@ -342,7 +342,7 @@ func (s *server) issueRecurring(ctx context.Context, id uint, today string, forc
 			return dbErr(err, "recurring")
 		}
 		inv = m
-		return nil
+		return recordRecurring(ctx, tx, &r, m, "")
 	})
 	if err != nil {
 		return nil, nil, err
@@ -372,8 +372,9 @@ func (s *server) RunRecurring(ctx context.Context, now time.Time) error {
 			inv, rec, err := s.issueRecurring(actx, r.ID, today, false)
 			if err != nil {
 				errs = append(errs, fmt.Errorf("recurring %d: %w", r.ID, err))
-				_ = s.db.WithContext(ctx).Model(&model.Recurring{}).Where("id = ?", r.ID).
-					Updates(map[string]any{"last_error": err.Error(), "last_run_at": s.deps.Now()}).Error
+				if ferr := s.recurringFailed(actx, r.ID, err); ferr != nil {
+					errs = append(errs, ferr)
+				}
 				break
 			}
 			if inv == nil {
@@ -387,13 +388,34 @@ func (s *server) RunRecurring(ctx context.Context, now time.Time) error {
 	return errors.Join(errs...)
 }
 
+// recurringFailed stores a failed scheduled generation in last_error and
+// records recurring.failed (+ todo) in its own transaction.
+func (s *server) recurringFailed(ctx context.Context, id uint, cause error) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var r model.Recurring
+		if err := tx.Scopes(inAccount(ctx)).First(&r, id).Error; err != nil {
+			return err
+		}
+		now := s.deps.Now()
+		r.LastError, r.LastRunAt = cause.Error(), &now
+		if err := tx.Model(&r).Updates(map[string]any{"last_error": r.LastError, "last_run_at": now}).Error; err != nil {
+			return err
+		}
+		return recordRecurring(ctx, tx, &r, nil, r.LastError)
+	})
+}
+
 // systemContext acts in account id outside a request (scheduler jobs).
 func (s *server) systemContext(ctx context.Context, accountID uint) (context.Context, error) {
 	var acc model.Account
 	if err := s.db.WithContext(ctx).First(&acc, accountID).Error; err != nil {
 		return nil, fmt.Errorf("account %d: %w", accountID, err)
 	}
-	return auth.WithAccount(ctx, &acc, "system"), nil
+	actx := auth.WithAccount(ctx, &acc, "system")
+	if _, ok := ctx.Value(clockKey{}).(func() time.Time); !ok {
+		actx = withClock(actx, s.deps.Now)
+	}
+	return actx, nil
 }
 
 // Jobs returns the API's scheduler jobs (recurring invoices, reminders) using
@@ -401,9 +423,11 @@ func (s *server) systemContext(ctx context.Context, accountID uint) (context.Con
 func Jobs(db *gorm.DB, cfg config.Config, deps Deps) []scheduler.Job {
 	s := newServer(db, cfg, deps)
 	return []scheduler.Job{
-		{Name: "recurring", Run: s.RunRecurring},
-		{Name: "reminders", Run: s.RunReminders},
+		{Name: "recurring", Run: s.RunRecurring, Every: time.Hour},
+		{Name: "reminders", Run: s.RunReminders, Every: time.Hour},
 		{Name: "bank-sync", Run: s.RunBankSync, Every: 2 * time.Hour},
+		{Name: "todos", Run: s.RunTodos, Every: time.Hour},
+		{Name: "webhooks", Run: s.RunWebhooks}, // every tick (cmd/server ticks every minute)
 	}
 }
 

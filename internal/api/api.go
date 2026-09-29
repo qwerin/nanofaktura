@@ -52,6 +52,7 @@ import (
 	"github.com/qwerin/nanofaktura/internal/storage"
 	"github.com/qwerin/nanofaktura/internal/vatreg"
 	"github.com/qwerin/nanofaktura/internal/vies"
+	"github.com/qwerin/nanofaktura/internal/webhooks"
 )
 
 // Deps holds swappable dependencies (tests replace them).
@@ -100,6 +101,8 @@ type server struct {
 	cfg  config.Config
 	deps Deps
 	auth *auth.Service
+
+	webhookClient *http.Client // SSRF-safe unless cfg.WebhooksAllowPrivate
 }
 
 // New builds the API router. db may be nil when only the OpenAPI document is needed.
@@ -117,6 +120,10 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 		"bearer":  {Type: "http", Scheme: "bearer"},
 	}
 	api := humachi.New(router, hc)
+	// every operation sees the API clock (record(), automatic todos)
+	api.UseMiddleware(func(hctx huma.Context, next func(huma.Context)) {
+		next(huma.WithContext(hctx, withClock(hctx.Context(), s.deps.Now)))
+	})
 
 	public := huma.NewGroup(api)
 
@@ -160,6 +167,10 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 	s.registerEmails(account)
 	s.registerBankTransactions(account)
 	s.registerSubjectVatStatus(account)
+	s.registerEvents(account)
+	s.registerTodos(account)
+	s.registerWebhooks(account)
+	s.registerSearch(account)
 
 	return router, api
 }
@@ -200,7 +211,8 @@ func newServer(db *gorm.DB, cfg config.Config, deps Deps) *server {
 	if deps.Secrets == nil {
 		deps.Secrets = secret.NewRandom()
 	}
-	return &server{db: db, cfg: cfg, deps: deps, auth: auth.NewService(db, deps.Now, cfg.SecureCookies)}
+	return &server{db: db, cfg: cfg, deps: deps, auth: auth.NewService(db, deps.Now, cfg.SecureCookies),
+		webhookClient: webhooks.NewClient(cfg.WebhooksAllowPrivate)}
 }
 
 func defaultMailer(cfg config.Config) mail.Mailer {

@@ -2,9 +2,10 @@
 // reminders, later bank sync, webhook retries …) inside the server process.
 //
 // A job is a plain function of the current time. The scheduler calls every
-// registered job once at start and then on every tick (hourly by default);
-// a job with Every > 0 is skipped until that much time has passed since its
-// last run. Jobs run sequentially, one tick at a time; errors and panics are
+// registered job once at start and then on every tick (hourly by default;
+// cmd/server ticks every minute for webhook deliveries); a job with Every > 0
+// is skipped until that much time has passed since its last run, so slow
+// jobs declare Every and only short, frequent ones (webhooks) run each tick. Jobs run sequentially, one tick at a time; errors and panics are
 // logged and never stop the scheduler. Jobs must be idempotent: a job may run
 // again for the same period (restart, overlapping deploys), so it re-checks
 // its state in a transaction before acting.

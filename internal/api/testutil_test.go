@@ -18,6 +18,7 @@ import (
 	"github.com/qwerin/nanofaktura/internal/db"
 	"github.com/qwerin/nanofaktura/internal/mail/mailtest"
 	"github.com/qwerin/nanofaktura/internal/model"
+	"github.com/qwerin/nanofaktura/internal/secret"
 	"github.com/qwerin/nanofaktura/internal/storage"
 )
 
@@ -32,6 +33,8 @@ type testServer struct {
 	now     time.Time // current time seen by the API; change it to move the clock
 	mail    *mailtest.Recorder
 	dataDir string // attachment storage (t.TempDir)
+	cfg     config.Config
+	secrets *secret.Box // shared by the API and runJob (webhook secrets)
 }
 
 // newTestServer starts an API with signup allowed. Use opts to tweak the config.
@@ -49,13 +52,14 @@ func newTestServer(t *testing.T, opts ...func(*config.Config)) *testServer {
 			_ = sqlDB.Close()
 		}
 	})
-	cfg := config.Config{AllowSignup: true}
+	cfg := config.Config{AllowSignup: true, WebhooksAllowPrivate: true} // webhook tests call httptest servers on 127.0.0.1
 	for _, o := range opts {
 		o(&cfg)
 	}
-	ts := &testServer{t: t, db: gdb, now: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC), mail: mailtest.New(), dataDir: t.TempDir()}
+	ts := &testServer{t: t, db: gdb, now: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC), mail: mailtest.New(), dataDir: t.TempDir(),
+		cfg: cfg, secrets: secret.NewRandom()}
 	deps := api.Deps{
-		Now: func() time.Time { return ts.now }, Mailer: ts.mail, Storage: storage.NewLocal(ts.dataDir),
+		Now: func() time.Time { return ts.now }, Mailer: ts.mail, Storage: storage.NewLocal(ts.dataDir), Secrets: ts.secrets,
 	}
 	if cfg.CNBURL == "" {
 		deps.CNB = &fakeRates{} // never call the real ČNB (foreign-currency documents fetch a rate)

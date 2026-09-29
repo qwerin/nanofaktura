@@ -137,6 +137,23 @@ func TestRoleMatrix(t *testing.T) {
 		{"GET", "/reports/vat/dphdp3.xml", nil, reporters},
 		{"GET", "/reports/vat/dphkh1.xml", nil, reporters},
 		{"GET", "/reports/overview?year=1", nil, reporters},
+
+		{"GET", "/events", nil, all},
+		{"GET", "/events/catalog", nil, all},
+		{"GET", "/search?q=x", nil, all},
+		{"GET", "/todos", nil, all},
+		{"POST", "/todos", map[string]any{}, editors},
+		{"PATCH", "/todos" + missing, map[string]any{}, editors},
+		{"DELETE", "/todos" + missing, nil, editors},
+		{"POST", "/todos" + missing + "/toggle", nil, editors},
+		{"GET", "/webhooks", nil, managers},
+		{"GET", "/webhooks" + missing, nil, managers},
+		{"POST", "/webhooks", map[string]any{}, managers},
+		{"PATCH", "/webhooks" + missing, map[string]any{}, managers},
+		{"DELETE", "/webhooks" + missing, nil, managers},
+		{"POST", "/webhooks" + missing + "/test", nil, managers},
+		{"GET", "/webhooks" + missing + "/deliveries", nil, managers},
+		{"POST", "/webhooks" + missing + "/deliveries/1/redeliver", nil, managers},
 	} {
 		for role, c := range clients {
 			res, body := c.do(op.method, c.acct(op.path), op.body)

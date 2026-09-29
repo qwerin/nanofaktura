@@ -105,6 +105,9 @@ func (s *server) createStockMove(ctx context.Context, in *struct {
 		if item, err = loadPriceItem(ctx, tx, item.ID); err != nil {
 			return err
 		}
+		if err := recordStockMove(ctx, tx, item, mv, false); err != nil {
+			return err
+		}
 		res = StockMoveResult{Move: toStockMove(mv), PriceItem: toPriceItem(item)}
 		return nil
 	})
@@ -126,7 +129,14 @@ func (s *server) deleteStockMove(ctx context.Context, in *struct {
 		if mv.InvoiceID != nil || mv.ExpenseID != nil {
 			return conflict("this stock move was generated from a document; change the document instead")
 		}
-		return deleteStockMoves(tx, []model.StockMove{mv})
+		if err := deleteStockMoves(tx, []model.StockMove{mv}); err != nil {
+			return err
+		}
+		item, err := loadPriceItem(ctx, tx, mv.PriceItemID)
+		if err != nil {
+			return err
+		}
+		return recordStockMove(ctx, tx, item, &mv, true)
 	})
 	if err != nil {
 		return nil, err
@@ -188,8 +198,12 @@ func rewriteDocStock(ctx context.Context, tx *gorm.DB, doc docStock, active bool
 	if err := deleteStockMoves(tx, old); err != nil {
 		return err
 	}
+	touched := make([]uint, 0, len(old)+len(lines))
+	for _, mv := range old {
+		touched = append(touched, mv.PriceItemID)
+	}
 	if !active {
-		return nil
+		return syncStockTodos(ctx, tx, touched)
 	}
 	ids := []uint{}
 	for _, l := range lines {
@@ -198,7 +212,7 @@ func rewriteDocStock(ctx context.Context, tx *gorm.DB, doc docStock, active bool
 		}
 	}
 	if len(ids) == 0 {
-		return nil
+		return syncStockTodos(ctx, tx, touched)
 	}
 	var tracked []model.PriceItem
 	if err := tx.Scopes(inAccount(ctx)).Select("id").Where("id IN ? AND track_stock = ?", ids, true).Find(&tracked).Error; err != nil {
@@ -227,8 +241,9 @@ func rewriteDocStock(ctx context.Context, tx *gorm.DB, doc docStock, active bool
 		if err := addStockMove(tx, mv); err != nil {
 			return err
 		}
+		touched = append(touched, mv.PriceItemID)
 	}
-	return nil
+	return syncStockTodos(ctx, tx, touched) // low stock todo + stock.low
 }
 
 // syncInvoiceStock rewrites the stock moves of an invoice (loaded with lines):

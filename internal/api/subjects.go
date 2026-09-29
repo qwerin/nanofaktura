@@ -13,6 +13,7 @@ import (
 
 	"github.com/qwerin/nanofaktura/internal/ares"
 	"github.com/qwerin/nanofaktura/internal/auth"
+	"github.com/qwerin/nanofaktura/internal/events"
 	"github.com/qwerin/nanofaktura/internal/model"
 	"github.com/qwerin/nanofaktura/internal/spayd"
 )
@@ -189,8 +190,14 @@ func (s *server) createSubject(ctx context.Context, in *struct{ Body SubjectCrea
 	if err := normalizeSubject(&m); err != nil {
 		return nil, err
 	}
-	if err := s.db.WithContext(ctx).Create(&m).Error; err != nil {
-		return nil, subjectErr(err)
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&m).Error; err != nil {
+			return subjectErr(err)
+		}
+		return recordSubject(ctx, tx, events.SubjectCreated, &m)
+	})
+	if err != nil {
+		return nil, err
 	}
 	return &Out[Subject]{Body: toSubject(&m)}, nil
 }
@@ -233,8 +240,14 @@ func (s *server) patchSubject(ctx context.Context, in *struct {
 	if err := normalizeSubject(&m); err != nil {
 		return nil, err
 	}
-	if err := s.db.WithContext(ctx).Save(&m).Error; err != nil {
-		return nil, subjectErr(err)
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(&m).Error; err != nil {
+			return subjectErr(err)
+		}
+		return recordSubject(ctx, tx, events.SubjectUpdated, &m)
+	})
+	if err != nil {
+		return nil, err
 	}
 	return &Out[Subject]{Body: toSubject(&m)}, nil
 }
@@ -257,7 +270,7 @@ func (s *server) deleteSubject(ctx context.Context, in *struct {
 		if err := tx.Delete(&m).Error; err != nil {
 			return dbErr(err, "subject")
 		}
-		return nil
+		return recordSubject(ctx, tx, events.SubjectDeleted, &m)
 	})
 	if err != nil {
 		return nil, err

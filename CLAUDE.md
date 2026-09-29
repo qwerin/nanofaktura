@@ -36,6 +36,8 @@ internal/scheduler/ periodic background jobs (Job{Name, Run(ctx, now), Every}), 
 internal/storage/ Storage interface (Put/Get/Delete by key) + Local disk implementation (NANOFAKTURA_DATA_DIR/attachments)
 internal/secret/  AES-256-GCM Box for secrets stored in the DB (Fio tokens) — see "Secrets"
 internal/bankimport/ bank statement parsers + Fio API client; internal/matching/ pure bank-transaction ↔ document matching
+internal/events/  events.Record (activity log + webhook delivery queue, same tx) + event name catalogue
+internal/webhooks/ HMAC signing, SSRF-safe HTTP client, retry schedule; internal/search/ Fold (case/diacritics) for global search
 internal/api/     api.New + one file per resource (DTOs next to handlers) + *_test.go (package api_test)
 ```
 
@@ -164,8 +166,9 @@ in the API: inputs accept them, outputs only expose `has_<name> bool`; never log
 
 ## Scheduler (background jobs)
 
-`cmd/server` runs `scheduler.New(nil, time.Hour, slog.Default())` in a goroutine: every registered job runs at
-start and then hourly, sequentially; the context is cancelled on shutdown. Errors/panics are logged only.
+`cmd/server` runs `scheduler.New(nil, time.Minute, slog.Default())` in a goroutine: every registered job runs at
+start and then on every tick (each minute), sequentially — so **every job except `webhooks` declares `Every`**
+(`time.Hour`, `2 * time.Hour` …); the context is cancelled on shutdown. Errors/panics are logged only.
 A job is `scheduler.Job{Name, Run: func(ctx context.Context, now time.Time) error, Every}` (`Every` > 0 = run at most
 that often, e.g. `24 * time.Hour`). API jobs come from `api.Jobs(db, cfg, deps)` (same deps defaults as `api.New`):
 
@@ -185,3 +188,23 @@ re-reads and locks its row (`clause.Locking{Strength: clause.LockingStrengthUpda
 before acting, and record what was done (e.g. `EmailLog.reminder_step`, `next_occurrence_on`) so a second run is a no-op.
 Tests call the job directly: `runJob(ts, "reminders")` (recurring_test.go) runs it at `ts.now`; move the clock with
 `ts.now = day(2026, 4, 1)` (note: a jump > 30 days expires the test session — assert via `ts.db` then).
+
+## Events, todos, webhooks (SPEC §7.9, §7.10)
+
+Every domain mutation records an event **inside its transaction** (rollback removes it; webhook deliveries
+are queued in the same tx by `events.Record`). Use the typed helpers in `internal/api/events.go`:
+
+```go
+if err := recordInvoice(ctx, tx, events.InvoiceSent, m); err != nil { // also recordExpense, recordSubject,
+	return err                                                       // recordPriceItem, recordInvoicePayment …
+}
+// generic: record(ctx, tx, events.Event{Name: events.X, SubjectType: events.SubjectInvoice, SubjectID: id,
+//                                       Text: "Česká věta …", Data: map[string]any{…}})
+```
+
+New event name → constant + `Catalog` entry in `internal/events`. `record` takes account/user from ctx and the clock
+from ctx (`withClock`, installed by a root middleware and `systemContext`), and re-evaluates automatic todos of the
+event's subject (`syncTodos` in `todos.go`; add a case there for a new todo kind, key `"<name>:<id>"`).
+Payments go through `addPayment(ctx, …)` / `addExpensePayment(ctx, …)` which record `payment.created` (+ `*.paid`).
+Webhook deliveries are POSTed by the `webhooks` job (every tick); tests run it with `runJob(ts, "webhooks")`
+(test config has `WebhooksAllowPrivate` so httptest servers work; `ts.secrets` is shared by API and jobs).

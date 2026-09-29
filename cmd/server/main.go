@@ -65,9 +65,9 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// background jobs (recurring invoices, reminders …): at start + hourly,
-	// stopped by ctx on shutdown
-	sched := scheduler.New(nil, time.Hour, slog.Default())
+	// background jobs: the scheduler ticks every minute (webhook deliveries);
+	// the other jobs declare Every (hourly …). Stopped by ctx on shutdown.
+	sched := scheduler.New(nil, time.Minute, slog.Default())
 	sched.Register(api.Jobs(gdb, cfg, deps)...)
 	schedDone := make(chan struct{})
 	go func() { sched.Start(ctx); close(schedDone) }()

@@ -10,6 +10,7 @@ import (
 
 	"github.com/qwerin/nanofaktura/internal/auth"
 	"github.com/qwerin/nanofaktura/internal/billing"
+	"github.com/qwerin/nanofaktura/internal/events"
 	"github.com/qwerin/nanofaktura/internal/model"
 )
 
@@ -64,7 +65,7 @@ func (s *server) createPayment(ctx context.Context, in *struct {
 			return conflict("nothing to pay: the remaining amount is 0")
 		}
 
-		p, err := addPayment(tx, m, paidOn, amount, in.Body.Note)
+		p, err := addPayment(ctx, tx, m, paidOn, amount, in.Body.Note)
 		if err != nil {
 			return err
 		}
@@ -86,7 +87,7 @@ func (s *server) createPayment(ctx context.Context, in *struct {
 			if err != nil {
 				return err
 			}
-			if _, err := addPayment(tx, fin, paidOn, amount, in.Body.Note); err != nil {
+			if _, err := addPayment(ctx, tx, fin, paidOn, amount, in.Body.Note); err != nil {
 				return err
 			}
 			res.FinalInvoiceID = &fin.ID
@@ -132,9 +133,13 @@ func (s *server) deletePayment(ctx context.Context, in *struct {
 		if err := unlinkBankPayment(tx, "matched_invoice_id", m.ID, in.PaymentID); err != nil {
 			return err
 		}
+		p := m.Payments[idx]
 		m.Payments = append(m.Payments[:idx], m.Payments[idx+1:]...)
 		applyPayments(m)
-		return dbErrOrNil(tx.Omit(clause.Associations).Save(m).Error, "invoice")
+		if err := tx.Omit(clause.Associations).Save(m).Error; err != nil {
+			return dbErr(err, "invoice")
+		}
+		return recordInvoicePayment(ctx, tx, events.PaymentDeleted, m, &p, model.StatusPaid)
 	})
 	if err != nil {
 		return nil, err
@@ -142,16 +147,18 @@ func (s *server) deletePayment(ctx context.Context, in *struct {
 	return &NoContent{}, nil
 }
 
-// addPayment stores a payment of m and recomputes m's paid amount and status.
-func addPayment(tx *gorm.DB, m *model.Invoice, paidOn string, amount int64, note string) (*model.Payment, error) {
+// addPayment stores a payment of m, recomputes m's paid amount and status
+// and records payment.created (+ invoice.paid when it got fully paid).
+func addPayment(ctx context.Context, tx *gorm.DB, m *model.Invoice, paidOn string, amount int64, note string) (*model.Payment, error) {
 	p := model.Payment{AccountID: m.AccountID, InvoiceID: m.ID, PaidOn: paidOn, Amount: amount, Note: note}
 	if err := tx.Create(&p).Error; err != nil {
 		return nil, dbErr(err, "payment")
 	}
+	prev := m.Status
 	m.Payments = append(m.Payments, p)
 	applyPayments(m)
 	if err := tx.Omit(clause.Associations).Save(m).Error; err != nil {
 		return nil, dbErr(err, "invoice")
 	}
-	return &p, nil
+	return &p, recordInvoicePayment(ctx, tx, events.PaymentCreated, m, &p, prev)
 }

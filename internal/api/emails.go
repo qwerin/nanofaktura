@@ -17,6 +17,7 @@ import (
 	"github.com/qwerin/nanofaktura/internal/auth"
 	"github.com/qwerin/nanofaktura/internal/billing"
 	"github.com/qwerin/nanofaktura/internal/mail"
+	"github.com/qwerin/nanofaktura/internal/events"
 	"github.com/qwerin/nanofaktura/internal/model"
 	"github.com/qwerin/nanofaktura/internal/pdf"
 )
@@ -539,6 +540,9 @@ func (s *server) sendInvoiceEmail(ctx context.Context, inv *model.Invoice, req e
 		if err := tx.Create(log).Error; err != nil {
 			return dbErr(err, "e-mail log")
 		}
+		if err := recordEmail(ctx, tx, inv, log); err != nil {
+			return err
+		}
 		if sendErr != nil || req.kind != model.EmailInvoice {
 			return nil
 		}
@@ -551,7 +555,11 @@ func (s *server) sendInvoiceEmail(ctx context.Context, inv *model.Invoice, req e
 		if cur.Status != model.StatusOpen {
 			return nil
 		}
-		return dbErrOrNil(tx.Model(&cur).Updates(map[string]any{"status": model.StatusSent, "sent_at": now}).Error, "invoice")
+		if err := tx.Model(&cur).Updates(map[string]any{"status": model.StatusSent, "sent_at": now}).Error; err != nil {
+			return dbErr(err, "invoice")
+		}
+		cur.Status, cur.SentAt = model.StatusSent, &now
+		return recordInvoice(ctx, tx, events.InvoiceSent, &cur)
 	})
 	if err != nil {
 		return nil, err

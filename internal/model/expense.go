@@ -53,8 +53,9 @@ type Expense struct {
 	Lines    []ExpenseLine    `gorm:"constraint:OnDelete:CASCADE"`
 	Payments []ExpensePayment `gorm:"constraint:OnDelete:CASCADE"`
 
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	SearchText string // search.Text(SearchSource()), set by BeforeSave
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 // ExpenseLine has the same structure and computation as InvoiceLine.

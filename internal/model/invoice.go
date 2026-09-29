@@ -76,8 +76,9 @@ type Invoice struct {
 	Lines    []InvoiceLine `gorm:"constraint:OnDelete:CASCADE"`
 	Payments []Payment     `gorm:"constraint:OnDelete:CASCADE"`
 
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	SearchText string // search.Text(SearchSource()), set by BeforeSave
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 type InvoiceLine struct {

@@ -31,6 +31,10 @@ type Config struct {
 	VatRegURL    string // NANOFAKTURA_VATREG_URL: VAT payer registry SOAP endpoint override (tests)
 	FioURL       string // NANOFAKTURA_FIO_URL: Fio banka API base URL override (tests)
 	SecretKey    string // NANOFAKTURA_SECRET_KEY: 32-byte key (base64/hex) encrypting stored secrets; empty = DataDir/secret.key
+
+	// WebhooksAllowPrivate (NANOFAKTURA_WEBHOOKS_ALLOW_PRIVATE) lets webhooks call private,
+	// loopback and link-local addresses (SSRF protection off; LAN setups, tests).
+	WebhooksAllowPrivate bool
 }
 
 // Load reads the configuration from the environment and applies defaults.
@@ -76,6 +80,9 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	if cfg.SecureCookies, err = envBool("NANOFAKTURA_SECURE_COOKIES"); err != nil {
+		return Config{}, err
+	}
+	if cfg.WebhooksAllowPrivate, err = envBool("NANOFAKTURA_WEBHOOKS_ALLOW_PRIVATE"); err != nil {
 		return Config{}, err
 	}
 	return cfg, nil

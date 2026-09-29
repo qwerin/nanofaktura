@@ -14,6 +14,7 @@ import (
 
 	"github.com/qwerin/nanofaktura/internal/auth"
 	"github.com/qwerin/nanofaktura/internal/billing"
+	"github.com/qwerin/nanofaktura/internal/events"
 	"github.com/qwerin/nanofaktura/internal/model"
 	"github.com/qwerin/nanofaktura/internal/spayd"
 )
@@ -412,7 +413,10 @@ func (s *server) createExpense(ctx context.Context, in *struct{ Body ExpenseCrea
 		if err := tx.Create(m).Error; err != nil {
 			return 0, expenseNumberErr(err, m.Number)
 		}
-		return m.ID, syncExpenseStock(ctx, tx, m)
+		if err := syncExpenseStock(ctx, tx, m); err != nil {
+			return 0, err
+		}
+		return m.ID, recordExpense(ctx, tx, events.ExpenseCreated, m)
 	})
 }
 
@@ -486,7 +490,10 @@ func (s *server) patchExpense(ctx context.Context, in *struct {
 		if err := saveExpenseLines(tx, m); err != nil {
 			return 0, err
 		}
-		return m.ID, syncExpenseStock(ctx, tx, m)
+		if err := syncExpenseStock(ctx, tx, m); err != nil {
+			return 0, err
+		}
+		return m.ID, recordExpense(ctx, tx, events.ExpenseUpdated, m)
 	})
 }
 
@@ -508,7 +515,10 @@ func (s *server) deleteExpense(ctx context.Context, in *expenseID) (*NoContent, 
 		if err := tx.Where("expense_id = ?", m.ID).Delete(&model.ExpenseLine{}).Error; err != nil {
 			return dbErr(err, "expense")
 		}
-		return dbErrOrNil(tx.Delete(m).Error, "expense")
+		if err := tx.Delete(m).Error; err != nil {
+			return dbErr(err, "expense")
+		}
+		return recordExpense(ctx, tx, events.ExpenseDeleted, m)
 	})
 	if err != nil {
 		return nil, err
@@ -530,7 +540,14 @@ func (s *server) expenseAction(ctx context.Context, in *struct {
 			now := s.deps.Now()
 			locked = &now
 		}
-		return m.ID, dbErrOrNil(tx.Model(m).Update("locked_at", locked).Error, "expense")
+		if err := tx.Model(m).Update("locked_at", locked).Error; err != nil {
+			return 0, dbErr(err, "expense")
+		}
+		name := events.ExpenseUnlocked
+		if locked != nil {
+			name = events.ExpenseLocked
+		}
+		return m.ID, recordExpense(ctx, tx, name, m)
 	})
 }
 
@@ -556,7 +573,7 @@ func (s *server) createExpensePayment(ctx context.Context, in *struct {
 		} else if amount == 0 {
 			return conflict("nothing to pay: the remaining amount is 0")
 		}
-		p, err := addExpensePayment(tx, m, paidOn, amount, in.Body.Note)
+		p, err := addExpensePayment(ctx, tx, m, paidOn, amount, in.Body.Note)
 		if err != nil {
 			return err
 		}
@@ -596,9 +613,13 @@ func (s *server) deleteExpensePayment(ctx context.Context, in *struct {
 		if err := unlinkBankPayment(tx, "matched_expense_id", m.ID, in.PaymentID); err != nil {
 			return err
 		}
+		p := m.Payments[idx]
 		m.Payments = append(m.Payments[:idx], m.Payments[idx+1:]...)
 		applyExpensePayments(m)
-		return dbErrOrNil(tx.Omit(clause.Associations).Save(m).Error, "expense")
+		if err := tx.Omit(clause.Associations).Save(m).Error; err != nil {
+			return dbErr(err, "expense")
+		}
+		return recordExpensePayment(ctx, tx, events.ExpensePaymentDeleted, m, &p, model.StatusPaid)
 	})
 	if err != nil {
 		return nil, err
@@ -608,18 +629,20 @@ func (s *server) deleteExpensePayment(ctx context.Context, in *struct {
 
 // ---- helpers ----
 
-// addExpensePayment stores a payment of m and recomputes m's paid amount and status.
-func addExpensePayment(tx *gorm.DB, m *model.Expense, paidOn string, amount int64, note string) (*model.ExpensePayment, error) {
+// addExpensePayment stores a payment of m, recomputes m's paid amount and
+// status and records expense_payment.created (+ expense.paid).
+func addExpensePayment(ctx context.Context, tx *gorm.DB, m *model.Expense, paidOn string, amount int64, note string) (*model.ExpensePayment, error) {
 	p := model.ExpensePayment{AccountID: m.AccountID, ExpenseID: m.ID, PaidOn: paidOn, Amount: amount, Note: note}
 	if err := tx.Create(&p).Error; err != nil {
 		return nil, dbErr(err, "payment")
 	}
+	prev := m.Status
 	m.Payments = append(m.Payments, p)
 	applyExpensePayments(m)
 	if err := tx.Omit(clause.Associations).Save(m).Error; err != nil {
 		return nil, dbErr(err, "expense")
 	}
-	return &p, nil
+	return &p, recordExpensePayment(ctx, tx, events.ExpensePaymentCreated, m, &p, prev)
 }
 
 func snapshotSupplier(m *model.Expense, s *model.Subject) {
