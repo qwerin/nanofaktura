@@ -16,8 +16,8 @@ import (
 
 	"github.com/qwerin/nanofaktura/internal/auth"
 	"github.com/qwerin/nanofaktura/internal/billing"
-	"github.com/qwerin/nanofaktura/internal/mail"
 	"github.com/qwerin/nanofaktura/internal/events"
+	"github.com/qwerin/nanofaktura/internal/mail"
 	"github.com/qwerin/nanofaktura/internal/model"
 	"github.com/qwerin/nanofaktura/internal/pdf"
 )

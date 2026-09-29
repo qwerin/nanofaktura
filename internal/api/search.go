@@ -61,7 +61,7 @@ func (s *server) globalSearch(ctx context.Context, in *struct {
 		noun, _ := docNoun(m.DocumentType)
 		res.Invoices = append(res.Invoices, SearchHit{Type: "invoice", ID: m.ID, Title: noun + " " + m.Number,
 			Subtitle: joinNonEmpty(m.ClientName, money(m.Total, m.Currency), czDate(m.IssuedOn)),
-			Status: billing.EffectiveStatus(m.Status, m.DueOn, s.today()), URLHint: fmt.Sprintf("%s/invoices/%d", base, m.ID)})
+			Status:   billing.EffectiveStatus(m.Status, m.DueOn, s.today()), URLHint: fmt.Sprintf("%s/invoices/%d", base, m.ID)})
 	}
 	var exps []model.Expense
 	if err := match(&model.Expense{}, "issued_on DESC, id DESC", &exps); err != nil {
@@ -70,7 +70,7 @@ func (s *server) globalSearch(ctx context.Context, in *struct {
 	for _, m := range exps {
 		res.Expenses = append(res.Expenses, SearchHit{Type: "expense", ID: m.ID, Title: joinNonEmpty(m.Number, m.OriginalNumber),
 			Subtitle: joinNonEmpty(m.SupplierName, money(m.Total, m.Currency), czDate(m.IssuedOn)),
-			Status: m.Status, URLHint: fmt.Sprintf("%s/expenses/%d", base, m.ID)})
+			Status:   m.Status, URLHint: fmt.Sprintf("%s/expenses/%d", base, m.ID)})
 	}
 	var subs []model.Subject
 	if err := match(&model.Subject{}, "name, id", &subs); err != nil {

@@ -780,7 +780,7 @@ func syncExpenseStock(ctx context.Context, tx *gorm.DB, m *model.Expense) error 
 
 func expenseNumberErr(err error, number string) error {
 	if errors.Is(err, gorm.ErrDuplicatedKey) {
-		return conflict(CodeAlreadyExists, "expense number " + number + " already exists")
+		return conflict(CodeAlreadyExists, "expense number "+number+" already exists")
 	}
 	return dbErr(err, "expense")
 }

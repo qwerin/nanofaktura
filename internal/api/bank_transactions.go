@@ -17,8 +17,8 @@ import (
 	"github.com/qwerin/nanofaktura/internal/auth"
 	"github.com/qwerin/nanofaktura/internal/bankimport"
 	"github.com/qwerin/nanofaktura/internal/cnb"
-	"github.com/qwerin/nanofaktura/internal/matching"
 	"github.com/qwerin/nanofaktura/internal/events"
+	"github.com/qwerin/nanofaktura/internal/matching"
 	"github.com/qwerin/nanofaktura/internal/model"
 	"github.com/qwerin/nanofaktura/internal/spayd"
 )
@@ -607,7 +607,7 @@ func (s *server) linkTransaction(ctx context.Context, tx *gorm.DB, m *model.Bank
 			return refErr(err, "invoice_id", "invoice")
 		}
 		if inv.Status == model.StatusCancelled || inv.Status == model.StatusUncollectible {
-			return conflict(CodeNotPayable, "cannot add a payment to a " + inv.Status + " invoice")
+			return conflict(CodeNotPayable, "cannot add a payment to a "+inv.Status+" invoice")
 		}
 		if inv.Currency != m.Currency {
 			return invalid("invoice_id", "the invoice is in "+inv.Currency+", the transaction in "+m.Currency)

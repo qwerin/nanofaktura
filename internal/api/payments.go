@@ -47,7 +47,7 @@ func (s *server) createPayment(ctx context.Context, in *struct {
 		}
 		wasPaid = m.Status == model.StatusPaid
 		if m.Status == model.StatusCancelled || m.Status == model.StatusUncollectible {
-			return conflict(CodeNotPayable, "cannot add a payment to a " + m.Status + " invoice")
+			return conflict(CodeNotPayable, "cannot add a payment to a "+m.Status+" invoice")
 		}
 		if in.Body.CreateFinalInvoice && m.DocumentType != model.DocProforma {
 			return invalid("create_final_invoice", "a final invoice can only be created for a proforma")

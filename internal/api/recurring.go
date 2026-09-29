@@ -239,7 +239,7 @@ func (s *server) setRecurringActive(ctx context.Context, id uint, active bool) (
 			}
 		}
 		if m.EndOn != "" && m.NextOccurrenceOn > m.EndOn {
-			return nil, conflict(CodeRecurringEnded, "the recurring invoice has ended (end_on " + m.EndOn + "); change end_on first")
+			return nil, conflict(CodeRecurringEnded, "the recurring invoice has ended (end_on "+m.EndOn+"); change end_on first")
 		}
 	}
 	m.Active = active

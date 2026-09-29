@@ -5,8 +5,8 @@ import "testing"
 func TestFold(t *testing.T) {
 	for in, want := range map[string]string{
 		"Žluťoučký  KŮŇ": "zlutoucky kun",
-		" 2026-0001 ":     "2026-0001",
-		"":                "",
+		" 2026-0001 ":    "2026-0001",
+		"":               "",
 	} {
 		if got := Fold(in); got != want {
 			t.Errorf("Fold(%q) = %q, want %q", in, got, want)

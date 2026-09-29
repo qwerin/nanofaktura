@@ -66,7 +66,7 @@ func (s *server) createCorrection(ctx context.Context, in *invoiceID) (*Out[Invo
 			return 0, err
 		}
 		if src.DocumentType != model.DocInvoice {
-			return 0, conflict(CodeCorrectionOnly, "a correction can only be issued for an invoice, not a " + src.DocumentType)
+			return 0, conflict(CodeCorrectionOnly, "a correction can only be issued for an invoice, not a "+src.DocumentType)
 		}
 		body := copyInvoice(src, model.DocCorrection, true, true)
 		body.RelatedID = &src.ID

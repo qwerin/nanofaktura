@@ -114,12 +114,12 @@ type VatReport struct {
 
 // Warning codes of the VAT report (clients translate them; Message is English).
 const (
-	WarnUnsupportedRate      = "unsupported_rate"        // params: rate (percent)
-	WarnReverseChargeNoDIC   = "reverse_charge_no_dic"   // domestic reverse charge, customer without CZ DIČ
+	WarnUnsupportedRate      = "unsupported_rate"         // params: rate (percent)
+	WarnReverseChargeNoDIC   = "reverse_charge_no_dic"    // domestic reverse charge, customer without CZ DIČ
 	WarnEUReverseChargeNoVat = "eu_reverse_charge_no_vat" // EU reverse charge, customer without VAT number
-	WarnZeroRateNotReported  = "zero_rate_not_reported"  // params: amount (Kč)
-	WarnSupplierNoDIC        = "supplier_no_dic"         // deduction skipped
-	WarnCalculation          = "calculation_error"       // the document could not be recalculated
+	WarnZeroRateNotReported  = "zero_rate_not_reported"   // params: amount (Kč)
+	WarnSupplierNoDIC        = "supplier_no_dic"          // deduction skipped
+	WarnCalculation          = "calculation_error"        // the document could not be recalculated
 )
 
 // Warning is a document the report could not classify fully.

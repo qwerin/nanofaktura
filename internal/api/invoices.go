@@ -626,7 +626,7 @@ func editable(m *model.Invoice) error {
 		return conflict(CodeLocked, "the invoice is locked; unlock it first")
 	}
 	if m.Status == model.StatusCancelled || m.Status == model.StatusUncollectible {
-		return conflict(CodeNotEditable, "a " + m.Status + " invoice cannot be edited")
+		return conflict(CodeNotEditable, "a "+m.Status+" invoice cannot be edited")
 	}
 	return nil
 }
@@ -855,7 +855,7 @@ func defaultStr(v, def string) string {
 // numberErr maps a unique violation on (account, type, number) to 409.
 func numberErr(err error, number string) error {
 	if errors.Is(err, gorm.ErrDuplicatedKey) {
-		return conflict(CodeAlreadyExists, "document number " + number + " already exists")
+		return conflict(CodeAlreadyExists, "document number "+number+" already exists")
 	}
 	return dbErr(err, "invoice")
 }
@@ -874,7 +874,7 @@ func numberingErr(err error) error {
 	var se huma.StatusError
 	switch {
 	case errors.Is(err, numbering.ErrNoFormat):
-		return conflict(CodeNoNumberFormat, err.Error() + "; create a number format first")
+		return conflict(CodeNoNumberFormat, err.Error()+"; create a number format first")
 	case errors.Is(err, numbering.ErrInvalidDate):
 		return invalid("issued_on", err.Error())
 	case errors.As(err, &se):
