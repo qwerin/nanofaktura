@@ -5,7 +5,9 @@ import {
   KeyRoundIcon,
   LandmarkIcon,
   LayoutDashboardIcon,
+  MailIcon,
   PackageIcon,
+  RepeatIcon,
   ReceiptIcon,
   PaletteIcon,
   UserCogIcon,
@@ -19,6 +21,7 @@ import {
 export const moreNav = [
   { label: 'Náklady', to: '/a/$slug/expenses', icon: ReceiptIcon },
   { label: 'Ceník', to: '/a/$slug/price-items', icon: PackageIcon },
+  { label: 'Pravidelné faktury', to: '/a/$slug/recurring', icon: RepeatIcon },
 ] as const
 
 export const mainNav = [
@@ -36,6 +39,7 @@ export const settingsNav = [
   { label: 'Tým', to: '/a/$slug/settings/members', icon: UserCogIcon, description: 'Uživatelé účtu, role a pozvánky' },
   { label: 'Můj profil', to: '/a/$slug/settings/profile', icon: UserIcon, description: 'Jméno a heslo' },
   { label: 'API tokeny', to: '/a/$slug/settings/tokens', icon: KeyRoundIcon, description: 'Přístup pro integrace' },
+  { label: 'E-maily a upomínky', to: '/a/$slug/settings/emails', icon: MailIcon, description: 'Texty e-mailů, podpis, automatické upomínky' },
 ] as const
 
 /** Iniciály pro avatar účtu/uživatele: „Jan Novák“ → „JN“. */

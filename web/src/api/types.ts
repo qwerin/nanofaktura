@@ -132,3 +132,26 @@ export type InvitationInfo = ResponseBody<'/api/invitations/{token}', 'get'>
 export type PdfPreviewQuery = NonNullable<
   Operation<'/api/accounts/{slug}/pdf-preview', 'get'>['parameters']['query']
 >
+// --- Šablony faktur (§7.3) ---
+export type TemplateList = ResponseBody<'/api/accounts/{slug}/templates', 'get'>
+export type InvoiceTemplate = ListItem<TemplateList>
+export type TemplateLine = InvoiceTemplate['lines'][number]
+export type CreateTemplateInput = RequestBody<'/api/accounts/{slug}/templates', 'post'>
+export type UpdateTemplateInput = RequestBody<'/api/accounts/{slug}/templates/{id}', 'patch'>
+export type TemplateLineInput = NonNullable<CreateTemplateInput['lines']>[number]
+export type TemplateIssueInput = RequestBody<'/api/accounts/{slug}/templates/{id}/create-invoice', 'post'>
+export type SaveAsTemplateInput = RequestBody<'/api/accounts/{slug}/invoices/{id}/save-as-template', 'post'>
+
+// --- Pravidelné faktury (§7.3) ---
+export type RecurringList = ResponseBody<'/api/accounts/{slug}/recurring', 'get'>
+export type Recurring = ListItem<RecurringList>
+export type CreateRecurringInput = RequestBody<'/api/accounts/{slug}/recurring', 'post'>
+export type UpdateRecurringInput = RequestBody<'/api/accounts/{slug}/recurring/{id}', 'patch'>
+
+// --- E-maily (§7.4) ---
+export type EmailLog = ListItem<ResponseBody<'/api/accounts/{slug}/invoices/{id}/emails', 'get'>>
+export type EmailKind = EmailLog['kind']
+export type EmailPreview = ResponseBody<'/api/accounts/{slug}/email-templates/preview', 'get'>
+export type SendInvoiceInput = RequestBody<'/api/accounts/{slug}/invoices/{id}/send', 'post'>
+export type AccountEmailTemplate = Account['email_templates'][number]
+export type EmailLang = AccountEmailTemplate['lang']
