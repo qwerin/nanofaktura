@@ -148,7 +148,7 @@ func normalizeSubject(m *model.Subject) error {
 // subjectErr maps a save error; the only unique index is (account_id, custom_id).
 func subjectErr(err error) error {
 	if errors.Is(err, gorm.ErrDuplicatedKey) {
-		return conflict("custom_id is already used by another subject")
+		return conflict(CodeAlreadyExists, "custom_id is already used by another subject")
 	}
 	return dbErr(err, "subject")
 }
@@ -265,7 +265,7 @@ func (s *server) deleteSubject(ctx context.Context, in *struct {
 			return dbErr(err, "invoice")
 		}
 		if n > 0 {
-			return conflict("subject has invoices and cannot be deleted")
+			return conflict(CodeHasInvoices, "subject has invoices and cannot be deleted")
 		}
 		if err := tx.Delete(&m).Error; err != nil {
 			return dbErr(err, "subject")

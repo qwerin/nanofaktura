@@ -110,7 +110,7 @@ func TestVatReportMixed(t *testing.T) {
 	if len(c.B2) != 1 || c.B2[0].Number != "FA-778" || c.B3.Basic != (Pair{1_000_00, 210_00}) || c.B3.Reduced != (Pair{500_00, 60_00}) {
 		t.Errorf("B %+v %+v", c.B2, c.B3)
 	}
-	if len(r.Warnings) != 1 || !strings.Contains(r.Warnings[0], "INV-9") {
+	if len(r.Warnings) != 1 || r.Warnings[0].Document != "INV-9" || r.Warnings[0].Code == "" {
 		t.Errorf("warnings %v", r.Warnings)
 	}
 

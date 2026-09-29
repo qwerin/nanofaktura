@@ -80,7 +80,7 @@ func (s *server) subjectVatStatus(ctx context.Context, in *struct {
 	}
 	dic := czechDIC(subj.VatNo, subj.Country)
 	if dic == "" {
-		return nil, huma.NewError(http.StatusUnprocessableEntity, "the subject has no Czech VAT number (vat_no)")
+		return nil, apiError(http.StatusUnprocessableEntity, CodeNoVatNo, "the subject has no Czech VAT number (vat_no)")
 	}
 	r, err := s.deps.VatRegistry.Check(ctx, dic)
 	switch {

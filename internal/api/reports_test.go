@@ -16,7 +16,7 @@ func TestVatReport(t *testing.T) {
 	b := ts.signup("b@example.cz", "Firma B")
 
 	res, body := a.do("GET", a.acct("/reports/vat?period=2026-03"), nil)
-	assertError(t, res, body, http.StatusConflict, "only for VAT payers")
+	assertCode(t, res, body, http.StatusConflict, "not_vat_payer")
 
 	setVatPayer(a)
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME", VatNo: "CZ27074358"})
@@ -64,7 +64,7 @@ func TestVatReport(t *testing.T) {
 	numbers := []string{}
 	for _, a4 := range c.A4 {
 		numbers = append(numbers, a4.Number)
-		if a4.VatNo != "27074358" {
+		if a4.VatNo != "CZ27074358" {
 			t.Errorf("A.4 DIČ %s", a4.VatNo)
 		}
 	}
@@ -74,7 +74,7 @@ func TestVatReport(t *testing.T) {
 	if len(c.A4) != 3 || c.A5.Reduced != (reports.Pair{Base: 100_000, Vat: 12_000}) || c.A5.Basic != (reports.Pair{}) {
 		t.Errorf("A.4 %+v A.5 %+v", c.A4, c.A5)
 	}
-	if len(c.B2) != 1 || c.B2[0].Number != "FV-2026-77" || c.B2[0].VatNo != "25596641" ||
+	if len(c.B2) != 1 || c.B2[0].Number != "FV-2026-77" || c.B2[0].VatNo != "CZ25596641" ||
 		c.B3.Basic != (reports.Pair{Base: 100_000, Vat: 21_000}) || len(c.A1) != 0 {
 		t.Errorf("B %+v %+v", c.B2, c.B3)
 	}
@@ -92,7 +92,7 @@ func TestVatReport(t *testing.T) {
 
 	// EPO XML needs the tax office
 	res, body = a.do("GET", a.acct("/reports/vat/dphdp3.xml?period=2026-03"), nil)
-	assertError(t, res, body, http.StatusConflict, "c_ufo")
+	assertCode(t, res, body, http.StatusConflict, "missing_tax_office")
 	acc := doJSON[api.Account](a, http.StatusOK, "PATCH", a.acct(""), map[string]any{"c_ufo": "451", "c_pracufo": "2001", "vat_period": "quarter"})
 	if acc.TaxOffice != "451" || acc.TaxOfficeBranch != "2001" || acc.VatPeriod != "quarter" {
 		t.Fatalf("account %+v", acc)

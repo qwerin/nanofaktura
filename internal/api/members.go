@@ -91,7 +91,7 @@ func (s *server) registerMembers(public, authed, account huma.API) {
 // the owner role, invite an owner).
 func canManageRole(ctx context.Context, targetRole string) error {
 	if targetRole == model.RoleOwner && auth.RoleFrom(ctx) != model.RoleOwner {
-		return huma.Error403Forbidden("only an owner can manage owners")
+		return apiError(http.StatusForbidden, CodeOwnerOnly, "only an owner can manage owners")
 	}
 	return nil
 }
@@ -134,7 +134,7 @@ func ensureAnotherOwner(tx *gorm.DB, ctx context.Context, m *model.Membership) e
 		return dbErr(err, "member")
 	}
 	if n == 0 {
-		return conflict("the account must keep at least one owner")
+		return conflict(CodeLastOwner, "the account must keep at least one owner")
 	}
 	return nil
 }
@@ -231,7 +231,7 @@ func (s *server) inviteMember(ctx context.Context, in *struct{ Body InvitationCr
 			return dbErr(err, "member")
 		}
 		if n > 0 {
-			return conflict("this user is already a member of the account")
+			return conflict(CodeAlreadyMember, "this user is already a member of the account")
 		}
 		// a new invitation replaces any unaccepted one for the same address
 		if err := tx.Scopes(inAccount(ctx)).Where("email = ? AND accepted_at IS NULL", email).
@@ -285,7 +285,7 @@ func (s *server) pendingInvitation(tx *gorm.DB, token string) (*model.Invitation
 		return nil, dbErr(err, "invitation")
 	}
 	if inv.AcceptedAt != nil || !inv.ExpiresAt.After(s.deps.Now()) {
-		return nil, huma.NewError(http.StatusGone, "invitation has expired or was already used")
+		return nil, apiError(http.StatusGone, CodeInvitationExpired, "invitation has expired or was already used")
 	}
 	return &inv, nil
 }
@@ -294,7 +294,7 @@ func (s *server) pendingInvitation(tx *gorm.DB, token string) (*model.Invitation
 func (s *server) joinByInvitation(tx *gorm.DB, inv *model.Invitation, userID uint) error {
 	if err := tx.Create(&model.Membership{UserID: userID, AccountID: inv.AccountID, Role: inv.Role}).Error; err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return conflict("you are already a member of this account")
+			return conflict(CodeAlreadyMember, "you are already a member of this account")
 		}
 		return dbErr(err, "membership")
 	}
@@ -335,7 +335,7 @@ func (s *server) acceptInvitation(ctx context.Context, in *struct {
 			return err
 		}
 		if inv.Email != normalizeEmail(user.Email) {
-			return huma.Error403Forbidden("this invitation was sent to a different e-mail address")
+			return apiError(http.StatusForbidden, CodeInvitationEmail, "this invitation was sent to a different e-mail address")
 		}
 		if err := s.joinByInvitation(tx, inv, user.ID); err != nil {
 			return err

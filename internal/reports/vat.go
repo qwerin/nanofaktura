@@ -109,12 +109,30 @@ type VatReport struct {
 	Period   Period
 	Return   VatReturn
 	Control  ControlStatement
-	Warnings []string
+	Warnings []Warning
+}
+
+// Warning codes of the VAT report (clients translate them; Message is English).
+const (
+	WarnUnsupportedRate      = "unsupported_rate"        // params: rate (percent)
+	WarnReverseChargeNoDIC   = "reverse_charge_no_dic"   // domestic reverse charge, customer without CZ DIČ
+	WarnEUReverseChargeNoVat = "eu_reverse_charge_no_vat" // EU reverse charge, customer without VAT number
+	WarnZeroRateNotReported  = "zero_rate_not_reported"  // params: amount (Kč)
+	WarnSupplierNoDIC        = "supplier_no_dic"         // deduction skipped
+	WarnCalculation          = "calculation_error"       // the document could not be recalculated
+)
+
+// Warning is a document the report could not classify fully.
+type Warning struct {
+	Code     string            `json:"code" enum:"unsupported_rate,reverse_charge_no_dic,eu_reverse_charge_no_vat,zero_rate_not_reported,supplier_no_dic,calculation_error"`
+	Document string            `json:"document" doc:"Document number"`
+	Message  string            `json:"message" doc:"English description"`
+	Params   map[string]string `json:"params,omitempty" doc:"Values for the translated text (rate, amount)"`
 }
 
 // NewVatReport starts an empty report of p.
 func NewVatReport(p Period) *VatReport {
-	return &VatReport{Period: p, Control: ControlStatement{A1: []A1Row{}, A4: []DocumentRow{}, B2: []DocumentRow{}}, Warnings: []string{}}
+	return &VatReport{Period: p, Control: ControlStatement{A1: []A1Row{}, A4: []DocumentRow{}, B2: []DocumentRow{}}, Warnings: []Warning{}}
 }
 
 // EUCountries are the EU member states (ISO codes; Greece also as EL).
@@ -135,14 +153,17 @@ func (r *VatReport) splitRates(doc string, recap []RateAmount) (sums RateSums, z
 		case 0:
 			zero += a.Base
 		default:
-			r.warn("%s: VAT rate %s %% is not reported (only 21 %% and 12 %%)", doc, pct(a.RateBps))
+			r.Warn(WarnUnsupportedRate, doc, map[string]string{"rate": pct(a.RateBps)},
+				"VAT rate %s %% is not reported (only 21 %% and 12 %%)", pct(a.RateBps))
 		}
 	}
 	return sums, zero
 }
 
-func (r *VatReport) warn(format string, args ...any) {
-	r.Warnings = append(r.Warnings, fmt.Sprintf(format, args...))
+// Warn records a warning about document doc.
+func (r *VatReport) Warn(code, doc string, params map[string]string, format string, args ...any) {
+	r.Warnings = append(r.Warnings, Warning{Code: code, Document: doc, Params: params,
+		Message: doc + ": " + fmt.Sprintf(format, args...)})
 }
 
 // AddSale adds an issued tax document whose DUZP is in the period.
@@ -168,13 +189,13 @@ func (r *VatReport) AddSale(s Sale) {
 		r.Return.R25 += base
 		dic, ok := czDIC(vatNo)
 		if !ok {
-			r.warn("%s: reverse charge without the customer's CZ DIČ", s.Number)
+			r.Warn(WarnReverseChargeNoDIC, s.Number, nil, "reverse charge without the customer's CZ DIČ")
 		}
 		r.Control.A1 = append(r.Control.A1, A1Row{CustomerVatNo: dic, Number: s.Number, TaxPointDate: s.TaxPointDate, Base: base})
 		return
 	case s.ReverseCharge && slices.Contains(EUCountries, country):
 		if vatNo == "" {
-			r.warn("%s: EU reverse charge without the customer's VAT number", s.Number)
+			r.Warn(WarnEUReverseChargeNoVat, s.Number, nil, "EU reverse charge without the customer's VAT number")
 		}
 		r.Return.R21 += base
 		return
@@ -185,7 +206,7 @@ func (r *VatReport) AddSale(s Sale) {
 
 	sums, zero := r.splitRates(s.Number, s.Recap)
 	if zero != 0 {
-		r.warn("%s: amount without VAT (%s Kč) is not reported", s.Number, kc(zero))
+		r.Warn(WarnZeroRateNotReported, s.Number, map[string]string{"amount": kc(zero)}, "amount without VAT (%s Kč) is not reported", kc(zero))
 	}
 	r.Return.R1.add(sums.Basic)
 	r.Return.R2.add(sums.Reduced)
@@ -208,7 +229,7 @@ func (r *VatReport) AddPurchase(p Purchase) {
 	dic, ok := czDIC(normVatNo(p.SupplierVatNo))
 	if !ok {
 		if vatOf(p.Recap) != 0 {
-			r.warn("%s: deduction skipped, the supplier has no CZ DIČ", p.Number)
+			r.Warn(WarnSupplierNoDIC, p.Number, nil, "deduction skipped, the supplier has no CZ DIČ")
 		}
 		return
 	}

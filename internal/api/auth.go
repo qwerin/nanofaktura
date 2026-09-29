@@ -117,12 +117,12 @@ func (s *server) register(ctx context.Context, in *struct{ Body RegisterRequest 
 				return dbErr(err, "users")
 			}
 			if has && !s.cfg.AllowSignup {
-				return huma.Error403Forbidden("signup is disabled")
+				return apiError(http.StatusForbidden, CodeSignupDisabled, "signup is disabled")
 			}
 		}
 		if err := tx.Create(&user).Error; err != nil {
 			if errors.Is(err, gorm.ErrDuplicatedKey) {
-				return conflict("email is already registered")
+				return conflict(CodeEmailTaken, "email is already registered")
 			}
 			return dbErr(err, "user")
 		}
@@ -202,14 +202,18 @@ func (s *server) getMe(ctx context.Context, _ *struct{}) (*Out[Me], error) {
 	return &Out[Me]{Body: *me}, nil
 }
 
-func (s *server) patchMe(ctx context.Context, in *struct{ Body MePatch }) (*Out[Me], error) {
+func (s *server) patchMe(ctx context.Context, in *struct {
+	Session string `cookie:"nf_session"`
+	Body    MePatch
+}) (*Out[Me], error) {
 	user := *auth.UserFrom(ctx)
 	if in.Body.Name != nil {
 		user.Name = strings.TrimSpace(*in.Body.Name)
 	}
 	if in.Body.Password != nil {
 		if in.Body.CurrentPassword == nil || !auth.CheckPassword(user.PasswordHash, *in.Body.CurrentPassword) {
-			return nil, invalid("current_password", "current password is incorrect")
+			return nil, apiError(http.StatusUnprocessableEntity, CodeWrongPassword, "validation failed",
+				&huma.ErrorDetail{Location: "body.current_password", Message: "current password is incorrect"})
 		}
 		hash, err := auth.HashPassword(*in.Body.Password)
 		if err != nil {
@@ -217,8 +221,21 @@ func (s *server) patchMe(ctx context.Context, in *struct{ Body MePatch }) (*Out[
 		}
 		user.PasswordHash = hash
 	}
-	if err := s.db.WithContext(ctx).Save(&user).Error; err != nil {
-		return nil, dbErr(err, "user")
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(&user).Error; err != nil {
+			return dbErr(err, "user")
+		}
+		if in.Body.Password == nil {
+			return nil
+		}
+		// a new password logs out every other browser; the current session stays
+		if err := auth.DeleteOtherSessions(tx, user.ID, in.Session); err != nil {
+			return dbErr(err, "sessions")
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	me, err := s.me(ctx, &user)
 	if err != nil {

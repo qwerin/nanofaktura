@@ -431,7 +431,7 @@ func (s *server) patchExpense(ctx context.Context, in *struct {
 			return 0, err
 		}
 		if m.LockedAt != nil {
-			return 0, conflict("the expense is locked; unlock it first")
+			return 0, conflict(CodeLocked, "the expense is locked; unlock it first")
 		}
 		if p.SubjectID != nil && (m.SubjectID == nil || *p.SubjectID != *m.SubjectID) {
 			subj, err := findSubject(ctx, tx, *p.SubjectID)
@@ -504,10 +504,10 @@ func (s *server) deleteExpense(ctx context.Context, in *expenseID) (*NoContent, 
 			return err
 		}
 		if m.LockedAt != nil {
-			return conflict("the expense is locked; unlock it first")
+			return conflict(CodeLocked, "the expense is locked; unlock it first")
 		}
 		if len(m.Payments) > 0 {
-			return conflict("the expense has payments; delete them first")
+			return conflict(CodeHasPayments, "the expense has payments; delete them first")
 		}
 		if err := rewriteDocStock(ctx, tx, docStock{"expense_id", m.ID}, false, "", "", nil); err != nil {
 			return err
@@ -571,7 +571,7 @@ func (s *server) createExpensePayment(ctx context.Context, in *struct {
 				return invalid("amount", "amount must not be zero")
 			}
 		} else if amount == 0 {
-			return conflict("nothing to pay: the remaining amount is 0")
+			return conflict(CodeNothingToPay, "nothing to pay: the remaining amount is 0")
 		}
 		p, err := addExpensePayment(ctx, tx, m, paidOn, amount, in.Body.Note)
 		if err != nil {
@@ -780,7 +780,7 @@ func syncExpenseStock(ctx context.Context, tx *gorm.DB, m *model.Expense) error 
 
 func expenseNumberErr(err error, number string) error {
 	if errors.Is(err, gorm.ErrDuplicatedKey) {
-		return conflict("expense number " + number + " already exists")
+		return conflict(CodeAlreadyExists, "expense number " + number + " already exists")
 	}
 	return dbErr(err, "expense")
 }

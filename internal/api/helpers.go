@@ -53,7 +53,7 @@ func dbErr(err error, what string) error {
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		return notFound(what)
 	case errors.Is(err, gorm.ErrDuplicatedKey):
-		return huma.Error409Conflict(what + " already exists")
+		return apiError(http.StatusConflict, CodeAlreadyExists, what+" already exists")
 	default:
 		return huma.Error500InternalServerError("database error", err)
 	}
@@ -64,9 +64,10 @@ func notFound(what string) error {
 	return huma.Error404NotFound(what + " not found")
 }
 
-// conflict is the 409 for actions not allowed in the current state.
-func conflict(msg string) error {
-	return huma.Error409Conflict(msg)
+// conflict is the 409 for actions not allowed in the current state; code is
+// the machine-readable reason (Code* in errors.go).
+func conflict(code, msg string) error {
+	return apiError(http.StatusConflict, code, msg)
 }
 
 // invalid is a 422 pointing at one body field, e.g. invalid("iban", "invalid checksum").

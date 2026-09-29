@@ -89,7 +89,7 @@ func checkFormat(ctx context.Context, tx *gorm.DB, docType, format string, excep
 		return dbErr(err, "number format")
 	}
 	if n > 0 {
-		return conflict("this format already exists for the document type")
+		return conflict(CodeAlreadyExists, "this format already exists for the document type")
 	}
 	return nil
 }
@@ -153,7 +153,7 @@ func (s *server) patchNumberFormat(ctx context.Context, in *struct {
 		}
 		if p := in.Body.IsDefault; p != nil {
 			if !*p && m.IsDefault {
-				return conflict("a document type must keep a default format; set another format as default instead")
+				return conflict(CodeIsDefault, "a document type must keep a default format; set another format as default instead")
 			}
 			m.IsDefault = *p
 		}
@@ -182,7 +182,7 @@ func (s *server) deleteNumberFormat(ctx context.Context, in *struct {
 			return dbErr(err, "number format")
 		}
 		if m.IsDefault {
-			return conflict("cannot delete the default number format; set another format as default first")
+			return conflict(CodeIsDefault, "cannot delete the default number format; set another format as default first")
 		}
 		var n int64
 		if err := tx.Model(&model.NumberFormat{}).Scopes(inAccount(ctx)).
@@ -190,7 +190,7 @@ func (s *server) deleteNumberFormat(ctx context.Context, in *struct {
 			return dbErr(err, "number format")
 		}
 		if n <= 1 {
-			return conflict("cannot delete the last number format of a document type")
+			return conflict(CodeLastOfType, "cannot delete the last number format of a document type")
 		}
 		if err := tx.Where("number_format_id = ?", m.ID).Delete(&model.NumberCounter{}).Error; err != nil {
 			return dbErr(err, "number counter")

@@ -177,8 +177,17 @@ func TestPatchMe(t *testing.T) {
 	assertError(t, res, body, http.StatusUnprocessableEntity, "current password")
 	res, body = c.do("PATCH", "/api/auth/me", map[string]any{"password": "noveheslo123", "current_password": "wrong"})
 	assertError(t, res, body, http.StatusUnprocessableEntity, "current password")
+	assertCode(t, res, body, http.StatusUnprocessableEntity, "wrong_password")
+
+	// a second browser of the same user
+	other := ts.anon()
+	other.mustDo(http.StatusOK, "POST", "/api/auth/login", api.LoginRequest{Email: "a@example.cz", Password: testPassword})
 
 	c.mustDo(http.StatusOK, "PATCH", "/api/auth/me", map[string]any{"password": "noveheslo123", "current_password": testPassword})
+	// the changing session stays, the other one is logged out
+	c.mustDo(http.StatusOK, "GET", "/api/auth/me", nil)
+	res, body = other.do("GET", "/api/auth/me", nil)
+	assertCode(t, res, body, http.StatusUnauthorized, "unauthorized")
 	res, body = ts.anon().do("POST", "/api/auth/login", api.LoginRequest{Email: "a@example.cz", Password: testPassword})
 	assertError(t, res, body, http.StatusUnauthorized, "invalid")
 	doJSON[api.Me](ts.anon(), http.StatusOK, "POST", "/api/auth/login", api.LoginRequest{Email: "a@example.cz", Password: "noveheslo123"})

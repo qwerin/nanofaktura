@@ -458,7 +458,7 @@ func (s *server) patchTodo(ctx context.Context, in *struct {
 	}
 	p := in.Body
 	if m.Key != nil && (p.Text != nil || p.DueOn != nil) {
-		return nil, conflict("an automatic todo can only be completed or reopened")
+		return nil, conflict(CodeAutomaticTodo, "an automatic todo can only be completed or reopened")
 	}
 	if p.Text != nil {
 		if m.Text = strings.TrimSpace(*p.Text); m.Text == "" {
@@ -500,7 +500,7 @@ func (s *server) deleteTodo(ctx context.Context, in *todoID) (*NoContent, error)
 		return nil, err
 	}
 	if m.Key != nil {
-		return nil, conflict("an automatic todo cannot be deleted; complete it instead")
+		return nil, conflict(CodeAutomaticTodo, "an automatic todo cannot be deleted; complete it instead")
 	}
 	if err := s.db.WithContext(ctx).Delete(m).Error; err != nil {
 		return nil, dbErr(err, "todo")

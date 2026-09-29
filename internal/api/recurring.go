@@ -239,7 +239,7 @@ func (s *server) setRecurringActive(ctx context.Context, id uint, active bool) (
 			}
 		}
 		if m.EndOn != "" && m.NextOccurrenceOn > m.EndOn {
-			return nil, conflict("the recurring invoice has ended (end_on " + m.EndOn + "); change end_on first")
+			return nil, conflict(CodeRecurringEnded, "the recurring invoice has ended (end_on " + m.EndOn + "); change end_on first")
 		}
 	}
 	m.Active = active
@@ -320,7 +320,7 @@ func (s *server) issueRecurring(ctx context.Context, id uint, today string, forc
 		var t model.InvoiceTemplate
 		if err := tx.Scopes(inAccount(ctx)).First(&t, r.TemplateID).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return conflict("the template of the recurring invoice no longer exists")
+				return conflict(CodeTemplateMissing, "the template of the recurring invoice no longer exists")
 			}
 			return dbErr(err, "template")
 		}

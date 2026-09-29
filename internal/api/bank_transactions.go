@@ -292,7 +292,7 @@ func (s *server) syncBankAccountOp(ctx context.Context, in *struct {
 // The network call runs outside the DB transaction.
 func (s *server) syncBankAccount(ctx context.Context, ba *model.BankAccount, now time.Time) (BankImportResult, error) {
 	if ba.SyncProvider != model.SyncFio || ba.FioToken == "" {
-		return BankImportResult{}, conflict("automatic sync is not configured for this bank account (sync_provider=fio with fio_token)")
+		return BankImportResult{}, conflict(CodeSyncNotConfigured, "automatic sync is not configured for this bank account (sync_provider=fio with fio_token)")
 	}
 	token, err := s.deps.Secrets.Decrypt(ba.FioToken)
 	if err != nil {
@@ -341,9 +341,9 @@ func fioErr(err error) error {
 			huma.NewError(http.StatusTooManyRequests, "Fio allows one request per 30 seconds per token; try again in 30 s"),
 			http.Header{"Retry-After": {"30"}})
 	case errors.Is(err, bankimport.ErrFioToken):
-		return huma.NewError(http.StatusUnprocessableEntity, "Fio rejected the API token (invalid, expired or without permission); set a new fio_token")
+		return apiError(http.StatusUnprocessableEntity, CodeFioToken, "Fio rejected the API token (invalid, expired or without permission); set a new fio_token")
 	case errors.Is(err, bankimport.ErrFioTooMany):
-		return huma.NewError(http.StatusUnprocessableEntity, "too many transactions in the period; set a later sync_from")
+		return apiError(http.StatusUnprocessableEntity, CodeFioTooMany, "too many transactions in the period; set a later sync_from")
 	default:
 		return huma.NewError(http.StatusBadGateway, "Fio API is unavailable, try again later")
 	}
@@ -591,7 +591,7 @@ func abs64(v int64) int64 {
 // fully paid by it is appended to *paid (when non-nil).
 func (s *server) linkTransaction(ctx context.Context, tx *gorm.DB, m *model.BankTransaction, invoiceID, expenseID *uint, auto bool, paid *[]uint) error {
 	if m.Amount == 0 {
-		return conflict("a zero-amount transaction cannot be matched")
+		return conflict(CodeZeroAmount, "a zero-amount transaction cannot be matched")
 	}
 	note := "Platba z banky"
 	if m.CounterpartyName != "" {
@@ -607,7 +607,7 @@ func (s *server) linkTransaction(ctx context.Context, tx *gorm.DB, m *model.Bank
 			return refErr(err, "invoice_id", "invoice")
 		}
 		if inv.Status == model.StatusCancelled || inv.Status == model.StatusUncollectible {
-			return conflict("cannot add a payment to a " + inv.Status + " invoice")
+			return conflict(CodeNotPayable, "cannot add a payment to a " + inv.Status + " invoice")
 		}
 		if inv.Currency != m.Currency {
 			return invalid("invoice_id", "the invoice is in "+inv.Currency+", the transaction in "+m.Currency)
@@ -702,7 +702,7 @@ func (s *server) matchBankTransaction(ctx context.Context, in *struct {
 	var paid []uint
 	out, err := s.mutateBankTx(ctx, in.ID, func(tx *gorm.DB, m *model.BankTransaction) error {
 		if m.PaymentID != nil {
-			return conflict("the transaction is already matched; unmatch it first")
+			return conflict(CodeAlreadyMatched, "the transaction is already matched; unmatch it first")
 		}
 		return s.linkTransaction(ctx, tx, m, b.InvoiceID, b.ExpenseID, false, &paid)
 	})
@@ -715,7 +715,7 @@ func (s *server) matchBankTransaction(ctx context.Context, in *struct {
 func (s *server) unmatchBankTransaction(ctx context.Context, in *bankTxID) (*Out[BankTransaction], error) {
 	return s.mutateBankTx(ctx, in.ID, func(tx *gorm.DB, m *model.BankTransaction) error {
 		if m.PaymentID == nil {
-			return conflict("the transaction is not matched")
+			return conflict(CodeNotMatched, "the transaction is not matched")
 		}
 		label := docLabel(ctx, tx, m.MatchedInvoiceID, m.MatchedExpenseID)
 		switch {
@@ -788,7 +788,7 @@ func removeExpensePayment(ctx context.Context, tx *gorm.DB, expenseID, paymentID
 func (s *server) ignoreBankTransaction(ctx context.Context, in *bankTxID) (*Out[BankTransaction], error) {
 	return s.mutateBankTx(ctx, in.ID, func(tx *gorm.DB, m *model.BankTransaction) error {
 		if m.PaymentID != nil {
-			return conflict("the transaction is matched; unmatch it first")
+			return conflict(CodeAlreadyMatched, "the transaction is matched; unmatch it first")
 		}
 		m.Ignored = true
 		if err := tx.Save(m).Error; err != nil {

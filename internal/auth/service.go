@@ -54,6 +54,17 @@ func (s *Service) DeleteSession(ctx context.Context, token string) error {
 	return s.db.WithContext(ctx).Where("token_hash = ?", hashToken(token)).Delete(&model.Session{}).Error
 }
 
+// DeleteOtherSessions removes every session of userID except the one
+// identified by keepToken (the cookie value; empty = remove all) using db
+// (may be a transaction).
+func DeleteOtherSessions(db *gorm.DB, userID uint, keepToken string) error {
+	q := db.Where("user_id = ?", userID)
+	if keepToken != "" {
+		q = q.Where("token_hash <> ?", hashToken(keepToken))
+	}
+	return q.Delete(&model.Session{}).Error
+}
+
 // ClearCookie returns a cookie that removes the session cookie in the browser.
 func (s *Service) ClearCookie() *http.Cookie {
 	c := s.cookie("", time.Time{})

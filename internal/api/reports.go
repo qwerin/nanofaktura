@@ -34,7 +34,7 @@ type VatReport struct {
 	Currency  string                   `json:"currency" example:"CZK"`
 	Return    reports.VatReturn        `json:"return" doc:"Rows of the VAT return (DPHDP3)"`
 	Control   reports.ControlStatement `json:"control" doc:"Control statement (DPHKH1)"`
-	Warnings  []string                 `json:"warnings" nullable:"false" doc:"Documents that could not be classified"`
+	Warnings  []reports.Warning        `json:"warnings" nullable:"false" doc:"Documents that could not be classified"`
 }
 
 type vatReportInput struct {
@@ -69,7 +69,7 @@ func (s *server) registerReports(g huma.API) {
 func (s *server) vatReport(ctx context.Context, period string) (*reports.VatReport, error) {
 	acc := auth.AccountFrom(ctx)
 	if acc.VatMode != model.VatModePayer {
-		return nil, conflict("VAT reports are available only for VAT payers (vat_mode = vat_payer)")
+		return nil, conflict(CodeNotVatPayer, "VAT reports are available only for VAT payers (vat_mode = vat_payer)")
 	}
 	var p reports.Period
 	if period == "" {
@@ -124,7 +124,7 @@ func (s *server) vatSales(ctx context.Context, r *reports.VatReport, from, to st
 		m := &invs[i]
 		recap, total, err := czkRecap(billingLines(m.Lines), billingOptions(m), m.Currency, m.ExchangeRate)
 		if err != nil {
-			r.Warnings = append(r.Warnings, m.Number+": "+err.Error())
+			r.Warn(reports.WarnCalculation, m.Number, nil, "%s", err.Error())
 			continue
 		}
 		sale := reports.Sale{
@@ -154,7 +154,7 @@ func (s *server) vatPurchases(ctx context.Context, r *reports.VatReport, from, t
 		m := &exps[i]
 		recap, total, err := czkRecap(expenseBillingLines(m.Lines), expenseOptions(m), m.Currency, m.ExchangeRate)
 		if err != nil {
-			r.Warnings = append(r.Warnings, m.Number+": "+err.Error())
+			r.Warn(reports.WarnCalculation, m.Number, nil, "%s", err.Error())
 			continue
 		}
 		r.AddPurchase(reports.Purchase{
@@ -205,8 +205,36 @@ func toVatReport(r *reports.VatReport, acc *model.Account) VatReport {
 	from, to := r.Period.Range()
 	return VatReport{
 		Period: r.Period.String(), From: from, To: to, VatPeriod: defaultStr(acc.VatPeriod, model.VatPeriodMonth),
-		Currency: "CZK", Return: r.Return, Control: r.Control, Warnings: r.Warnings,
+		Currency: "CZK", Return: r.Return, Control: withCZPrefix(r.Control), Warnings: r.Warnings,
 	}
+}
+
+// withCZPrefix shows the DIČ of the control statement rows with the "CZ"
+// prefix (the EPO XML has the numeric part only).
+func withCZPrefix(c reports.ControlStatement) reports.ControlStatement {
+	cz := func(d string) string {
+		if d == "" || strings.HasPrefix(d, "CZ") {
+			return d
+		}
+		return "CZ" + d
+	}
+	out := c
+	out.A1 = make([]reports.A1Row, len(c.A1))
+	for i, r := range c.A1 {
+		r.CustomerVatNo = cz(r.CustomerVatNo)
+		out.A1[i] = r
+	}
+	out.A4 = make([]reports.DocumentRow, len(c.A4))
+	for i, r := range c.A4 {
+		r.VatNo = cz(r.VatNo)
+		out.A4[i] = r
+	}
+	out.B2 = make([]reports.DocumentRow, len(c.B2))
+	for i, r := range c.B2 {
+		r.VatNo = cz(r.VatNo)
+		out.B2[i] = r
+	}
+	return out
 }
 
 func (s *server) getVatReport(ctx context.Context, in *vatReportInput) (*Out[VatReport], error) {
@@ -235,7 +263,7 @@ func (s *server) getVatXML(ctx context.Context, in *vatReportInput, form string)
 		b, err = reports.DPHKH1(r, tp, opt)
 	}
 	if errors.Is(err, reports.ErrTaxpayer) {
-		return nil, conflict("set the tax office code (c_ufo) and the DIČ in the account settings first")
+		return nil, conflict(CodeMissingTaxOffice, "set the tax office code (c_ufo) and the DIČ in the account settings first")
 	}
 	if err != nil {
 		return nil, huma.Error500InternalServerError("xml generation failed", err)

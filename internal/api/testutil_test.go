@@ -184,3 +184,18 @@ func assertError(t *testing.T, res *http.Response, body []byte, status int, subs
 		t.Fatalf("body %s does not contain %q", body, substr)
 	}
 }
+
+// assertCode checks a problem+json error status and its machine-readable code.
+func assertCode(t *testing.T, res *http.Response, body []byte, status int, code string) {
+	t.Helper()
+	if res.StatusCode != status {
+		t.Fatalf("status %d, want %d; body: %s", res.StatusCode, status, body)
+	}
+	var p struct {
+		Code string `json:"code"`
+	}
+	_ = json.Unmarshal(body, &p)
+	if p.Code != code {
+		t.Fatalf("code %q, want %q; body: %s", p.Code, code, body)
+	}
+}

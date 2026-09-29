@@ -286,7 +286,7 @@ func (s *server) deleteTemplate(ctx context.Context, in *struct {
 			return dbErr(err, "recurring")
 		}
 		if n > 0 {
-			return conflict("the template is used by a recurring invoice; delete the recurring invoice first")
+			return conflict(CodeUsedByRecurring, "the template is used by a recurring invoice; delete the recurring invoice first")
 		}
 		return dbErrOrNil(tx.Delete(m).Error, "template")
 	})
@@ -329,7 +329,7 @@ func (s *server) saveAsTemplate(ctx context.Context, in *struct {
 		return nil, err
 	}
 	if inv.DocumentType == model.DocCorrection {
-		return nil, conflict("a correction cannot be saved as a template")
+		return nil, conflict(CodeCorrectionTemplate, "a correction cannot be saved as a template")
 	}
 	name := ""
 	if in.Body != nil {

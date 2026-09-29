@@ -47,7 +47,7 @@ func (s *server) createPayment(ctx context.Context, in *struct {
 		}
 		wasPaid = m.Status == model.StatusPaid
 		if m.Status == model.StatusCancelled || m.Status == model.StatusUncollectible {
-			return conflict("cannot add a payment to a " + m.Status + " invoice")
+			return conflict(CodeNotPayable, "cannot add a payment to a " + m.Status + " invoice")
 		}
 		if in.Body.CreateFinalInvoice && m.DocumentType != model.DocProforma {
 			return invalid("create_final_invoice", "a final invoice can only be created for a proforma")
@@ -62,7 +62,7 @@ func (s *server) createPayment(ctx context.Context, in *struct {
 				return invalid("amount", "amount must not be zero")
 			}
 		} else if amount == 0 {
-			return conflict("nothing to pay: the remaining amount is 0")
+			return conflict(CodeNothingToPay, "nothing to pay: the remaining amount is 0")
 		}
 
 		p, err := addPayment(ctx, tx, m, paidOn, amount, in.Body.Note)
@@ -78,7 +78,7 @@ func (s *server) createPayment(ctx context.Context, in *struct {
 				return dbErr(err, "invoice")
 			}
 			if n > 0 {
-				return conflict("a final invoice for this proforma already exists")
+				return conflict(CodeFinalExists, "a final invoice for this proforma already exists")
 			}
 			body := copyInvoice(m, model.DocInvoice, true, false)
 			body.RelatedID, body.IssuedOn = &m.ID, paidOn

@@ -83,7 +83,7 @@ func (s *server) createStockMove(ctx context.Context, in *struct {
 			return err
 		}
 		if !item.TrackStock {
-			return conflict("stock is not tracked for this price item; enable track_stock first")
+			return conflict(CodeStockNotTracked, "stock is not tracked for this price item; enable track_stock first")
 		}
 		q, err := billing.ParseQuantity(in.Body.Quantity)
 		if err != nil {
@@ -127,7 +127,7 @@ func (s *server) deleteStockMove(ctx context.Context, in *struct {
 			return dbErr(err, "stock move")
 		}
 		if mv.InvoiceID != nil || mv.ExpenseID != nil {
-			return conflict("this stock move was generated from a document; change the document instead")
+			return conflict(CodeGeneratedMove, "this stock move was generated from a document; change the document instead")
 		}
 		if err := deleteStockMoves(tx, []model.StockMove{mv}); err != nil {
 			return err
