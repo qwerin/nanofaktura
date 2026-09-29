@@ -1,6 +1,6 @@
 import { useIsMutating, useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { LandmarkIcon, LockIcon, PencilIcon, PlusIcon, StarIcon, Trash2Icon } from 'lucide-react'
+import { LandmarkIcon, LockIcon, PencilIcon, PlusIcon, RefreshCwIcon, StarIcon, Trash2Icon } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { accountQueries } from '@/api/queries/accounts'
@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useCurrentAccount } from '@/hooks/use-current-account'
 import { bankName, formatIban } from '@/lib/bank'
+import { formatDateTime } from '@/lib/date'
 
 export const Route = createFileRoute('/a/$slug/settings/bank-accounts')({
   loader: ({ context, params }) =>
@@ -160,6 +161,12 @@ function BankAccountCard({
           <p className="text-sm text-muted-foreground">
             {[bank ?? (a.number ? `Banka ${bankCode}` : 'Zahraniční účet'), a.currency].join(' · ')}
           </p>
+          {a.sync_provider === 'fio' && (
+            <p className="mt-1 flex items-center gap-1.5 text-xs text-info">
+              <RefreshCwIcon className="size-3.5 shrink-0" />
+              {a.last_synced_at ? `Fio synchronizace · naposledy ${formatDateTime(a.last_synced_at)}` : 'Fio synchronizace zapnutá'}
+            </p>
+          )}
         </div>
       </div>
 

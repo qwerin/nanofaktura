@@ -1,13 +1,17 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { CircleAlertIcon, CircleCheckIcon } from 'lucide-react'
-import { useForm, useWatch } from 'react-hook-form'
+import { ChevronDownIcon, CircleAlertIcon, CircleCheckIcon, InfoIcon, KeyRoundIcon, RefreshCwIcon } from 'lucide-react'
+import { Controller, useForm, useWatch, type UseFormReturn } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { applyProblemToForm, errorMessage } from '@/api/errors'
 import { useCreateBankAccount, useUpdateBankAccount } from '@/api/queries/bank-accounts'
 import type { BankAccount, CreateBankAccountInput, UpdateBankAccountInput } from '@/api/types'
+import { isValidFioToken } from '@/components/bank/format'
 import { SelectField, SwitchField, TextField, type SelectOption } from '@/components/form/fields'
+import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { formatDateTime } from '@/lib/date'
 import {
   bankName,
   bankSwift,
@@ -30,8 +34,21 @@ const schema = z
     swift_bic: z.string(),
     currency: z.string().regex(/^[A-Z]{3}$/, 'Vyberte měnu'),
     is_default: z.boolean(),
+    // Automatická synchronizace (Fio API)
+    fio: z.boolean(),
+    /** stored = ponechat uložený token, new = zadat nový, remove = smazat uložený. */
+    token_mode: z.enum(['stored', 'new', 'remove']),
+    fio_token: z.string(),
+    sync_from: z.string(),
   })
   .superRefine((v, ctx) => {
+    if (v.fio && v.token_mode === 'new' && !isValidFioToken(v.fio_token)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['fio_token'],
+        message: v.fio_token.trim() === '' ? 'Vložte token z Fio internetbankingu' : 'Token má 16–128 písmen a číslic — zkontrolujte, že je celý',
+      })
+    }
     if (v.kind === 'czech') {
       const r = checkCzechAccount(v.number)
       if ('error' in r) {
@@ -52,7 +69,7 @@ const schema = z
   })
 type Values = z.infer<typeof schema>
 
-const SERVER_FIELDS = ['name', 'number', 'iban', 'swift_bic', 'currency', 'is_default']
+const SERVER_FIELDS = ['name', 'number', 'iban', 'swift_bic', 'currency', 'is_default', 'fio_token', 'sync_from']
 
 function toFormValues(a: BankAccount | undefined, defaultCurrency: string, isFirst: boolean): Values {
   return {
@@ -63,11 +80,27 @@ function toFormValues(a: BankAccount | undefined, defaultCurrency: string, isFir
     swift_bic: a?.number ? '' : (a?.swift_bic ?? ''),
     currency: a?.currency ?? defaultCurrency,
     is_default: a?.is_default ?? isFirst,
+    fio: a?.sync_provider === 'fio',
+    token_mode: a?.has_fio_token ? 'stored' : 'new',
+    fio_token: '',
+    sync_from: a?.sync_from ?? '',
   }
 }
 
-function toBody(v: Values): CreateBankAccountInput & UpdateBankAccountInput {
-  const base = { name: v.name.trim(), currency: v.currency, is_default: v.is_default }
+/** Pole synchronizace: token se posílá jen nový (nebo `""` = smazat), jinak zůstává uložený. */
+function syncBody(v: Values, isCreate: boolean): Pick<UpdateBankAccountInput, 'sync_provider' | 'fio_token' | 'sync_from'> {
+  const removing = v.token_mode === 'remove'
+  const out: Pick<UpdateBankAccountInput, 'sync_provider' | 'fio_token' | 'sync_from'> = {
+    sync_provider: v.fio && !removing ? 'fio' : 'none',
+  }
+  if (v.fio && v.token_mode === 'new') out.fio_token = v.fio_token.trim()
+  if (removing && !isCreate) out.fio_token = ''
+  if (v.sync_from || !isCreate) out.sync_from = v.sync_from
+  return out
+}
+
+function toBody(v: Values, isCreate: boolean): CreateBankAccountInput & UpdateBankAccountInput {
+  const base = { name: v.name.trim(), currency: v.currency, is_default: v.is_default, ...syncBody(v, isCreate) }
   if (v.kind === 'czech') return { ...base, number: v.number.replace(/\s+/g, '') }
   return {
     ...base,
@@ -118,12 +151,18 @@ export function BankAccountForm({
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
-      const body = toBody(values)
+      const body = toBody(values, !account)
       const saved = account ? await update.mutateAsync({ id: account.id, body }) : await create.mutateAsync(body)
       toast.success(account ? 'Bankovní účet uložen' : 'Bankovní účet přidán')
       onSaved(saved)
     } catch (err) {
-      if (applyProblemToForm(err, form.setError, SERVER_FIELDS)) return
+      if (applyProblemToForm(err, form.setError, SERVER_FIELDS)) {
+        // Backend hlásí token anglicky → český text.
+        if (form.getFieldState('fio_token').error) {
+          form.setError('fio_token', { type: 'server', message: 'Token nebyl přijat — vložte celý token z Fio internetbankingu' })
+        }
+        return
+      }
       form.setError('root', { message: errorMessage(err) })
     }
   })
@@ -212,6 +251,7 @@ export function BankAccountForm({
               description="Předvyplní se na nové faktury v této měně."
               disabled={isFirst || account?.is_default}
             />
+            <FioSyncSection form={form} account={account} />
           </>
         )}
 
@@ -260,5 +300,130 @@ function CzechAccountPreview({ value, hideError }: { value: string; hideError: b
       <CircleAlertIcon className="mt-0.5 size-4 shrink-0" />
       {czechAccountErrorMessage(r.error)}
     </p>
+  )
+}
+
+/**
+ * „Automatická synchronizace (Fio)“: přepínač, token (jen zápis — uložený se nikdy nezobrazí),
+ * datum první synchronizace, poslední synchronizace a návod na vytvoření tokenu.
+ */
+function FioSyncSection({ form, account }: { form: UseFormReturn<Values>; account?: BankAccount }) {
+  const { control } = form
+  const [fio, tokenMode] = useWatch({ control, name: ['fio', 'token_mode'] })
+  const stored = Boolean(account?.has_fio_token)
+
+  return (
+    <section className="flex flex-col gap-4 rounded-xl border p-3 md:p-4" aria-labelledby="fio-sync-title">
+      <div className="flex items-start gap-3">
+        <RefreshCwIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+        <div className="min-w-0 flex-1">
+          <h3 id="fio-sync-title" className="text-sm font-medium">
+            Automatická synchronizace (Fio)
+          </h3>
+          <p className="text-sm text-muted-foreground">Pohyby se stahují každé 2 hodiny a platby se párují s fakturami.</p>
+        </div>
+        <Controller
+          control={control}
+          name="fio"
+          render={({ field }) => (
+            <Switch
+              checked={field.value}
+              aria-label="Automatická synchronizace (Fio)"
+              onCheckedChange={(v) => {
+                field.onChange(v)
+                if (v && tokenMode === 'remove') form.setValue('token_mode', 'stored')
+              }}
+            />
+          )}
+        />
+      </div>
+
+      {tokenMode === 'remove' && (
+        <p className="flex items-center gap-2 rounded-lg bg-warning/15 px-3 py-2 text-sm">
+          <span className="flex-1">Uložený token se po uložení smaže a synchronizace se vypne.</span>
+          <Button type="button" variant="ghost" size="sm" onClick={() => form.setValue('token_mode', 'stored')}>
+            Vrátit
+          </Button>
+        </p>
+      )}
+
+      {fio && (
+        <>
+          {stored && tokenMode === 'stored' ? (
+            <div className="flex items-center gap-2 rounded-lg bg-success/10 px-3 py-2">
+              <KeyRoundIcon className="size-4 shrink-0 text-success" />
+              <span className="flex-1 text-sm font-medium">Token uložen</span>
+              <Button type="button" variant="outline" size="sm" className="h-9 md:h-7" onClick={() => form.setValue('token_mode', 'new')}>
+                Změnit
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-9 text-destructive hover:text-destructive md:h-7"
+                onClick={() => {
+                  form.setValue('token_mode', 'remove')
+                  form.setValue('fio', false)
+                }}
+              >
+                Odebrat
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <TextField
+                control={control}
+                name="fio_token"
+                label={stored ? 'Nový API token' : 'API token'}
+                type="password"
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                maxLength={128}
+                description="Uloží se šifrovaně a už se nikdy nezobrazí."
+              />
+              {stored && (
+                <Button type="button" variant="link" size="sm" className="self-start px-0" onClick={() => form.setValue('token_mode', 'stored')}>
+                  Ponechat uložený token
+                </Button>
+              )}
+            </div>
+          )}
+
+          <TextField
+            control={control}
+            name="sync_from"
+            label="Synchronizovat od"
+            type="date"
+            description="První stažení začne tímto dnem. Prázdné = 30 dní zpět."
+          />
+
+          {account?.last_synced_at && (
+            <p className="text-sm text-muted-foreground">Naposledy synchronizováno {formatDateTime(account.last_synced_at)}.</p>
+          )}
+
+          <details className="group rounded-lg bg-muted/50 px-3 py-2 text-sm">
+            <summary className="flex min-h-9 cursor-pointer list-none items-center gap-2 font-medium [&::-webkit-details-marker]:hidden">
+              <InfoIcon className="size-4 shrink-0 text-muted-foreground" />
+              Jak získat token ve Fio bance
+              <ChevronDownIcon className="ml-auto size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+            </summary>
+            <ol className="mt-2 mb-1 flex list-decimal flex-col gap-1.5 pl-5 text-muted-foreground">
+              <li>Přihlaste se do internetového bankovnictví Fio.</li>
+              <li>
+                Otevřete <strong className="font-medium text-foreground">Nastavení → API</strong> a zvolte{' '}
+                <strong className="font-medium text-foreground">Přidat nový token</strong>.
+              </li>
+              <li>
+                Vyberte tento účet a oprávnění <strong className="font-medium text-foreground">Pouze sledovat účet</strong> — NanoFaktura
+                pohyby jen čte, nikdy platby nezadává.
+              </li>
+              <li>Potvrďte token (autorizace v aplikaci nebo SMS) a zkopírujte ho sem.</li>
+            </ol>
+            <p className="mb-1 text-xs text-muted-foreground">Fio dovoluje jeden dotaz za 30 sekund, proto ruční synchronizace chvíli počká.</p>
+          </details>
+        </>
+      )}
+    </section>
   )
 }

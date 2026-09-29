@@ -14,6 +14,7 @@ import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { subjectQueries } from '@/api/queries/subjects'
 import type { Subject } from '@/api/types'
+import { VatStatusCard } from '@/components/bank/vat-status-card'
 import { PageBody, PageHeader, type PageAction } from '@/components/page-header'
 import { PageError } from '@/components/page-states'
 import { FormSkeleton } from '@/components/skeletons'
@@ -108,6 +109,7 @@ function SubjectDetailPage() {
             <div className="flex flex-col gap-4">
               <ContactHero subject={s} />
               <DetailCard subject={s} />
+              <VatStatusCard slug={slug} subject={s} />
             </div>
             <SubjectInvoices slug={slug} subjectId={s.id} canCreate={canEdit} />
           </div>

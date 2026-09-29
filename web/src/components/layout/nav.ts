@@ -21,7 +21,11 @@ import {
 export const moreNav = [
   { label: 'Náklady', to: '/a/$slug/expenses', icon: ReceiptIcon },
   { label: 'Ceník', to: '/a/$slug/price-items', icon: PackageIcon },
+<<<<<<< HEAD
   { label: 'Pravidelné faktury', to: '/a/$slug/recurring', icon: RepeatIcon },
+=======
+  { label: 'Banka', to: '/a/$slug/bank', icon: LandmarkIcon },
+>>>>>>> worktree-agent-a9a2c578d87629180
 ] as const
 
 export const mainNav = [

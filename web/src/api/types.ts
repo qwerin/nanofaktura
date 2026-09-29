@@ -155,3 +155,18 @@ export type EmailPreview = ResponseBody<'/api/accounts/{slug}/email-templates/pr
 export type SendInvoiceInput = RequestBody<'/api/accounts/{slug}/invoices/{id}/send', 'post'>
 export type AccountEmailTemplate = Account['email_templates'][number]
 export type EmailLang = AccountEmailTemplate['lang']
+
+// --- Banka (výpisy, synchronizace, párování plateb) ---
+export type BankTransactionList = ResponseBody<'/api/accounts/{slug}/bank-transactions', 'get'>
+export type BankTransaction = ListItem<BankTransactionList>
+export type BankTransactionState = BankTransaction['state']
+export type MatchSuggestion = BankTransaction['suggestions'][number]
+export type BankTransactionFilters = Omit<
+  NonNullable<paths['/api/accounts/{slug}/bank-transactions']['get']['parameters']['query']>,
+  'page' | 'per_page'
+>
+export type BankImportResult = ResponseBody<'/api/accounts/{slug}/bank-accounts/{id}/sync', 'post'>
+export type RematchResult = ResponseBody<'/api/accounts/{slug}/bank-transactions/rematch', 'post'>
+export type MatchTransactionInput = RequestBody<'/api/accounts/{slug}/bank-transactions/{id}/match', 'post'>
+export type VatRegistryResult = ResponseBody<'/api/accounts/{slug}/subjects/{id}/vat-status', 'get'>
+export type VatRegistryAccount = VatRegistryResult['published_accounts'][number]

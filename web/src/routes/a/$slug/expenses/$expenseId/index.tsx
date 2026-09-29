@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import { expenseQueries, useDeleteExpense, useDeleteExpensePayment, useExpenseAction } from '@/api/queries/expenses'
 import type { Expense, ExpensePayment } from '@/api/types'
 import { Attachments } from '@/components/attachments/attachments'
+import { ExpenseWarnings } from '@/components/bank/expense-warnings'
 import { ConfirmDialog } from '@/components/expense/confirm-dialog'
 import { ExpenseStatusBadge } from '@/components/expense/expense-status-badge'
 import { paymentMethodLabel } from '@/components/expense/format'
@@ -94,6 +95,7 @@ function ExpenseDetailPage() {
       <PageHeader title={e.number} description={e.supplier_name} back={back} actions={actions} />
       <PageBody className="grid gap-4 md:gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div className="flex min-w-0 flex-col gap-4 md:gap-6">
+          <ExpenseWarnings warnings={e.warnings} />
           <HeroCard expense={e} />
           <Card title="Položky">
             <LinesTable expense={e} />
