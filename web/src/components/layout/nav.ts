@@ -19,6 +19,7 @@ import {
 export const moreNav = [
   { label: 'Náklady', to: '/a/$slug/expenses', icon: ReceiptIcon },
   { label: 'Ceník', to: '/a/$slug/price-items', icon: PackageIcon },
+  { label: 'Banka', to: '/a/$slug/bank', icon: LandmarkIcon },
 ] as const
 
 export const mainNav = [

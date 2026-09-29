@@ -77,4 +77,12 @@ export const keys = {
 
   // Vzhled dokladů (náhled PDF)
   pdfPreview: (slug: string, params: object) => [...keys.account(slug), 'pdf-preview', params] as const,
+
+  // --- Banka ---
+  bankTransactions: (slug: string) => [...keys.account(slug), 'bank-transactions'] as const,
+  bankTransactionList: (slug: string, filters: object) => [...keys.bankTransactions(slug), 'list', filters] as const,
+  /** Počty záznamů (per_page=1 → total) — pod prefixem transakcí, zneplatní se s nimi. */
+  bankTransactionCount: (slug: string, filters: object) => [...keys.bankTransactions(slug), 'count', filters] as const,
+  /** Registr plátců DPH pro kontakt (pod prefixem `subjects`). */
+  subjectVatStatus: (slug: string, subjectId: number) => [...keys.subjects(slug), 'vat-status', subjectId] as const,
 }

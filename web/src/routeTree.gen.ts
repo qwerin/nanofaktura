@@ -18,6 +18,7 @@ import { Route as ASlugIndexRouteImport } from './routes/a/$slug/index'
 import { Route as ASlugDashboardRouteImport } from './routes/a/$slug/dashboard'
 import { Route as ASlugOnboardingRouteImport } from './routes/a/$slug/onboarding'
 import { Route as ASlugSettingsRouteRouteImport } from './routes/a/$slug/settings/route'
+import { Route as ASlugBankIndexRouteImport } from './routes/a/$slug/bank/index'
 import { Route as ASlugExpensesIndexRouteImport } from './routes/a/$slug/expenses/index'
 import { Route as ASlugExpensesNewRouteImport } from './routes/a/$slug/expenses/new'
 import { Route as ASlugInvoicesIndexRouteImport } from './routes/a/$slug/invoices/index'
@@ -86,6 +87,11 @@ const ASlugOnboardingRoute = ASlugOnboardingRouteImport.update({
 const ASlugSettingsRouteRoute = ASlugSettingsRouteRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => ASlugRouteRoute,
+} as any)
+const ASlugBankIndexRoute = ASlugBankIndexRouteImport.update({
+  id: '/bank/',
+  path: '/bank/',
   getParentRoute: () => ASlugRouteRoute,
 } as any)
 const ASlugExpensesIndexRoute = ASlugExpensesIndexRouteImport.update({
@@ -240,6 +246,7 @@ export interface FileRoutesByFullPath {
   '/a/$slug/settings/profile': typeof ASlugSettingsProfileRoute
   '/a/$slug/settings/tokens': typeof ASlugSettingsTokensRoute
   '/a/$slug/subjects/new': typeof ASlugSubjectsNewRoute
+  '/a/$slug/bank/': typeof ASlugBankIndexRoute
   '/a/$slug/expenses/': typeof ASlugExpensesIndexRoute
   '/a/$slug/invoices/': typeof ASlugInvoicesIndexRoute
   '/a/$slug/price-items/': typeof ASlugPriceItemsIndexRoute
@@ -273,6 +280,7 @@ export interface FileRoutesByTo {
   '/a/$slug/settings/profile': typeof ASlugSettingsProfileRoute
   '/a/$slug/settings/tokens': typeof ASlugSettingsTokensRoute
   '/a/$slug/subjects/new': typeof ASlugSubjectsNewRoute
+  '/a/$slug/bank': typeof ASlugBankIndexRoute
   '/a/$slug/expenses': typeof ASlugExpensesIndexRoute
   '/a/$slug/invoices': typeof ASlugInvoicesIndexRoute
   '/a/$slug/price-items': typeof ASlugPriceItemsIndexRoute
@@ -309,6 +317,7 @@ export interface FileRoutesById {
   '/a/$slug/settings/profile': typeof ASlugSettingsProfileRoute
   '/a/$slug/settings/tokens': typeof ASlugSettingsTokensRoute
   '/a/$slug/subjects/new': typeof ASlugSubjectsNewRoute
+  '/a/$slug/bank/': typeof ASlugBankIndexRoute
   '/a/$slug/expenses/': typeof ASlugExpensesIndexRoute
   '/a/$slug/invoices/': typeof ASlugInvoicesIndexRoute
   '/a/$slug/price-items/': typeof ASlugPriceItemsIndexRoute
@@ -346,6 +355,7 @@ export interface FileRouteTypes {
     | '/a/$slug/settings/profile'
     | '/a/$slug/settings/tokens'
     | '/a/$slug/subjects/new'
+    | '/a/$slug/bank/'
     | '/a/$slug/expenses/'
     | '/a/$slug/invoices/'
     | '/a/$slug/price-items/'
@@ -379,6 +389,7 @@ export interface FileRouteTypes {
     | '/a/$slug/settings/profile'
     | '/a/$slug/settings/tokens'
     | '/a/$slug/subjects/new'
+    | '/a/$slug/bank'
     | '/a/$slug/expenses'
     | '/a/$slug/invoices'
     | '/a/$slug/price-items'
@@ -414,6 +425,7 @@ export interface FileRouteTypes {
     | '/a/$slug/settings/profile'
     | '/a/$slug/settings/tokens'
     | '/a/$slug/subjects/new'
+    | '/a/$slug/bank/'
     | '/a/$slug/expenses/'
     | '/a/$slug/invoices/'
     | '/a/$slug/price-items/'
@@ -500,6 +512,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/a/$slug/settings'
       preLoaderRoute: typeof ASlugSettingsRouteRouteImport
+      parentRoute: typeof ASlugRouteRoute
+    }
+    '/a/$slug/bank/': {
+      id: '/a/$slug/bank/'
+      path: '/bank'
+      fullPath: '/a/$slug/bank/'
+      preLoaderRoute: typeof ASlugBankIndexRouteImport
       parentRoute: typeof ASlugRouteRoute
     }
     '/a/$slug/expenses/': {
@@ -707,6 +726,7 @@ interface ASlugRouteRouteChildren {
   ASlugInvoicesNewRoute: typeof ASlugInvoicesNewRoute
   ASlugPriceItemsNewRoute: typeof ASlugPriceItemsNewRoute
   ASlugSubjectsNewRoute: typeof ASlugSubjectsNewRoute
+  ASlugBankIndexRoute: typeof ASlugBankIndexRoute
   ASlugExpensesIndexRoute: typeof ASlugExpensesIndexRoute
   ASlugInvoicesIndexRoute: typeof ASlugInvoicesIndexRoute
   ASlugPriceItemsIndexRoute: typeof ASlugPriceItemsIndexRoute
@@ -730,6 +750,7 @@ const ASlugRouteRouteChildren: ASlugRouteRouteChildren = {
   ASlugInvoicesNewRoute: ASlugInvoicesNewRoute,
   ASlugPriceItemsNewRoute: ASlugPriceItemsNewRoute,
   ASlugSubjectsNewRoute: ASlugSubjectsNewRoute,
+  ASlugBankIndexRoute: ASlugBankIndexRoute,
   ASlugExpensesIndexRoute: ASlugExpensesIndexRoute,
   ASlugInvoicesIndexRoute: ASlugInvoicesIndexRoute,
   ASlugPriceItemsIndexRoute: ASlugPriceItemsIndexRoute,
