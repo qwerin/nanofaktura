@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { LockIcon } from 'lucide-react'
+import { useEffect } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -23,6 +24,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useCurrentAccount } from '@/hooks/use-current-account'
+import { officeOfBranch, TAX_OFFICES, taxOfficeBranches } from '@/lib/tax-offices'
 import { optionalEmailSchema, optionalIcoSchema } from '@/lib/validation'
 
 export const Route = createFileRoute('/a/$slug/settings/company')({
@@ -56,6 +58,12 @@ const vatRateOptions: SelectOption[] = [
   { value: '0', label: '0 %' },
 ]
 
+const vatPeriodOptions: SelectOption<Account['vat_period']>[] = [
+  { value: 'month', label: 'Měsíční' },
+  { value: 'quarter', label: 'Čtvrtletní' },
+]
+const taxOfficeOptions: SelectOption[] = TAX_OFFICES.map((o) => ({ value: o.code, label: `${o.name} (${o.code})` }))
+
 // --- Formulář ---
 
 const schema = z.object({
@@ -82,6 +90,9 @@ const schema = z.object({
   round_total: z.boolean(),
   default_note: z.string(),
   default_footer_note: z.string(),
+  vat_period: z.enum(['month', 'quarter']),
+  c_ufo: z.string().regex(/^\d{0,3}$/),
+  c_pracufo: z.string().regex(/^\d{0,4}$/),
 })
 type Values = z.infer<typeof schema>
 
@@ -107,6 +118,9 @@ function toFormValues(a: Account): Values {
     round_total: a.round_total,
     default_note: a.default_note,
     default_footer_note: a.default_footer_note,
+    vat_period: a.vat_period,
+    c_ufo: a.c_ufo || (a.c_pracufo ? (officeOfBranch(a.c_pracufo) ?? '') : ''),
+    c_pracufo: a.c_pracufo,
   }
 }
 
@@ -159,6 +173,18 @@ function CompanyForm({ slug, account }: { slug: string; account: Account }) {
   })
   const { control, formState } = form
   const vatMode = useWatch({ control: form.control, name: 'vat_mode' })
+  const taxOffice = useWatch({ control: form.control, name: 'c_ufo' })
+  // Pracoviště musí patřit ke zvolenému úřadu — po změně úřadu se vymaže.
+  useEffect(() => {
+    const branch = form.getValues('c_pracufo')
+    if (branch && !taxOfficeBranches(taxOffice).some((b) => b.code === branch)) {
+      form.setValue('c_pracufo', '', { shouldDirty: true })
+    }
+  }, [taxOffice, form])
+  const branchOptions: SelectOption[] = [
+    { value: '', label: 'Neuvádět' },
+    ...taxOfficeBranches(taxOffice).map((b) => ({ value: b.code, label: `${b.name} (${b.code})` })),
+  ]
 
   const onSubmit = form.handleSubmit(async (values) => {
     const patch = toPatch(values, formState.dirtyFields)
@@ -229,6 +255,39 @@ function CompanyForm({ slug, account }: { slug: string; account: Account }) {
             placeholder="Zapsán v živnostenském rejstříku…"
           />
         </FormSection>
+
+        {vatMode === 'vat_payer' && (
+          <FormSection
+            title="Daně a DPH"
+            description="Pro přehled DPH a export přiznání a kontrolního hlášení do EPO."
+          >
+            <SelectField
+              control={control}
+              name="vat_period"
+              label="Zdaňovací období"
+              options={vatPeriodOptions}
+              description="Čtvrtletně smí podávat jen plátci s obratem do 10 mil. Kč (ne v prvním roce registrace)."
+              className="sm:max-w-60"
+            />
+            <SelectField
+              control={control}
+              name="c_ufo"
+              label="Finanční úřad"
+              options={taxOfficeOptions}
+              placeholder="Vyberte finanční úřad…"
+              description="Krajský úřad podle sídla (u fyzické osoby bydliště). Kód c_ufo z číselníku EPO."
+            />
+            <SelectField
+              control={control}
+              name="c_pracufo"
+              label="Územní pracoviště"
+              options={branchOptions}
+              placeholder={taxOffice ? 'Neuvádět' : 'Nejdřív vyberte finanční úřad'}
+              disabled={!taxOffice}
+              description="Nepovinné — rozhoduje finanční úřad. Kód c_pracufo."
+            />
+          </FormSection>
+        )}
 
         <FormSection title="Adresa" description="Sídlo nebo místo podnikání.">
           <TextField control={control} name="street" label="Ulice a číslo" autoComplete="street-address" />

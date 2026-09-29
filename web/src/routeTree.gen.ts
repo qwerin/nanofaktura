@@ -14,9 +14,11 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ASlugRouteRouteImport } from './routes/a/$slug/route'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
+import { Route as PTokenRouteImport } from './routes/p.$token'
 import { Route as ASlugIndexRouteImport } from './routes/a/$slug/index'
 import { Route as ASlugDashboardRouteImport } from './routes/a/$slug/dashboard'
 import { Route as ASlugOnboardingRouteImport } from './routes/a/$slug/onboarding'
+import { Route as ASlugReportsRouteRouteImport } from './routes/a/$slug/reports/route'
 import { Route as ASlugSettingsRouteRouteImport } from './routes/a/$slug/settings/route'
 import { Route as ASlugBankIndexRouteImport } from './routes/a/$slug/bank/index'
 import { Route as ASlugExpensesIndexRouteImport } from './routes/a/$slug/expenses/index'
@@ -27,6 +29,8 @@ import { Route as ASlugPriceItemsIndexRouteImport } from './routes/a/$slug/price
 import { Route as ASlugPriceItemsNewRouteImport } from './routes/a/$slug/price-items/new'
 import { Route as ASlugRecurringIndexRouteImport } from './routes/a/$slug/recurring/index'
 import { Route as ASlugRecurringNewRouteImport } from './routes/a/$slug/recurring/new'
+import { Route as ASlugReportsIndexRouteImport } from './routes/a/$slug/reports/index'
+import { Route as ASlugReportsVatRouteImport } from './routes/a/$slug/reports/vat'
 import { Route as ASlugSettingsIndexRouteImport } from './routes/a/$slug/settings/index'
 import { Route as ASlugSettingsAppearanceRouteImport } from './routes/a/$slug/settings/appearance'
 import { Route as ASlugSettingsBankAccountsRouteImport } from './routes/a/$slug/settings/bank-accounts'
@@ -77,6 +81,11 @@ const InviteTokenRoute = InviteTokenRouteImport.update({
   path: '/invite/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PTokenRoute = PTokenRouteImport.update({
+  id: '/p/$token',
+  path: '/p/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ASlugIndexRoute = ASlugIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -90,6 +99,11 @@ const ASlugDashboardRoute = ASlugDashboardRouteImport.update({
 const ASlugOnboardingRoute = ASlugOnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => ASlugRouteRoute,
+} as any)
+const ASlugReportsRouteRoute = ASlugReportsRouteRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => ASlugRouteRoute,
 } as any)
 const ASlugSettingsRouteRoute = ASlugSettingsRouteRouteImport.update({
@@ -141,6 +155,16 @@ const ASlugRecurringNewRoute = ASlugRecurringNewRouteImport.update({
   id: '/recurring/new',
   path: '/recurring/new',
   getParentRoute: () => ASlugRouteRoute,
+} as any)
+const ASlugReportsIndexRoute = ASlugReportsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ASlugReportsRouteRoute,
+} as any)
+const ASlugReportsVatRoute = ASlugReportsVatRouteImport.update({
+  id: '/vat',
+  path: '/vat',
+  getParentRoute: () => ASlugReportsRouteRoute,
 } as any)
 const ASlugSettingsIndexRoute = ASlugSettingsIndexRouteImport.update({
   id: '/',
@@ -282,6 +306,8 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/a/$slug': typeof ASlugRouteRouteWithChildren
   '/invite/$token': typeof InviteTokenRoute
+  '/p/$token': typeof PTokenRoute
+  '/a/$slug/reports': typeof ASlugReportsRouteRouteWithChildren
   '/a/$slug/settings': typeof ASlugSettingsRouteRouteWithChildren
   '/a/$slug/dashboard': typeof ASlugDashboardRoute
   '/a/$slug/onboarding': typeof ASlugOnboardingRoute
@@ -290,6 +316,7 @@ export interface FileRoutesByFullPath {
   '/a/$slug/invoices/new': typeof ASlugInvoicesNewRoute
   '/a/$slug/price-items/new': typeof ASlugPriceItemsNewRoute
   '/a/$slug/recurring/new': typeof ASlugRecurringNewRoute
+  '/a/$slug/reports/vat': typeof ASlugReportsVatRoute
   '/a/$slug/settings/appearance': typeof ASlugSettingsAppearanceRoute
   '/a/$slug/settings/bank-accounts': typeof ASlugSettingsBankAccountsRoute
   '/a/$slug/settings/company': typeof ASlugSettingsCompanyRoute
@@ -306,6 +333,7 @@ export interface FileRoutesByFullPath {
   '/a/$slug/invoices/': typeof ASlugInvoicesIndexRoute
   '/a/$slug/price-items/': typeof ASlugPriceItemsIndexRoute
   '/a/$slug/recurring/': typeof ASlugRecurringIndexRoute
+  '/a/$slug/reports/': typeof ASlugReportsIndexRoute
   '/a/$slug/settings/': typeof ASlugSettingsIndexRoute
   '/a/$slug/subjects/': typeof ASlugSubjectsIndexRoute
   '/a/$slug/templates/': typeof ASlugTemplatesIndexRoute
@@ -325,6 +353,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/p/$token': typeof PTokenRoute
   '/a/$slug/dashboard': typeof ASlugDashboardRoute
   '/a/$slug/onboarding': typeof ASlugOnboardingRoute
   '/a/$slug': typeof ASlugIndexRoute
@@ -332,6 +361,7 @@ export interface FileRoutesByTo {
   '/a/$slug/invoices/new': typeof ASlugInvoicesNewRoute
   '/a/$slug/price-items/new': typeof ASlugPriceItemsNewRoute
   '/a/$slug/recurring/new': typeof ASlugRecurringNewRoute
+  '/a/$slug/reports/vat': typeof ASlugReportsVatRoute
   '/a/$slug/settings/appearance': typeof ASlugSettingsAppearanceRoute
   '/a/$slug/settings/bank-accounts': typeof ASlugSettingsBankAccountsRoute
   '/a/$slug/settings/company': typeof ASlugSettingsCompanyRoute
@@ -348,6 +378,7 @@ export interface FileRoutesByTo {
   '/a/$slug/invoices': typeof ASlugInvoicesIndexRoute
   '/a/$slug/price-items': typeof ASlugPriceItemsIndexRoute
   '/a/$slug/recurring': typeof ASlugRecurringIndexRoute
+  '/a/$slug/reports': typeof ASlugReportsIndexRoute
   '/a/$slug/settings': typeof ASlugSettingsIndexRoute
   '/a/$slug/subjects': typeof ASlugSubjectsIndexRoute
   '/a/$slug/templates': typeof ASlugTemplatesIndexRoute
@@ -369,6 +400,8 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/a/$slug': typeof ASlugRouteRouteWithChildren
   '/invite/$token': typeof InviteTokenRoute
+  '/p/$token': typeof PTokenRoute
+  '/a/$slug/reports': typeof ASlugReportsRouteRouteWithChildren
   '/a/$slug/settings': typeof ASlugSettingsRouteRouteWithChildren
   '/a/$slug/dashboard': typeof ASlugDashboardRoute
   '/a/$slug/onboarding': typeof ASlugOnboardingRoute
@@ -377,6 +410,7 @@ export interface FileRoutesById {
   '/a/$slug/invoices/new': typeof ASlugInvoicesNewRoute
   '/a/$slug/price-items/new': typeof ASlugPriceItemsNewRoute
   '/a/$slug/recurring/new': typeof ASlugRecurringNewRoute
+  '/a/$slug/reports/vat': typeof ASlugReportsVatRoute
   '/a/$slug/settings/appearance': typeof ASlugSettingsAppearanceRoute
   '/a/$slug/settings/bank-accounts': typeof ASlugSettingsBankAccountsRoute
   '/a/$slug/settings/company': typeof ASlugSettingsCompanyRoute
@@ -393,6 +427,7 @@ export interface FileRoutesById {
   '/a/$slug/invoices/': typeof ASlugInvoicesIndexRoute
   '/a/$slug/price-items/': typeof ASlugPriceItemsIndexRoute
   '/a/$slug/recurring/': typeof ASlugRecurringIndexRoute
+  '/a/$slug/reports/': typeof ASlugReportsIndexRoute
   '/a/$slug/settings/': typeof ASlugSettingsIndexRoute
   '/a/$slug/subjects/': typeof ASlugSubjectsIndexRoute
   '/a/$slug/templates/': typeof ASlugTemplatesIndexRoute
@@ -415,6 +450,8 @@ export interface FileRouteTypes {
     | '/register'
     | '/a/$slug'
     | '/invite/$token'
+    | '/p/$token'
+    | '/a/$slug/reports'
     | '/a/$slug/settings'
     | '/a/$slug/dashboard'
     | '/a/$slug/onboarding'
@@ -423,6 +460,7 @@ export interface FileRouteTypes {
     | '/a/$slug/invoices/new'
     | '/a/$slug/price-items/new'
     | '/a/$slug/recurring/new'
+    | '/a/$slug/reports/vat'
     | '/a/$slug/settings/appearance'
     | '/a/$slug/settings/bank-accounts'
     | '/a/$slug/settings/company'
@@ -439,6 +477,7 @@ export interface FileRouteTypes {
     | '/a/$slug/invoices/'
     | '/a/$slug/price-items/'
     | '/a/$slug/recurring/'
+    | '/a/$slug/reports/'
     | '/a/$slug/settings/'
     | '/a/$slug/subjects/'
     | '/a/$slug/templates/'
@@ -458,6 +497,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/invite/$token'
+    | '/p/$token'
     | '/a/$slug/dashboard'
     | '/a/$slug/onboarding'
     | '/a/$slug'
@@ -465,6 +505,7 @@ export interface FileRouteTypes {
     | '/a/$slug/invoices/new'
     | '/a/$slug/price-items/new'
     | '/a/$slug/recurring/new'
+    | '/a/$slug/reports/vat'
     | '/a/$slug/settings/appearance'
     | '/a/$slug/settings/bank-accounts'
     | '/a/$slug/settings/company'
@@ -481,6 +522,7 @@ export interface FileRouteTypes {
     | '/a/$slug/invoices'
     | '/a/$slug/price-items'
     | '/a/$slug/recurring'
+    | '/a/$slug/reports'
     | '/a/$slug/settings'
     | '/a/$slug/subjects'
     | '/a/$slug/templates'
@@ -501,6 +543,8 @@ export interface FileRouteTypes {
     | '/register'
     | '/a/$slug'
     | '/invite/$token'
+    | '/p/$token'
+    | '/a/$slug/reports'
     | '/a/$slug/settings'
     | '/a/$slug/dashboard'
     | '/a/$slug/onboarding'
@@ -509,6 +553,7 @@ export interface FileRouteTypes {
     | '/a/$slug/invoices/new'
     | '/a/$slug/price-items/new'
     | '/a/$slug/recurring/new'
+    | '/a/$slug/reports/vat'
     | '/a/$slug/settings/appearance'
     | '/a/$slug/settings/bank-accounts'
     | '/a/$slug/settings/company'
@@ -525,6 +570,7 @@ export interface FileRouteTypes {
     | '/a/$slug/invoices/'
     | '/a/$slug/price-items/'
     | '/a/$slug/recurring/'
+    | '/a/$slug/reports/'
     | '/a/$slug/settings/'
     | '/a/$slug/subjects/'
     | '/a/$slug/templates/'
@@ -546,6 +592,7 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   ASlugRouteRoute: typeof ASlugRouteRouteWithChildren
   InviteTokenRoute: typeof InviteTokenRoute
+  PTokenRoute: typeof PTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -585,6 +632,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InviteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/p/$token': {
+      id: '/p/$token'
+      path: '/p/$token'
+      fullPath: '/p/$token'
+      preLoaderRoute: typeof PTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/a/$slug/': {
       id: '/a/$slug/'
       path: '/'
@@ -604,6 +658,13 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/a/$slug/onboarding'
       preLoaderRoute: typeof ASlugOnboardingRouteImport
+      parentRoute: typeof ASlugRouteRoute
+    }
+    '/a/$slug/reports': {
+      id: '/a/$slug/reports'
+      path: '/reports'
+      fullPath: '/a/$slug/reports'
+      preLoaderRoute: typeof ASlugReportsRouteRouteImport
       parentRoute: typeof ASlugRouteRoute
     }
     '/a/$slug/settings': {
@@ -675,6 +736,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/a/$slug/recurring/new'
       preLoaderRoute: typeof ASlugRecurringNewRouteImport
       parentRoute: typeof ASlugRouteRoute
+    }
+    '/a/$slug/reports/': {
+      id: '/a/$slug/reports/'
+      path: '/'
+      fullPath: '/a/$slug/reports/'
+      preLoaderRoute: typeof ASlugReportsIndexRouteImport
+      parentRoute: typeof ASlugReportsRouteRoute
+    }
+    '/a/$slug/reports/vat': {
+      id: '/a/$slug/reports/vat'
+      path: '/vat'
+      fullPath: '/a/$slug/reports/vat'
+      preLoaderRoute: typeof ASlugReportsVatRouteImport
+      parentRoute: typeof ASlugReportsRouteRoute
     }
     '/a/$slug/settings/': {
       id: '/a/$slug/settings/'
@@ -847,6 +922,19 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ASlugReportsRouteRouteChildren {
+  ASlugReportsVatRoute: typeof ASlugReportsVatRoute
+  ASlugReportsIndexRoute: typeof ASlugReportsIndexRoute
+}
+
+const ASlugReportsRouteRouteChildren: ASlugReportsRouteRouteChildren = {
+  ASlugReportsVatRoute: ASlugReportsVatRoute,
+  ASlugReportsIndexRoute: ASlugReportsIndexRoute,
+}
+
+const ASlugReportsRouteRouteWithChildren =
+  ASlugReportsRouteRoute._addFileChildren(ASlugReportsRouteRouteChildren)
+
 interface ASlugSettingsRouteRouteChildren {
   ASlugSettingsAppearanceRoute: typeof ASlugSettingsAppearanceRoute
   ASlugSettingsBankAccountsRoute: typeof ASlugSettingsBankAccountsRoute
@@ -875,6 +963,7 @@ const ASlugSettingsRouteRouteWithChildren =
   ASlugSettingsRouteRoute._addFileChildren(ASlugSettingsRouteRouteChildren)
 
 interface ASlugRouteRouteChildren {
+  ASlugReportsRouteRoute: typeof ASlugReportsRouteRouteWithChildren
   ASlugSettingsRouteRoute: typeof ASlugSettingsRouteRouteWithChildren
   ASlugDashboardRoute: typeof ASlugDashboardRoute
   ASlugOnboardingRoute: typeof ASlugOnboardingRoute
@@ -906,6 +995,7 @@ interface ASlugRouteRouteChildren {
 }
 
 const ASlugRouteRouteChildren: ASlugRouteRouteChildren = {
+  ASlugReportsRouteRoute: ASlugReportsRouteRouteWithChildren,
   ASlugSettingsRouteRoute: ASlugSettingsRouteRouteWithChildren,
   ASlugDashboardRoute: ASlugDashboardRoute,
   ASlugOnboardingRoute: ASlugOnboardingRoute,
@@ -946,6 +1036,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   ASlugRouteRoute: ASlugRouteRouteWithChildren,
   InviteTokenRoute: InviteTokenRoute,
+  PTokenRoute: PTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

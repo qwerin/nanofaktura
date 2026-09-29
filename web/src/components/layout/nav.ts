@@ -1,5 +1,6 @@
 import {
   BuildingIcon,
+  ChartColumnIcon,
   FileTextIcon,
   HashIcon,
   KeyRoundIcon,
@@ -23,6 +24,7 @@ export const moreNav = [
   { label: 'Ceník', to: '/a/$slug/price-items', icon: PackageIcon },
   { label: 'Pravidelné faktury', to: '/a/$slug/recurring', icon: RepeatIcon },
   { label: 'Banka', to: '/a/$slug/bank', icon: LandmarkIcon },
+  { label: 'Přehledy', to: '/a/$slug/reports', icon: ChartColumnIcon },
 ] as const
 
 export const mainNav = [

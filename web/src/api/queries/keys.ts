@@ -95,4 +95,12 @@ export const keys = {
   bankTransactionCount: (slug: string, filters: object) => [...keys.bankTransactions(slug), 'count', filters] as const,
   /** Registr plátců DPH pro kontakt (pod prefixem `subjects`). */
   subjectVatStatus: (slug: string, subjectId: number) => [...keys.subjects(slug), 'vat-status', subjectId] as const,
+
+  // Reporty (přehledy, DPH)
+  reports: (slug: string) => [...keys.account(slug), 'reports'] as const,
+  reportOverview: (slug: string, year?: number) => [...keys.reports(slug), 'overview', year ?? 'current'] as const,
+  reportVat: (slug: string, period?: string) => [...keys.reports(slug), 'vat', period ?? 'default'] as const,
+
+  /** Veřejná faktura podle tokenu (bez účtu a přihlášení). */
+  publicInvoice: (token: string) => ['public', 'invoice', token] as const,
 }

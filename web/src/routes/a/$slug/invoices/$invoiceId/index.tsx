@@ -6,6 +6,7 @@ import {
   CopyIcon,
   DownloadIcon,
   FileMinusIcon,
+  FileCodeIcon,
   FileTextIcon,
   LinkIcon,
   LockIcon,
@@ -203,6 +204,8 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
     ...(isMobile
       ? []
       : [{ label: 'Stáhnout PDF', icon: DownloadIcon, overflow: true, render: <a href={pdfUrl} download={pdfName} /> }]),
+    // ISDOC (strojově čitelná faktura pro účetní software)
+    { label: 'Stáhnout ISDOC', icon: FileCodeIcon, overflow: true, render: <a href={pdfUrl.replace(/\/pdf$/, '/isdoc')} download={pdfName.replace(/\.pdf$/, '.isdoc')} /> },
     ...act('mark_as_sent', {
       label: 'Označit jako odeslanou',
       icon: SendIcon,

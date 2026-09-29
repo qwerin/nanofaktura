@@ -7,6 +7,7 @@ import { subjectQueries } from '@/api/queries/subjects'
 import type { Subject } from '@/api/types'
 import { ButtonLink } from '@/components/button-link'
 import { EmptyState } from '@/components/empty-state'
+import { useExportMenu } from '@/components/export/use-export-menu'
 import { PageBody, PageHeader } from '@/components/page-header'
 import { PageError } from '@/components/page-states'
 import { ResponsiveList } from '@/components/responsive-list'
@@ -52,6 +53,7 @@ function SubjectsPage() {
   const navigate = useNavigate({ from: Route.fullPath })
   const filters = { query: search.query, type: search.type }
   const list = useInfiniteQuery({ ...subjectQueries.list(slug, filters), placeholderData: keepPreviousData })
+  const exportMenu = useExportMenu({ slug, kind: 'subjects', filters })
 
   const items = list.data?.pages.flatMap((p) => p.items ?? [])
   const total = list.data?.pages[0]?.total ?? 0
@@ -74,8 +76,9 @@ function SubjectsPage() {
                   primary: true,
                   render: <Link to="/a/$slug/subjects/new" params={{ slug }} />,
                 },
+                exportMenu.action,
               ]
-            : undefined
+            : [exportMenu.action]
         }
       >
         <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center">
@@ -209,6 +212,7 @@ function SubjectsPage() {
           </>
         )}
       </PageBody>
+      {exportMenu.drawer}
     </>
   )
 }

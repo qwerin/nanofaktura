@@ -88,6 +88,7 @@ export type PaymentResult = ResponseBody<'/api/accounts/{slug}/invoices/{id}/pay
 
 // --- Dashboard ---
 export type Dashboard = ResponseBody<'/api/accounts/{slug}/dashboard', 'get'>
+
 // --- Expenses (náklady) ---
 export type Expense = ResponseBody<'/api/accounts/{slug}/expenses/{id}', 'get'>
 export type ExpenseSummary = ListItem<ResponseBody<'/api/accounts/{slug}/expenses', 'get'>>
@@ -170,3 +171,19 @@ export type RematchResult = ResponseBody<'/api/accounts/{slug}/bank-transactions
 export type MatchTransactionInput = RequestBody<'/api/accounts/{slug}/bank-transactions/{id}/match', 'post'>
 export type VatRegistryResult = ResponseBody<'/api/accounts/{slug}/subjects/{id}/vat-status', 'get'>
 export type VatRegistryAccount = VatRegistryResult['published_accounts'][number]
+
+// --- Reporty (přehledy, DPH) ---
+export type Overview = ResponseBody<'/api/accounts/{slug}/reports/overview', 'get'>
+export type TopCustomer = Overview['top_customers'][number]
+export type IncomeTax = Overview['income_tax']
+export type FlatRate = IncomeTax['flat_rates'][number]
+export type VatReport = ResponseBody<'/api/accounts/{slug}/reports/vat', 'get'>
+export type VatReturn = VatReport['return']
+export type ControlStatement = VatReport['control']
+export type ControlDocumentRow = ControlStatement['a4'][number]
+export type VatPair = VatReturn['r1']
+
+// --- Veřejný odkaz faktury ---
+export type PublicInvoice = ResponseBody<'/api/public/invoices/{token}', 'get'>
+export type PublicInvoiceLine = PublicInvoice['lines'][number]
+export type PublicParty = PublicInvoice['supplier']

@@ -6,6 +6,7 @@ import { invoiceQueries } from '@/api/queries/invoices'
 import type { InvoiceSummary } from '@/api/types'
 import { ButtonLink } from '@/components/button-link'
 import { EmptyState } from '@/components/empty-state'
+import { useExportMenu } from '@/components/export/use-export-menu'
 import { DueText } from '@/components/invoice/due-text'
 import {
   DEFAULT_SORT,
@@ -60,6 +61,8 @@ function InvoicesPage() {
   const items = useMemo(() => list.data?.pages.flatMap((p) => p.items), [list.data])
   const total = list.data?.pages[0]?.total ?? 0
   const filtered = Object.keys(filters).length > 0
+
+  const exportMenu = useExportMenu({ slug, kind: 'invoices', filters: { ...filters } })
 
   const newAction = {
     label: 'Nová faktura',
@@ -143,7 +146,7 @@ function InvoicesPage() {
 
   return (
     <>
-      <PageHeader title="Faktury" description="Vydané faktury, zálohy a opravné doklady." actions={[newAction]}>
+      <PageHeader title="Faktury" description="Vydané faktury, zálohy a opravné doklady." actions={[newAction, exportMenu.action]}>
         <div className="flex flex-col gap-3 pt-1 md:pt-0">
           <InvoiceFilterBar search={search} queryInput={queryInput} onQueryInput={setQueryInput} onChange={setSearch} />
           <StatusChips value={search.status} onChange={(status) => setSearch({ status })} />
@@ -213,6 +216,7 @@ function InvoicesPage() {
           </div>
         )}
       </PageBody>
+      {exportMenu.drawer}
     </>
   )
 }
