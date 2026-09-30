@@ -20,7 +20,8 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useCurrentAccount } from '@/hooks/use-current-account'
 import { Segmented } from '@/components/recurring/segmented'
-import { emailKindLabels, isEmailLike, sendableKinds } from './placeholders'
+import { cn } from '@/lib/utils'
+import { EMAIL_LANGS, emailKindLabels, emailLangFor, emailLangLabels, isEmailLike, sendableKinds } from './placeholders'
 import { RecipientsInput } from './recipients-input'
 
 interface SendInvoiceDialogProps {
@@ -47,7 +48,7 @@ export function SendInvoiceDialog({ slug, invoice, open, onOpenChange, initialKi
   const [fieldErrors, setFieldErrors] = useState<{ to?: string; cc?: string; toIdx: number[]; ccIdx: number[] }>({ toIdx: [], ccIdx: [] })
   const [failure, setFailure] = useState<string | null>(null)
   const send = useSendInvoice(slug, invoice.id)
-  const ids = { to: useId(), cc: useId(), subject: useId(), body: useId(), pdf: useId(), isdoc: useId() }
+  const ids = { to: useId(), cc: useId(), lang: useId(), subject: useId(), body: useId(), pdf: useId(), isdoc: useId() }
 
   const preview = useQuery({ ...emailQueries.preview(slug, { kind, lang, invoice_id: invoice.id }), enabled: open })
   const p = preview.data
@@ -214,26 +215,32 @@ export function SendInvoiceDialog({ slug, invoice, open, onOpenChange, initialKi
         )}
 
         <Field>
-          <div className="flex items-center justify-between gap-2">
-            <FieldLabel htmlFor={ids.subject}>Předmět</FieldLabel>
-            <div className="flex items-center gap-1 text-xs">
-              {(['cs', 'en'] as const).map((l) => (
-                <button
-                  key={l}
-                  type="button"
-                  aria-pressed={currentLang === l}
-                  onClick={() => setLang(l)}
-                  className={
-                    currentLang === l
-                      ? 'rounded bg-secondary px-1.5 py-0.5 font-medium text-foreground'
-                      : 'rounded px-1.5 py-0.5 text-muted-foreground hover:text-foreground'
-                  }
-                >
-                  {l.toUpperCase()}
-                </button>
-              ))}
-            </div>
+          <FieldLabel id={ids.lang}>Jazyk e-mailu</FieldLabel>
+          <div role="radiogroup" aria-labelledby={ids.lang} className="flex flex-wrap gap-1.5">
+            {EMAIL_LANGS.map((l) => (
+              <button
+                key={l}
+                type="button"
+                role="radio"
+                aria-checked={currentLang === l}
+                onClick={() => setLang(l)}
+                disabled={send.isPending}
+                className={cn(
+                  'h-11 rounded-lg border px-3 text-sm md:h-8',
+                  currentLang === l ? 'border-primary bg-primary/10 font-medium text-foreground' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {emailLangLabels[l]}
+              </button>
+            ))}
           </div>
+          {currentLang !== emailLangFor(invoice.language) && (
+            <FieldDescription>Doklad je v jiném jazyce — e-mail nebude ve stejném jazyce jako PDF.</FieldDescription>
+          )}
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor={ids.subject}>Předmět</FieldLabel>
           {preview.isPending ? (
             <Skeleton className="h-11 w-full md:h-8" />
           ) : (

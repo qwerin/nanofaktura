@@ -31,7 +31,7 @@ import (
 // {client_name} {vs} {iban} {bank_account} {payment_info}.
 type EmailTemplate struct {
 	Kind    string `json:"kind" enum:"invoice,reminder,paid_thanks"`
-	Lang    string `json:"lang" enum:"cs,en"`
+	Lang    string `json:"lang" enum:"cs,en,sk,de"`
 	Subject string `json:"subject"`
 	Body    string `json:"body"`
 	Custom  bool   `json:"custom" doc:"false = built-in default text"`
@@ -40,7 +40,7 @@ type EmailTemplate struct {
 // EmailTemplateInput overrides one template (PATCH account).
 type EmailTemplateInput struct {
 	Kind    string `json:"kind" enum:"invoice,reminder,paid_thanks"`
-	Lang    string `json:"lang" enum:"cs,en"`
+	Lang    string `json:"lang" enum:"cs,en,sk,de"`
 	Subject string `json:"subject,omitempty" maxLength:"500" doc:"Empty = default subject"`
 	Body    string `json:"body,omitempty" maxLength:"20000" doc:"Empty = default body"`
 }
@@ -67,7 +67,7 @@ type AccountEmailSettingsPatch struct {
 
 var (
 	emailKinds = []string{model.EmailInvoice, model.EmailReminder, model.EmailPaidThanks}
-	emailLangs = []string{"cs", "en"}
+	emailLangs = []string{"cs", "en", "sk", "de"}
 	// defaultReminderDays are the reminder steps when the account has none set.
 	defaultReminderDays = []int{3, 14, 30}
 )
@@ -195,19 +195,59 @@ var defaultEmailTemplates = map[string]model.MailTemplate{
 		Subject: "Thank you for paying {document} {number}",
 		Body:    "Hello,\n\nthank you, we have received your payment of {total} for {document} {number}.\n\nKind regards,\n{account_name}",
 	},
+	"invoice:sk": {
+		Subject: "{document_title} {number} – {account_name}",
+		Body: "Dobrý deň,\n\nv prílohe vám posielame doklad č. {number} ({document}).\n\n" +
+			"Suma na úhradu: {remaining}\nDátum splatnosti: {due_on}\n{payment_info}\n\n" +
+			"Doklad si môžete pozrieť aj online: {public_url}\n\nĎakujeme a prajeme pekný deň.\n{account_name}",
+	},
+	"reminder:sk": {
+		Subject: "Upomienka – doklad {number} po splatnosti",
+		Body: "Dobrý deň,\n\ndovoľujeme si pripomenúť, že doklad č. {number} so splatnosťou {due_on} " +
+			"zatiaľ nie je uhradený (po splatnosti {days_overdue} dní).\n\nZostáva uhradiť: {remaining}\n{payment_info}\n\n" +
+			"Doklad nájdete v prílohe aj online: {public_url}\n\n" +
+			"Ak ste už platbu odoslali, považujte, prosím, túto správu za bezpredmetnú.\n\nS pozdravom\n{account_name}",
+	},
+	"paid_thanks:sk": {
+		Subject: "Ďakujeme za úhradu dokladu {number}",
+		Body:    "Dobrý deň,\n\nďakujeme, platbu za doklad č. {number} vo výške {total} sme prijali.\n\nS pozdravom\n{account_name}",
+	},
+	// German document names are all feminine (die Rechnung/Proformarechnung/Rechnungskorrektur).
+	"invoice:de": {
+		Subject: "{document_title} {number} – {account_name}",
+		Body: "Guten Tag,\n\nanbei erhalten Sie die {document_title} Nr. {number}.\n\n" +
+			"Offener Betrag: {remaining}\nFällig am: {due_on}\n{payment_info}\n\n" +
+			"Sie können das Dokument auch online ansehen: {public_url}\n\nVielen Dank und freundliche Grüße\n{account_name}",
+	},
+	"reminder:de": {
+		Subject: "Zahlungserinnerung – {document_title} {number}",
+		Body: "Guten Tag,\n\nwir möchten Sie freundlich daran erinnern, dass die {document_title} Nr. {number} am {due_on} " +
+			"fällig war und noch nicht beglichen ist ({days_overdue} Tage überfällig).\n\nOffener Betrag: {remaining}\n{payment_info}\n\n" +
+			"Das Dokument finden Sie im Anhang und online: {public_url}\n\n" +
+			"Sollten Sie die Zahlung bereits veranlasst haben, betrachten Sie diese Nachricht bitte als gegenstandslos.\n\n" +
+			"Mit freundlichen Grüßen\n{account_name}",
+	},
+	"paid_thanks:de": {
+		Subject: "Vielen Dank für Ihre Zahlung – {document_title} {number}",
+		Body: "Guten Tag,\n\nvielen Dank, wir haben Ihre Zahlung über {total} für die {document_title} Nr. {number} erhalten.\n\n" +
+			"Mit freundlichen Grüßen\n{account_name}",
+	},
 }
 
 var documentNames = map[string]map[string][2]string{ // type → lang → {lowercase, title}
-	model.DocInvoice:    {"cs": {"faktura", "Faktura"}, "en": {"invoice", "Invoice"}},
-	model.DocProforma:   {"cs": {"zálohová faktura", "Zálohová faktura"}, "en": {"proforma invoice", "Proforma invoice"}},
-	model.DocCorrection: {"cs": {"opravný daňový doklad", "Opravný daňový doklad"}, "en": {"credit note", "Credit note"}},
+	model.DocInvoice: {"cs": {"faktura", "Faktura"}, "en": {"invoice", "Invoice"},
+		"sk": {"faktúra", "Faktúra"}, "de": {"Rechnung", "Rechnung"}},
+	model.DocProforma: {"cs": {"zálohová faktura", "Zálohová faktura"}, "en": {"proforma invoice", "Proforma invoice"},
+		"sk": {"zálohová faktúra", "Zálohová faktúra"}, "de": {"Proformarechnung", "Proformarechnung"}},
+	model.DocCorrection: {"cs": {"opravný daňový doklad", "Opravný daňový doklad"}, "en": {"credit note", "Credit note"},
+		"sk": {"opravný daňový doklad", "Opravný daňový doklad"}, "de": {"Rechnungskorrektur", "Rechnungskorrektur"}},
 }
 
-// emailLang is the e-mail language of an invoice (cs|en): Slovak documents
-// get Czech texts, German ones English.
+// emailLang is the e-mail language of an invoice: the document language
+// (cs|en|sk|de), Czech for anything else.
 func emailLang(inv *model.Invoice) string {
-	if inv.Language == "en" || inv.Language == "de" {
-		return "en"
+	if slices.Contains(emailLangs, inv.Language) {
+		return inv.Language
 	}
 	return "cs"
 }
@@ -228,7 +268,8 @@ func (s *server) emailVars(acc *model.Account, inv *model.Invoice, today string)
 	remaining := inv.Total - inv.PaidAmount
 	var pay []string
 	if inv.PaymentMethod == "bank" {
-		labels := map[string][3]string{"cs": {"Číslo účtu", "IBAN", "Variabilní symbol"}, "en": {"Bank account", "IBAN", "Payment reference"}}[lang]
+		labels := map[string][3]string{"cs": {"Číslo účtu", "IBAN", "Variabilní symbol"}, "en": {"Bank account", "IBAN", "Payment reference"},
+			"sk": {"Číslo účtu", "IBAN", "Variabilný symbol"}, "de": {"Kontonummer", "IBAN", "Zahlungsreferenz"}}[lang]
 		for i, v := range []string{inv.BankAccount, inv.IBAN, inv.VariableSymbol} {
 			if v != "" {
 				pay = append(pay, labels[i]+": "+v)
@@ -351,7 +392,7 @@ func (s *server) registerEmails(g huma.API) {
 // EmailTemplateDefault is a built-in e-mail text ("Obnovit výchozí").
 type EmailTemplateDefault struct {
 	Kind    string `json:"kind" enum:"invoice,reminder,paid_thanks"`
-	Lang    string `json:"lang" enum:"cs,en"`
+	Lang    string `json:"lang" enum:"cs,en,sk,de"`
 	Subject string `json:"subject"`
 	Body    string `json:"body"`
 }
@@ -430,7 +471,7 @@ func (s *server) listInvoiceEmails(ctx context.Context, in *struct {
 
 func (s *server) previewEmail(ctx context.Context, in *struct {
 	Kind      string `query:"kind" enum:"invoice,reminder,paid_thanks" default:"invoice"`
-	Lang      string `query:"lang" enum:"cs,en" doc:"Default: the invoice language (or the account default)"`
+	Lang      string `query:"lang" enum:"cs,en,sk,de" doc:"Default: the invoice language (or the account default)"`
 	InvoiceID uint   `query:"invoice_id" doc:"Render with this invoice; omitted = sample data"`
 	Subject   string `query:"subject" maxLength:"500" doc:"Unsaved subject template to render instead of the stored one"`
 	BodyText  string `query:"body" maxLength:"10000" doc:"Unsaved body template to render instead of the stored one"`

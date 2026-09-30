@@ -397,7 +397,7 @@ Scheduler má interface s `Now()` → testovatelný.
 SMTP konfigurace per instance (env `NANOFAKTURA_SMTP_*`, `NANOFAKTURA_MAIL_FROM`) + per account override (`smtp_*`, reply-to, podpis).
 `POST /invoices/{id}/send` `{to[], cc[], subject?, body?, attach_pdf=true, attach_isdoc=false, kind: invoice|reminder|paid_thanks}` →
 odešle, zapíše `EmailLog` (`id, account_id, invoice_id, kind, to, subject, sent_at, error`), při kind=invoice provede `mark_as_sent`.
-Šablony textů v nastavení účtu (`email_templates`: invoice/reminder/paid_thanks × cs/en) s placeholdery `{number} {total} {due_on} {public_url} {account_name}…`.
+Šablony textů v nastavení účtu (`email_templates`: invoice/reminder/paid_thanks × cs/en/sk/de; jazyk e-mailu = jazyk dokladu, jiný → cs) s placeholdery `{number} {total} {due_on} {public_url} {account_name}…`.
 **Automatické upomínky**: nastavení účtu `reminders_enabled`, `reminder_days_after_due: [3, 14, 30]` — plánovač posílá.
 `GET /invoices/{id}/emails` historie. Mailer je interface (`Mailer.Send`), v testech fake; v dev režimu bez SMTP loguje do stdout.
 

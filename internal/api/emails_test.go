@@ -133,7 +133,7 @@ func TestEmailSettingsAndPreview(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 
 	acc := doJSON[api.Account](a, http.StatusOK, "GET", a.acct(""), nil)
-	if acc.RemindersEnabled || acc.PaidThanksEnabled || len(acc.ReminderDaysAfterDue) != 3 || len(acc.EmailTemplates) != 6 {
+	if acc.RemindersEnabled || acc.PaidThanksEnabled || len(acc.ReminderDaysAfterDue) != 3 || len(acc.EmailTemplates) != 12 {
 		t.Fatalf("defaults: %+v", acc.AccountEmailSettings)
 	}
 	for _, tpl := range acc.EmailTemplates {
@@ -197,13 +197,25 @@ func TestEmailSettingsAndPreview(t *testing.T) {
 	res, body := a.do("GET", a.acct("/email-templates/preview?kind=nope"), nil)
 	assertError(t, res, body, http.StatusUnprocessableEntity, "kind")
 
+	// Slovak and German documents get their own texts
+	sk := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Language: "sk", Lines: []api.InvoiceLineInput{line("Práca", "1", 1000, nil)}})
+	p = doJSON[api.EmailPreview](a, http.StatusOK, "GET", a.acct("/email-templates/preview?invoice_id="+uintStr(sk.ID)), nil)
+	if p.Lang != "sk" || !strings.HasPrefix(p.Subject, "Faktúra "+sk.Number) || !strings.HasPrefix(p.Body, "Dobrý deň") || !strings.Contains(p.Body, "Suma na úhradu") {
+		t.Fatalf("sk preview: %+v", p)
+	}
+	p = doJSON[api.EmailPreview](a, http.StatusOK, "GET", a.acct("/email-templates/preview?kind=reminder&lang=de"), nil)
+	if p.Lang != "de" || p.Subject != "Zahlungserinnerung – Rechnung 2026-0001" || !strings.Contains(p.Body, "5 Tage überfällig") ||
+		!strings.Contains(p.Body, "Kontonummer: 123456789/0800") {
+		t.Fatalf("de preview: %+v", p)
+	}
+
 	// unsaved texts override the stored template
 	p = doJSON[api.EmailPreview](a, http.StatusOK, "GET", a.acct("/email-templates/preview?subject=Test+%7Bnumber%7D&body=Ahoj+%7Baccount_name%7D"), nil)
 	if p.Subject != "Test 2026-0001" || !strings.HasPrefix(p.Body, "Ahoj Firma A") {
 		t.Fatalf("override preview: %+v", p)
 	}
 	defs := doJSON[api.EmailTemplateDefaults](a, http.StatusOK, "GET", a.acct("/email-templates/defaults"), nil)
-	if len(defs.Items) != 6 || defs.Items[0].Kind != "invoice" || defs.Items[0].Lang != "cs" || !strings.Contains(defs.Items[0].Subject, "{number}") {
+	if len(defs.Items) != 12 || defs.Items[0].Kind != "invoice" || defs.Items[0].Lang != "cs" || !strings.Contains(defs.Items[0].Subject, "{number}") {
 		t.Fatalf("defaults: %+v", defs)
 	}
 }

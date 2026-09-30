@@ -3040,7 +3040,7 @@ export interface components {
             /** @enum {string} */
             kind: "invoice" | "reminder" | "paid_thanks";
             /** @enum {string} */
-            lang: "cs" | "en";
+            lang: "cs" | "en" | "sk" | "de";
             subject: string;
         };
         EmailTemplateDefault: {
@@ -3048,7 +3048,7 @@ export interface components {
             /** @enum {string} */
             kind: "invoice" | "reminder" | "paid_thanks";
             /** @enum {string} */
-            lang: "cs" | "en";
+            lang: "cs" | "en" | "sk" | "de";
             subject: string;
         };
         EmailTemplateDefaults: {
@@ -3060,7 +3060,7 @@ export interface components {
             /** @enum {string} */
             kind: "invoice" | "reminder" | "paid_thanks";
             /** @enum {string} */
-            lang: "cs" | "en";
+            lang: "cs" | "en" | "sk" | "de";
             /** @description Empty = default subject */
             subject?: string;
         };
@@ -6317,7 +6317,7 @@ export interface operations {
             query?: {
                 kind?: "invoice" | "reminder" | "paid_thanks";
                 /** @description Default: the invoice language (or the account default) */
-                lang?: "cs" | "en";
+                lang?: "cs" | "en" | "sk" | "de";
                 /** @description Render with this invoice; omitted = sample data */
                 invoice_id?: number;
                 /** @description Unsaved subject template to render instead of the stored one */

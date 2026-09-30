@@ -26,6 +26,7 @@ Pravidla (viz CLAUDE.md → „Novinky“):
 - **Test e-mailu** — v *Správa instance → Test e-mailu* jedním tlačítkem ověříte, že e-maily s fakturami opravdu odcházejí: spojení se serverem krok po kroku, šifrování, přihlášení i DNS záznamy SPF, DKIM, DMARC a MX domény odesílatele. U každého problému je česky napsané, co opravit, a nakonec přijde skutečný testovací e-mail s návodem, jak v Gmailu zkontrolovat, že neskončí ve spamu.
 - **Ověření e-mailu** — správce instance musí nejdřív potvrdit svou e-mailovou adresu odkazem z e-mailu (v *Nastavení → Můj profil* nebo *Zabezpečení*). Nikdo tak nezíská správu instance jen tím, že si zaregistruje cizí adresu. Obnova zapomenutého hesla adresu ověří také.
 - **Podepsané e-maily** — provozovatel může zapnout podpis e-mailů (DKIM), aby faktury u příjemců méně často končily ve spamu.
+- **E-maily slovensky a německy** — k dokladům ve slovenštině a němčině se teď posílají e-maily v jejich jazyce (faktura, upomínka i poděkování za platbu), dřív česky nebo anglicky. V *Nastavení → E-maily a upomínky* upravíte nahoře texty v jazyce účtu, ostatní jazyky najdete v části *Texty pro doklady v jiných jazycích*. Při odesílání faktury je jazyk e-mailu předvybraný podle dokladu a můžete ho změnit.
 
 ### Vyšší zabezpečení
 

@@ -16,6 +16,8 @@ import {
   EMAIL_PLACEHOLDERS,
   emailKindDescriptions,
   emailKindLabels,
+  emailLangLabels,
+  emailLangsFirst,
   emailVars,
   renderEmail,
   sampleEmailInvoice,
@@ -49,7 +51,7 @@ export const Route = createFileRoute('/a/$slug/settings/emails')({
 
 const templateSchema = z.object({
   kind: z.enum(['invoice', 'reminder', 'paid_thanks']),
-  lang: z.enum(['cs', 'en']),
+  lang: z.enum(['cs', 'en', 'sk', 'de']),
   subject: z.string().max(500, 'Nejvýše 500 znaků'),
   body: z.string().max(20000, 'Text je příliš dlouhý'),
   custom: z.boolean(),
@@ -66,7 +68,7 @@ const schema = z.object({
 type Values = z.infer<typeof schema>
 
 function toValues(a: Account): Values {
-  // Vždy všech 6 kombinací ve stálém pořadí (druh × jazyk).
+  // Vždy všechny kombinace ve stálém pořadí (druh × jazyk).
   const templates = EMAIL_KINDS.flatMap((kind) =>
     EMAIL_LANGS.map((lang) => {
       const t = a.email_templates.find((x) => x.kind === kind && x.lang === lang)
@@ -143,6 +145,7 @@ function EmailsForm({ slug, account }: { slug: string; account: Account }) {
   })
 
   const readOnly = !canManageSettings
+  const [primaryLang, ...otherLangs] = emailLangsFirst(account.default_language)
 
   return (
     <form onSubmit={onSubmit} noValidate className="max-w-5xl">
@@ -201,8 +204,17 @@ function EmailsForm({ slug, account }: { slug: string; account: Account }) {
           />
         </FormSection>
 
-        <FormSection title="Texty e-mailů" description="Předvyplní se při odesílání a použijí se v automatických e-mailech. Jazyk podle jazyka dokladu.">
-          <TemplateEditor form={form} account={account} slug={slug} readOnly={readOnly} />
+        <FormSection
+          title="Texty e-mailů"
+          description={`Předvyplní se při odesílání a použijí se v automatických e-mailech k dokladům v jazyce ${emailLangLabels[primaryLang].toLowerCase()} (jazyk účtu).`}
+        >
+          <TemplateEditor form={form} account={account} slug={slug} readOnly={readOnly} langs={[primaryLang]} />
+        </FormSection>
+        <FormSection
+          title="Texty pro doklady v jiných jazycích"
+          description="E-mail se vždy píše v jazyce dokladu. Tyto texty se použijí u dokladů vystavených v jiném jazyce, než je jazyk účtu."
+        >
+          <TemplateEditor form={form} account={account} slug={slug} readOnly={readOnly} langs={otherLangs} />
         </FormSection>
       </fieldset>
 
@@ -228,16 +240,18 @@ function TemplateEditor({
   account,
   slug,
   readOnly,
+  langs,
 }: {
   form: UseFormReturn<Values>
   account: Account
   slug: string
   readOnly: boolean
+  /** Jazyky, které editor nabízí (jeden = bez přepínače jazyka). */
+  langs: EmailLang[]
 }) {
   const [kind, setKind] = useState<EmailKind>('invoice')
-  const [lang, setLang] = useState<EmailLang>(
-    account.default_language === 'en' || account.default_language === 'de' ? 'en' : 'cs',
-  )
+  const [picked, setLang] = useState<EmailLang>(langs[0] ?? 'cs')
+  const lang = langs.includes(picked) ? picked : (langs[0] ?? 'cs')
   const index = EMAIL_KINDS.indexOf(kind) * EMAIL_LANGS.length + EMAIL_LANGS.indexOf(lang)
   const { control } = form
   const templates = useWatch({ control, name: 'templates' })
@@ -269,9 +283,16 @@ function TemplateEditor({
             options={EMAIL_KINDS.map((k) => ({ value: k, label: k === 'paid_thanks' ? 'Poděkování' : emailKindLabels[k] }))}
           />
         </div>
-        <div className="sm:w-32">
-          <Segmented value={lang} onChange={setLang} label="Jazyk" options={EMAIL_LANGS.map((l) => ({ value: l, label: l.toUpperCase() }))} />
-        </div>
+        {langs.length > 1 && (
+          <div className="sm:w-44">
+            <Segmented
+              value={lang}
+              onChange={setLang}
+              label="Jazyk dokladu"
+              options={langs.map((l) => ({ value: l, label: l.toUpperCase() }))}
+            />
+          </div>
+        )}
       </div>
       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
         <span className="min-w-0 flex-1">{emailKindDescriptions[kind]}</span>

@@ -19,10 +19,26 @@ export const emailKindDescriptions: Record<EmailKind, string> = {
   paid_thanks: 'Poděkování po úplném uhrazení.',
 }
 
-export const emailLangLabels: Record<EmailLang, string> = { cs: 'Čeština', en: 'Angličtina' }
+export const emailLangLabels: Record<EmailLang, string> = {
+  cs: 'Čeština',
+  en: 'Angličtina',
+  sk: 'Slovenština',
+  de: 'Němčina',
+}
 
 export const EMAIL_KINDS: readonly EmailKind[] = ['invoice', 'reminder', 'paid_thanks']
-export const EMAIL_LANGS: readonly EmailLang[] = ['cs', 'en']
+export const EMAIL_LANGS: readonly EmailLang[] = ['cs', 'en', 'sk', 'de']
+
+/** Jazyk e-mailu pro jazyk dokladu (neznámý → čeština). */
+export function emailLangFor(lang: string | null | undefined): EmailLang {
+  return (EMAIL_LANGS as readonly string[]).includes(lang ?? '') ? (lang as EmailLang) : 'cs'
+}
+
+/** Jazyky e-mailů: nejdřív hlavní (jazyk účtu), pak ostatní v obvyklém pořadí. */
+export function emailLangsFirst(primary: string | null | undefined): EmailLang[] {
+  const p = emailLangFor(primary)
+  return [p, ...EMAIL_LANGS.filter((l) => l !== p)]
+}
 
 export interface EmailPlaceholder {
   token: string
@@ -51,12 +67,29 @@ export const EMAIL_PLACEHOLDERS: readonly EmailPlaceholder[] = [
 type DocType = Invoice['document_type']
 
 const documentNames: Record<DocType, Record<EmailLang, [string, string]>> = {
-  invoice: { cs: ['faktura', 'Faktura'], en: ['invoice', 'Invoice'] },
-  proforma: { cs: ['zálohová faktura', 'Zálohová faktura'], en: ['proforma invoice', 'Proforma invoice'] },
-  correction: { cs: ['opravný daňový doklad', 'Opravný daňový doklad'], en: ['credit note', 'Credit note'] },
+  invoice: { cs: ['faktura', 'Faktura'], en: ['invoice', 'Invoice'], sk: ['faktúra', 'Faktúra'], de: ['Rechnung', 'Rechnung'] },
+  proforma: {
+    cs: ['zálohová faktura', 'Zálohová faktura'],
+    en: ['proforma invoice', 'Proforma invoice'],
+    sk: ['zálohová faktúra', 'Zálohová faktúra'],
+    de: ['Proformarechnung', 'Proformarechnung'],
+  },
+  correction: {
+    cs: ['opravný daňový doklad', 'Opravný daňový doklad'],
+    en: ['credit note', 'Credit note'],
+    sk: ['opravný daňový doklad', 'Opravný daňový doklad'],
+    de: ['Rechnungskorrektur', 'Rechnungskorrektur'],
+  },
 }
 
-const LOCALES: Record<EmailLang, string> = { cs: 'cs-CZ', en: 'en-GB' }
+const paymentLabels: Record<EmailLang, [string, string, string]> = {
+  cs: ['Číslo účtu', 'IBAN', 'Variabilní symbol'],
+  en: ['Bank account', 'IBAN', 'Payment reference'],
+  sk: ['Číslo účtu', 'IBAN', 'Variabilný symbol'],
+  de: ['Kontonummer', 'IBAN', 'Zahlungsreferenz'],
+}
+
+const LOCALES: Record<EmailLang, string> = { cs: 'cs-CZ', en: 'en-GB', sk: 'sk-SK', de: 'de-DE' }
 
 function money(minor: number, currency: string, lang: EmailLang): string {
   return new Intl.NumberFormat(LOCALES[lang], { style: 'currency', currency, minimumFractionDigits: 2 }).format(
@@ -69,7 +102,7 @@ function date(iso: string, lang: EmailLang): string {
   if (!d) return iso
   return new Intl.DateTimeFormat(LOCALES[lang], {
     day: 'numeric',
-    month: lang === 'cs' ? 'numeric' : 'short',
+    month: lang === 'en' ? 'short' : 'numeric',
     year: 'numeric',
     timeZone: 'UTC',
   }).format(d)
@@ -103,8 +136,7 @@ export function emailVars(
   const overdue = inv.due_on && inv.due_on < opts.today ? daysBetween(inv.due_on, opts.today) : 0
   const pay: string[] = []
   if (inv.payment_method === 'bank') {
-    const labels =
-      lang === 'cs' ? ['Číslo účtu', 'IBAN', 'Variabilní symbol'] : ['Bank account', 'IBAN', 'Payment reference']
+    const labels = paymentLabels[lang]
     ;[inv.bank_account, inv.iban, inv.variable_symbol].forEach((v, i) => {
       if (v) pay.push(`${labels[i]}: ${v}`)
     })

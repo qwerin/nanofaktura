@@ -3,6 +3,8 @@ import {
   cleanBlankLines,
   emailVars,
   isEmailLike,
+  emailLangFor,
+  emailLangsFirst,
   renderEmail,
   sampleEmailInvoice,
   sendableKinds,
@@ -30,8 +32,27 @@ describe('emailVars', () => {
     expect(v.payment_info).toBe('')
     expect(v.due_on).toBe('15 Sept 2026')
   })
+  it('uses Slovak and German names and payment labels', () => {
+    const sk = emailVars(inv, { ...opts, lang: 'sk' })
+    expect(sk.document_title).toBe('Faktúra')
+    expect(sk.payment_info).toContain('Variabilný symbol: 20260001')
+    const de = emailVars({ ...inv, document_type: 'correction' }, { ...opts, lang: 'de' })
+    expect(de.document_title).toBe('Rechnungskorrektur')
+    expect(de.payment_info).toContain('Kontonummer: 123456789/0800')
+    expect(de.due_on).toBe('15.9.2026')
+  })
   it('is not overdue before the due date', () => {
     expect(emailVars(inv, { ...opts, today: '2026-09-10' }).days_overdue).toBe('0')
+  })
+})
+
+describe('email languages', () => {
+  it('maps document languages and orders the account language first', () => {
+    expect(emailLangFor('sk')).toBe('sk')
+    expect(emailLangFor('xx')).toBe('cs')
+    expect(emailLangFor(undefined)).toBe('cs')
+    expect(emailLangsFirst('de')).toEqual(['de', 'cs', 'en', 'sk'])
+    expect(emailLangsFirst('')).toEqual(['cs', 'en', 'sk', 'de'])
   })
 })
 
