@@ -8,12 +8,14 @@ import { invoiceQueries } from '@/api/queries/invoices'
 import type { InvoiceSummary } from '@/api/types'
 import { ButtonLink } from '@/components/button-link'
 import { EmptyState } from '@/components/empty-state'
+import { ActivityWidget } from '@/components/events/activity-widget'
 import { DueText } from '@/components/invoice/due-text'
 import { RevenueChart } from '@/components/invoice/revenue-chart'
 import { StatusBadge } from '@/components/invoice/status-badge'
 import { useCanEditDocuments } from '@/components/invoice/use-can-edit'
 import { PageBody, PageHeader } from '@/components/page-header'
 import { PageError } from '@/components/page-states'
+import { TodosWidget } from '@/components/todos/todos-widget'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate } from '@/lib/date'
@@ -160,6 +162,12 @@ function DashboardPage() {
             moreSearch={{ status: 'overdue', sort: 'due_on' }}
           />
           <InvoiceListCard title="Poslední faktury" slug={slug} query={recent} empty="Zatím žádné faktury." moreSearch={{}} />
+        </div>
+
+        {/* Úkoly + aktivita */}
+        <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+          <TodosWidget slug={slug} />
+          <ActivityWidget slug={slug} />
         </div>
       </PageBody>
     </>

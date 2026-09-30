@@ -34,6 +34,7 @@ import {
 } from '@/api/queries/invoices'
 import type { EmailKind, Invoice, InvoiceAction, InvoicePayment } from '@/api/types'
 import { EmailHistory } from '@/components/email/email-history'
+import { HistorySection } from '@/components/events/timeline'
 import { sendableKinds } from '@/components/email/placeholders'
 import { SendInvoiceDialog } from '@/components/email/send-invoice-dialog'
 import { AddPaymentDialog } from '@/components/invoice/add-payment-dialog'
@@ -519,6 +520,7 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
                 {inv.sent_at && <Info label="Odesláno">{formatDateTime(inv.sent_at)}</Info>}
               </dl>
             </Section>
+            <HistorySection subjectType="invoice" subjectId={inv.id} />
           </div>
         </div>
       </PageBody>

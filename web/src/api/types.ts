@@ -187,3 +187,29 @@ export type VatPair = VatReturn['r1']
 export type PublicInvoice = ResponseBody<'/api/public/invoices/{token}', 'get'>
 export type PublicInvoiceLine = PublicInvoice['lines'][number]
 export type PublicParty = PublicInvoice['supplier']
+
+// --- Události, úkoly, webhooky, hledání (§7.9, §7.10, §7.15) ---
+export type EventList = ResponseBody<'/api/accounts/{slug}/events', 'get'>
+export type AppEvent = ListItem<EventList>
+export type EventFilters = Omit<
+  NonNullable<paths['/api/accounts/{slug}/events']['get']['parameters']['query']>,
+  'page' | 'per_page'
+>
+export type EventCatalogEntry = NonNullable<ResponseBody<'/api/accounts/{slug}/events/catalog', 'get'>>[number]
+export type TodoList = ResponseBody<'/api/accounts/{slug}/todos', 'get'>
+export type Todo = ListItem<TodoList>
+export type TodoFilters = Omit<
+  NonNullable<paths['/api/accounts/{slug}/todos']['get']['parameters']['query']>,
+  'page' | 'per_page'
+>
+export type CreateTodoInput = RequestBody<'/api/accounts/{slug}/todos', 'post'>
+export type UpdateTodoInput = RequestBody<'/api/accounts/{slug}/todos/{id}', 'patch'>
+export type TodoRelatedType = NonNullable<CreateTodoInput['related_type']>
+export type Webhook = ListItem<ResponseBody<'/api/accounts/{slug}/webhooks', 'get'>>
+export type CreateWebhookInput = RequestBody<'/api/accounts/{slug}/webhooks', 'post'>
+export type UpdateWebhookInput = RequestBody<'/api/accounts/{slug}/webhooks/{id}', 'patch'>
+export type WebhookDeliveryList = ResponseBody<'/api/accounts/{slug}/webhooks/{id}/deliveries', 'get'>
+export type WebhookDelivery = ListItem<WebhookDeliveryList>
+export type WebhookTestResult = ResponseBody<'/api/accounts/{slug}/webhooks/{id}/test', 'post'>
+export type SearchResults = ResponseBody<'/api/accounts/{slug}/search', 'get'>
+export type SearchHit = SearchResults['invoices'][number]

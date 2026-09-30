@@ -26,6 +26,7 @@ import { Badge } from '@/components/ui/badge'
 import { useCurrentAccount } from '@/hooks/use-current-account'
 import { formatIban } from '@/lib/bank'
 import { addressLines, displayWeb, formatAddress, telHref, webHref } from '@/lib/contact'
+import { HistorySection } from '@/components/events/timeline'
 import { parseId } from '@/lib/params'
 import { cn } from '@/lib/utils'
 
@@ -110,6 +111,7 @@ function SubjectDetailPage() {
               <ContactHero subject={s} />
               <DetailCard subject={s} />
               <VatStatusCard slug={slug} subject={s} />
+              <HistorySection subjectType="subject" subjectId={s.id} />
             </div>
             <SubjectInvoices slug={slug} subjectId={s.id} canCreate={canEdit} />
           </div>

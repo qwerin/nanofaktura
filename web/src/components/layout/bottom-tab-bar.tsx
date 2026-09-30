@@ -13,6 +13,7 @@ import {
 import { useState, type ReactNode } from 'react'
 import { CreateAccountDialog } from '@/components/account/create-account-dialog'
 import { ThemeSegmented } from '@/components/theme'
+import { TodoCountBadge } from '@/components/todos/todo-count-badge'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { useCurrentAccount } from '@/hooks/use-current-account'
@@ -67,7 +68,10 @@ export function BottomTabBar() {
             data-active={is('/a/$slug/settings') || moreNav.some((i) => is(i.to)) || moreOpen}
             onClick={() => setMoreOpen(true)}
           >
-            <EllipsisIcon className="size-6" />
+            <span className="relative flex w-full justify-center">
+              <EllipsisIcon className="size-6" />
+              <TodoCountBadge slug={slug} variant="dot" />
+            </span>
             Více
           </button>
         </div>
@@ -150,7 +154,12 @@ function MoreDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (open
                     void navigate({ to: item.to, params: { slug } })
                   }}
                   leading={<item.icon className="size-5 text-muted-foreground" />}
-                  trailing={<ChevronRightIcon className="size-4 text-muted-foreground" />}
+                  trailing={
+                    <>
+                      {item.to === '/a/$slug/todos' && <TodoCountBadge slug={slug} />}
+                      <ChevronRightIcon className="size-4 text-muted-foreground" />
+                    </>
+                  }
                 >
                   {item.label}
                 </Row>

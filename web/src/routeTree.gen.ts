@@ -20,6 +20,7 @@ import { Route as ASlugDashboardRouteImport } from './routes/a/$slug/dashboard'
 import { Route as ASlugOnboardingRouteImport } from './routes/a/$slug/onboarding'
 import { Route as ASlugReportsRouteRouteImport } from './routes/a/$slug/reports/route'
 import { Route as ASlugSettingsRouteRouteImport } from './routes/a/$slug/settings/route'
+import { Route as ASlugActivityIndexRouteImport } from './routes/a/$slug/activity/index'
 import { Route as ASlugBankIndexRouteImport } from './routes/a/$slug/bank/index'
 import { Route as ASlugExpensesIndexRouteImport } from './routes/a/$slug/expenses/index'
 import { Route as ASlugExpensesNewRouteImport } from './routes/a/$slug/expenses/new'
@@ -40,11 +41,13 @@ import { Route as ASlugSettingsMembersRouteImport } from './routes/a/$slug/setti
 import { Route as ASlugSettingsNumberFormatsRouteImport } from './routes/a/$slug/settings/number-formats'
 import { Route as ASlugSettingsProfileRouteImport } from './routes/a/$slug/settings/profile'
 import { Route as ASlugSettingsTokensRouteImport } from './routes/a/$slug/settings/tokens'
+import { Route as ASlugSettingsWebhooksRouteImport } from './routes/a/$slug/settings/webhooks'
 import { Route as ASlugSubjectsIndexRouteImport } from './routes/a/$slug/subjects/index'
 import { Route as ASlugSubjectsNewRouteImport } from './routes/a/$slug/subjects/new'
 import { Route as ASlugTemplatesIndexRouteImport } from './routes/a/$slug/templates/index'
 import { Route as ASlugTemplatesTemplateIdRouteImport } from './routes/a/$slug/templates/$templateId'
 import { Route as ASlugTemplatesNewRouteImport } from './routes/a/$slug/templates/new'
+import { Route as ASlugTodosIndexRouteImport } from './routes/a/$slug/todos/index'
 import { Route as ASlugExpensesExpenseIdIndexRouteImport } from './routes/a/$slug/expenses/$expenseId/index'
 import { Route as ASlugExpensesExpenseIdEditRouteImport } from './routes/a/$slug/expenses/$expenseId/edit'
 import { Route as ASlugInvoicesInvoiceIdIndexRouteImport } from './routes/a/$slug/invoices/$invoiceId/index'
@@ -109,6 +112,11 @@ const ASlugReportsRouteRoute = ASlugReportsRouteRouteImport.update({
 const ASlugSettingsRouteRoute = ASlugSettingsRouteRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => ASlugRouteRoute,
+} as any)
+const ASlugActivityIndexRoute = ASlugActivityIndexRouteImport.update({
+  id: '/activity/',
+  path: '/activity/',
   getParentRoute: () => ASlugRouteRoute,
 } as any)
 const ASlugBankIndexRoute = ASlugBankIndexRouteImport.update({
@@ -213,6 +221,11 @@ const ASlugSettingsTokensRoute = ASlugSettingsTokensRouteImport.update({
   path: '/tokens',
   getParentRoute: () => ASlugSettingsRouteRoute,
 } as any)
+const ASlugSettingsWebhooksRoute = ASlugSettingsWebhooksRouteImport.update({
+  id: '/webhooks',
+  path: '/webhooks',
+  getParentRoute: () => ASlugSettingsRouteRoute,
+} as any)
 const ASlugSubjectsIndexRoute = ASlugSubjectsIndexRouteImport.update({
   id: '/subjects/',
   path: '/subjects/',
@@ -237,6 +250,11 @@ const ASlugTemplatesTemplateIdRoute =
 const ASlugTemplatesNewRoute = ASlugTemplatesNewRouteImport.update({
   id: '/templates/new',
   path: '/templates/new',
+  getParentRoute: () => ASlugRouteRoute,
+} as any)
+const ASlugTodosIndexRoute = ASlugTodosIndexRouteImport.update({
+  id: '/todos/',
+  path: '/todos/',
   getParentRoute: () => ASlugRouteRoute,
 } as any)
 const ASlugExpensesExpenseIdIndexRoute =
@@ -325,9 +343,11 @@ export interface FileRoutesByFullPath {
   '/a/$slug/settings/number-formats': typeof ASlugSettingsNumberFormatsRoute
   '/a/$slug/settings/profile': typeof ASlugSettingsProfileRoute
   '/a/$slug/settings/tokens': typeof ASlugSettingsTokensRoute
+  '/a/$slug/settings/webhooks': typeof ASlugSettingsWebhooksRoute
   '/a/$slug/subjects/new': typeof ASlugSubjectsNewRoute
   '/a/$slug/templates/$templateId': typeof ASlugTemplatesTemplateIdRoute
   '/a/$slug/templates/new': typeof ASlugTemplatesNewRoute
+  '/a/$slug/activity/': typeof ASlugActivityIndexRoute
   '/a/$slug/bank/': typeof ASlugBankIndexRoute
   '/a/$slug/expenses/': typeof ASlugExpensesIndexRoute
   '/a/$slug/invoices/': typeof ASlugInvoicesIndexRoute
@@ -337,6 +357,7 @@ export interface FileRoutesByFullPath {
   '/a/$slug/settings/': typeof ASlugSettingsIndexRoute
   '/a/$slug/subjects/': typeof ASlugSubjectsIndexRoute
   '/a/$slug/templates/': typeof ASlugTemplatesIndexRoute
+  '/a/$slug/todos/': typeof ASlugTodosIndexRoute
   '/a/$slug/expenses/$expenseId/edit': typeof ASlugExpensesExpenseIdEditRoute
   '/a/$slug/invoices/$invoiceId/edit': typeof ASlugInvoicesInvoiceIdEditRoute
   '/a/$slug/price-items/$priceItemId/edit': typeof ASlugPriceItemsPriceItemIdEditRoute
@@ -370,9 +391,11 @@ export interface FileRoutesByTo {
   '/a/$slug/settings/number-formats': typeof ASlugSettingsNumberFormatsRoute
   '/a/$slug/settings/profile': typeof ASlugSettingsProfileRoute
   '/a/$slug/settings/tokens': typeof ASlugSettingsTokensRoute
+  '/a/$slug/settings/webhooks': typeof ASlugSettingsWebhooksRoute
   '/a/$slug/subjects/new': typeof ASlugSubjectsNewRoute
   '/a/$slug/templates/$templateId': typeof ASlugTemplatesTemplateIdRoute
   '/a/$slug/templates/new': typeof ASlugTemplatesNewRoute
+  '/a/$slug/activity': typeof ASlugActivityIndexRoute
   '/a/$slug/bank': typeof ASlugBankIndexRoute
   '/a/$slug/expenses': typeof ASlugExpensesIndexRoute
   '/a/$slug/invoices': typeof ASlugInvoicesIndexRoute
@@ -382,6 +405,7 @@ export interface FileRoutesByTo {
   '/a/$slug/settings': typeof ASlugSettingsIndexRoute
   '/a/$slug/subjects': typeof ASlugSubjectsIndexRoute
   '/a/$slug/templates': typeof ASlugTemplatesIndexRoute
+  '/a/$slug/todos': typeof ASlugTodosIndexRoute
   '/a/$slug/expenses/$expenseId/edit': typeof ASlugExpensesExpenseIdEditRoute
   '/a/$slug/invoices/$invoiceId/edit': typeof ASlugInvoicesInvoiceIdEditRoute
   '/a/$slug/price-items/$priceItemId/edit': typeof ASlugPriceItemsPriceItemIdEditRoute
@@ -419,9 +443,11 @@ export interface FileRoutesById {
   '/a/$slug/settings/number-formats': typeof ASlugSettingsNumberFormatsRoute
   '/a/$slug/settings/profile': typeof ASlugSettingsProfileRoute
   '/a/$slug/settings/tokens': typeof ASlugSettingsTokensRoute
+  '/a/$slug/settings/webhooks': typeof ASlugSettingsWebhooksRoute
   '/a/$slug/subjects/new': typeof ASlugSubjectsNewRoute
   '/a/$slug/templates/$templateId': typeof ASlugTemplatesTemplateIdRoute
   '/a/$slug/templates/new': typeof ASlugTemplatesNewRoute
+  '/a/$slug/activity/': typeof ASlugActivityIndexRoute
   '/a/$slug/bank/': typeof ASlugBankIndexRoute
   '/a/$slug/expenses/': typeof ASlugExpensesIndexRoute
   '/a/$slug/invoices/': typeof ASlugInvoicesIndexRoute
@@ -431,6 +457,7 @@ export interface FileRoutesById {
   '/a/$slug/settings/': typeof ASlugSettingsIndexRoute
   '/a/$slug/subjects/': typeof ASlugSubjectsIndexRoute
   '/a/$slug/templates/': typeof ASlugTemplatesIndexRoute
+  '/a/$slug/todos/': typeof ASlugTodosIndexRoute
   '/a/$slug/expenses/$expenseId/edit': typeof ASlugExpensesExpenseIdEditRoute
   '/a/$slug/invoices/$invoiceId/edit': typeof ASlugInvoicesInvoiceIdEditRoute
   '/a/$slug/price-items/$priceItemId/edit': typeof ASlugPriceItemsPriceItemIdEditRoute
@@ -469,9 +496,11 @@ export interface FileRouteTypes {
     | '/a/$slug/settings/number-formats'
     | '/a/$slug/settings/profile'
     | '/a/$slug/settings/tokens'
+    | '/a/$slug/settings/webhooks'
     | '/a/$slug/subjects/new'
     | '/a/$slug/templates/$templateId'
     | '/a/$slug/templates/new'
+    | '/a/$slug/activity/'
     | '/a/$slug/bank/'
     | '/a/$slug/expenses/'
     | '/a/$slug/invoices/'
@@ -481,6 +510,7 @@ export interface FileRouteTypes {
     | '/a/$slug/settings/'
     | '/a/$slug/subjects/'
     | '/a/$slug/templates/'
+    | '/a/$slug/todos/'
     | '/a/$slug/expenses/$expenseId/edit'
     | '/a/$slug/invoices/$invoiceId/edit'
     | '/a/$slug/price-items/$priceItemId/edit'
@@ -514,9 +544,11 @@ export interface FileRouteTypes {
     | '/a/$slug/settings/number-formats'
     | '/a/$slug/settings/profile'
     | '/a/$slug/settings/tokens'
+    | '/a/$slug/settings/webhooks'
     | '/a/$slug/subjects/new'
     | '/a/$slug/templates/$templateId'
     | '/a/$slug/templates/new'
+    | '/a/$slug/activity'
     | '/a/$slug/bank'
     | '/a/$slug/expenses'
     | '/a/$slug/invoices'
@@ -526,6 +558,7 @@ export interface FileRouteTypes {
     | '/a/$slug/settings'
     | '/a/$slug/subjects'
     | '/a/$slug/templates'
+    | '/a/$slug/todos'
     | '/a/$slug/expenses/$expenseId/edit'
     | '/a/$slug/invoices/$invoiceId/edit'
     | '/a/$slug/price-items/$priceItemId/edit'
@@ -562,9 +595,11 @@ export interface FileRouteTypes {
     | '/a/$slug/settings/number-formats'
     | '/a/$slug/settings/profile'
     | '/a/$slug/settings/tokens'
+    | '/a/$slug/settings/webhooks'
     | '/a/$slug/subjects/new'
     | '/a/$slug/templates/$templateId'
     | '/a/$slug/templates/new'
+    | '/a/$slug/activity/'
     | '/a/$slug/bank/'
     | '/a/$slug/expenses/'
     | '/a/$slug/invoices/'
@@ -574,6 +609,7 @@ export interface FileRouteTypes {
     | '/a/$slug/settings/'
     | '/a/$slug/subjects/'
     | '/a/$slug/templates/'
+    | '/a/$slug/todos/'
     | '/a/$slug/expenses/$expenseId/edit'
     | '/a/$slug/invoices/$invoiceId/edit'
     | '/a/$slug/price-items/$priceItemId/edit'
@@ -672,6 +708,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/a/$slug/settings'
       preLoaderRoute: typeof ASlugSettingsRouteRouteImport
+      parentRoute: typeof ASlugRouteRoute
+    }
+    '/a/$slug/activity/': {
+      id: '/a/$slug/activity/'
+      path: '/activity'
+      fullPath: '/a/$slug/activity/'
+      preLoaderRoute: typeof ASlugActivityIndexRouteImport
       parentRoute: typeof ASlugRouteRoute
     }
     '/a/$slug/bank/': {
@@ -814,6 +857,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ASlugSettingsTokensRouteImport
       parentRoute: typeof ASlugSettingsRouteRoute
     }
+    '/a/$slug/settings/webhooks': {
+      id: '/a/$slug/settings/webhooks'
+      path: '/webhooks'
+      fullPath: '/a/$slug/settings/webhooks'
+      preLoaderRoute: typeof ASlugSettingsWebhooksRouteImport
+      parentRoute: typeof ASlugSettingsRouteRoute
+    }
     '/a/$slug/subjects/': {
       id: '/a/$slug/subjects/'
       path: '/subjects'
@@ -847,6 +897,13 @@ declare module '@tanstack/react-router' {
       path: '/templates/new'
       fullPath: '/a/$slug/templates/new'
       preLoaderRoute: typeof ASlugTemplatesNewRouteImport
+      parentRoute: typeof ASlugRouteRoute
+    }
+    '/a/$slug/todos/': {
+      id: '/a/$slug/todos/'
+      path: '/todos'
+      fullPath: '/a/$slug/todos/'
+      preLoaderRoute: typeof ASlugTodosIndexRouteImport
       parentRoute: typeof ASlugRouteRoute
     }
     '/a/$slug/expenses/$expenseId/': {
@@ -944,6 +1001,7 @@ interface ASlugSettingsRouteRouteChildren {
   ASlugSettingsNumberFormatsRoute: typeof ASlugSettingsNumberFormatsRoute
   ASlugSettingsProfileRoute: typeof ASlugSettingsProfileRoute
   ASlugSettingsTokensRoute: typeof ASlugSettingsTokensRoute
+  ASlugSettingsWebhooksRoute: typeof ASlugSettingsWebhooksRoute
   ASlugSettingsIndexRoute: typeof ASlugSettingsIndexRoute
 }
 
@@ -956,6 +1014,7 @@ const ASlugSettingsRouteRouteChildren: ASlugSettingsRouteRouteChildren = {
   ASlugSettingsNumberFormatsRoute: ASlugSettingsNumberFormatsRoute,
   ASlugSettingsProfileRoute: ASlugSettingsProfileRoute,
   ASlugSettingsTokensRoute: ASlugSettingsTokensRoute,
+  ASlugSettingsWebhooksRoute: ASlugSettingsWebhooksRoute,
   ASlugSettingsIndexRoute: ASlugSettingsIndexRoute,
 }
 
@@ -975,6 +1034,7 @@ interface ASlugRouteRouteChildren {
   ASlugSubjectsNewRoute: typeof ASlugSubjectsNewRoute
   ASlugTemplatesTemplateIdRoute: typeof ASlugTemplatesTemplateIdRoute
   ASlugTemplatesNewRoute: typeof ASlugTemplatesNewRoute
+  ASlugActivityIndexRoute: typeof ASlugActivityIndexRoute
   ASlugBankIndexRoute: typeof ASlugBankIndexRoute
   ASlugExpensesIndexRoute: typeof ASlugExpensesIndexRoute
   ASlugInvoicesIndexRoute: typeof ASlugInvoicesIndexRoute
@@ -982,6 +1042,7 @@ interface ASlugRouteRouteChildren {
   ASlugRecurringIndexRoute: typeof ASlugRecurringIndexRoute
   ASlugSubjectsIndexRoute: typeof ASlugSubjectsIndexRoute
   ASlugTemplatesIndexRoute: typeof ASlugTemplatesIndexRoute
+  ASlugTodosIndexRoute: typeof ASlugTodosIndexRoute
   ASlugExpensesExpenseIdEditRoute: typeof ASlugExpensesExpenseIdEditRoute
   ASlugInvoicesInvoiceIdEditRoute: typeof ASlugInvoicesInvoiceIdEditRoute
   ASlugPriceItemsPriceItemIdEditRoute: typeof ASlugPriceItemsPriceItemIdEditRoute
@@ -1007,6 +1068,7 @@ const ASlugRouteRouteChildren: ASlugRouteRouteChildren = {
   ASlugSubjectsNewRoute: ASlugSubjectsNewRoute,
   ASlugTemplatesTemplateIdRoute: ASlugTemplatesTemplateIdRoute,
   ASlugTemplatesNewRoute: ASlugTemplatesNewRoute,
+  ASlugActivityIndexRoute: ASlugActivityIndexRoute,
   ASlugBankIndexRoute: ASlugBankIndexRoute,
   ASlugExpensesIndexRoute: ASlugExpensesIndexRoute,
   ASlugInvoicesIndexRoute: ASlugInvoicesIndexRoute,
@@ -1014,6 +1076,7 @@ const ASlugRouteRouteChildren: ASlugRouteRouteChildren = {
   ASlugRecurringIndexRoute: ASlugRecurringIndexRoute,
   ASlugSubjectsIndexRoute: ASlugSubjectsIndexRoute,
   ASlugTemplatesIndexRoute: ASlugTemplatesIndexRoute,
+  ASlugTodosIndexRoute: ASlugTodosIndexRoute,
   ASlugExpensesExpenseIdEditRoute: ASlugExpensesExpenseIdEditRoute,
   ASlugInvoicesInvoiceIdEditRoute: ASlugInvoicesInvoiceIdEditRoute,
   ASlugPriceItemsPriceItemIdEditRoute: ASlugPriceItemsPriceItemIdEditRoute,

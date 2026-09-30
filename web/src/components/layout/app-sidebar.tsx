@@ -35,6 +35,8 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from '@/components/ui/sidebar'
+import { SidebarSearchButton } from '@/components/search/search-trigger'
+import { TodoCountBadge } from '@/components/todos/todo-count-badge'
 import { useCurrentAccount } from '@/hooks/use-current-account'
 import { roleLabel } from '@/lib/roles'
 import { initials, mainNav } from './nav'
@@ -49,6 +51,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="hidden md:flex">
       <SidebarHeader>
         <AccountSwitcher />
+        <SidebarSearchButton />
       </SidebarHeader>
 
       <SidebarContent>
@@ -77,6 +80,7 @@ export function AppSidebar() {
                     <item.icon />
                     <span>{item.label}</span>
                   </SidebarMenuButton>
+                  {item.to === '/a/$slug/todos' && <TodoCountBadge slug={slug} variant="sidebar" />}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>

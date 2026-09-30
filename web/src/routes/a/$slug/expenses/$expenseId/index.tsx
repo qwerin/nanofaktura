@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import { expenseQueries, useDeleteExpense, useDeleteExpensePayment, useExpenseAction } from '@/api/queries/expenses'
 import type { Expense, ExpensePayment } from '@/api/types'
 import { Attachments } from '@/components/attachments/attachments'
+import { HistorySection } from '@/components/events/timeline'
 import { ExpenseWarnings } from '@/components/bank/expense-warnings'
 import { ConfirmDialog } from '@/components/expense/confirm-dialog'
 import { ExpenseStatusBadge } from '@/components/expense/expense-status-badge'
@@ -110,6 +111,7 @@ function ExpenseDetailPage() {
           <Card title="Údaje">
             <InfoList expense={e} />
           </Card>
+          <HistorySection subjectType="expense" subjectId={e.id} />
         </aside>
       </PageBody>
 

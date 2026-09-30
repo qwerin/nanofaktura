@@ -14,6 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { MobileSearchButton } from '@/components/search/search-trigger'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
 
@@ -88,6 +89,8 @@ export function PageHeader({
           <span className="w-2" />
         )}
         <h1 className="min-w-0 flex-1 truncate text-lg font-semibold tracking-tight">{title}</h1>
+        {/* Hledání na hlavních stránkách (bez šipky zpět); podstránky mají místo pro vlastní akce. */}
+        {!back && <MobileSearchButton />}
         {mobileInline.map((a) => (
           <ActionButton key={a.label} action={a} iconOnly />
         ))}

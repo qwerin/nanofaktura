@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { CommandPaletteProvider } from '@/components/search/command-palette-provider'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from './app-sidebar'
 import { BottomTabBar } from './bottom-tab-bar'
@@ -16,11 +17,13 @@ function readSidebarCookie(): boolean {
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider defaultOpen={readSidebarCookie()}>
-      <AppSidebar />
-      <SidebarInset className="min-w-0 pb-[calc(var(--spacing-tabbar)+env(safe-area-inset-bottom))] md:pb-0">
-        {children}
-      </SidebarInset>
-      <BottomTabBar />
+      <CommandPaletteProvider>
+        <AppSidebar />
+        <SidebarInset className="min-w-0 pb-[calc(var(--spacing-tabbar)+env(safe-area-inset-bottom))] md:pb-0">
+          {children}
+        </SidebarInset>
+        <BottomTabBar />
+      </CommandPaletteProvider>
     </SidebarProvider>
   )
 }

@@ -103,4 +103,21 @@ export const keys = {
 
   /** Veřejná faktura podle tokenu (bez účtu a přihlášení). */
   publicInvoice: (token: string) => ['public', 'invoice', token] as const,
+
+  // --- Události, úkoly, webhooky, hledání ---
+  events: (slug: string) => [...keys.account(slug), 'events'] as const,
+  eventList: (slug: string, filters: object) => [...keys.events(slug), 'list', filters] as const,
+  eventCatalog: (slug: string) => [...keys.events(slug), 'catalog'] as const,
+  /**
+   * Timeline záznamu — pod prefixem jeho zdroje (`invoices`, `expenses`, `subjects`),
+   * aby ji obnovily i mutace dokladu (stejně jako historii e-mailů).
+   */
+  recordTimeline: (slug: string, resource: string, id: number) =>
+    [...keys.account(slug), resource, 'timeline', id] as const,
+  todos: (slug: string) => [...keys.account(slug), 'todos'] as const,
+  todoList: (slug: string, filters: object) => [...keys.todos(slug), 'list', filters] as const,
+  todoCount: (slug: string) => [...keys.todos(slug), 'open-count'] as const,
+  webhooks: (slug: string) => [...keys.account(slug), 'webhooks'] as const,
+  webhookDeliveries: (slug: string, id: number) => [...keys.webhooks(slug), 'deliveries', id] as const,
+  search: (slug: string, q: string) => [...keys.account(slug), 'search', q] as const,
 }
