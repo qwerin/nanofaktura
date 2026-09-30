@@ -101,10 +101,11 @@ type InvoiceSummary struct {
 // Invoice is the invoice detail (SPEC §4.5).
 type Invoice struct {
 	InvoiceSummary
-	Lines    []InvoiceLine  `json:"lines" nullable:"false"`
-	Payments []Payment      `json:"payments" nullable:"false"`
-	VatRecap []VatRecapItem `json:"vat_recap" nullable:"false"`
-	Warnings []DocWarning   `json:"warnings" nullable:"false" doc:"Things the issuer should check (not errors)"`
+	Lines       []InvoiceLine  `json:"lines" nullable:"false"`
+	Payments    []Payment      `json:"payments" nullable:"false"`
+	VatRecap    []VatRecapItem `json:"vat_recap" nullable:"false"`
+	Warnings    []DocWarning   `json:"warnings" nullable:"false" doc:"Things the issuer should check (not errors)"`
+	Attachments []Attachment   `json:"attachments" nullable:"false"`
 }
 
 // DocWarning is a non-blocking problem of a document.
@@ -200,6 +201,7 @@ func toInvoice(m *model.Invoice, today string) Invoice {
 		Payments:       make([]Payment, len(m.Payments)),
 		VatRecap:       []VatRecapItem{},
 		Warnings:       invoiceWarnings(m),
+		Attachments:    []Attachment{},
 	}
 	for i, l := range m.Lines {
 		out.Lines[i] = InvoiceLine{
@@ -401,7 +403,11 @@ func (s *server) invoiceOut(ctx context.Context, db *gorm.DB, id uint) (*Out[Inv
 	if err != nil {
 		return nil, err
 	}
-	return &Out[Invoice]{Body: toInvoice(m, s.today())}, nil
+	out := toInvoice(m, s.today())
+	if out.Attachments, err = ownerAttachments(ctx, db, model.OwnerInvoice, m.ID); err != nil {
+		return nil, err
+	}
+	return &Out[Invoice]{Body: out}, nil
 }
 
 func (s *server) getInvoice(ctx context.Context, in *invoiceID) (*Out[Invoice], error) {

@@ -82,7 +82,8 @@ type Expense struct {
 	VatRecap []VatRecapItem   `json:"vat_recap" nullable:"false"`
 	// Warnings from the VAT payer registry (unreliable supplier, unpublished
 	// bank account); only on GET /expenses/{id}, omitted when there are none.
-	Warnings []string `json:"warnings,omitempty"`
+	Warnings    []string     `json:"warnings,omitempty"`
+	Attachments []Attachment `json:"attachments" nullable:"false"`
 }
 
 type ExpenseLine struct {
@@ -205,7 +206,8 @@ type ExpenseCreate struct {
 
 	IssuedOn              string  `json:"issued_on,omitempty" format:"date" doc:"Default today"`
 	TaxableFulfillmentDue *string `json:"taxable_fulfillment_due,omitempty" doc:"YYYY-MM-DD or empty; default issued_on"`
-	DueOn                 string  `json:"due_on,omitempty" format:"date" doc:"Default: issued_on + account default_due_days"`
+	DueOn                 string  `json:"due_on,omitempty" format:"date" doc:"Default: issued_on + due_days"`
+	DueDays               *int    `json:"due_days,omitempty" minimum:"0" maximum:"365" doc:"Used when due_on is empty; default: the supplier's due_days, else the account's default_due_days"`
 
 	Currency         string   `json:"currency,omitempty" pattern:"^[A-Z]{3}$" doc:"Default: account default_currency"`
 	ExchangeRate     string   `json:"exchange_rate,omitempty" pattern:"^[0-9]{1,6}([.][0-9]{1,6})?$" doc:"Default 1"`
@@ -228,6 +230,7 @@ type ExpensePatch struct {
 	OriginalNumber *string `json:"original_number,omitempty" maxLength:"100"`
 	VariableSymbol *string `json:"variable_symbol,omitempty" pattern:"^[0-9]{0,10}$"`
 	SubjectID      *uint   `json:"subject_id,omitempty" minimum:"1" doc:"Changing the supplier re-snapshots supplier_* (unless sent explicitly)"`
+	ClearSubject   bool    `json:"clear_subject,omitempty" doc:"Unlink the supplier contact (subject_id → null); supplier_* stay as free text"`
 	ExpenseSupplierFields
 
 	IssuedOn              *string `json:"issued_on,omitempty" format:"date"`
@@ -335,6 +338,9 @@ func (s *server) getExpense(ctx context.Context, in *expenseID) (*Out[Expense], 
 	}
 	out := toExpense(m, s.today())
 	out.Warnings = s.expenseWarnings(ctx, m)
+	if out.Attachments, err = ownerAttachments(ctx, s.db.WithContext(ctx), model.OwnerExpense, m.ID); err != nil {
+		return nil, err
+	}
 	return &Out[Expense]{Body: out}, nil
 }
 
@@ -351,7 +357,11 @@ func (s *server) mutateExpense(ctx context.Context, fn func(tx *gorm.DB) (uint, 
 		if err != nil {
 			return err
 		}
-		out = &Out[Expense]{Body: toExpense(m, s.today())}
+		e := toExpense(m, s.today())
+		if e.Attachments, err = ownerAttachments(ctx, tx, model.OwnerExpense, m.ID); err != nil {
+			return err
+		}
+		out = &Out[Expense]{Body: e}
 		return nil
 	})
 	return out, err
@@ -394,7 +404,11 @@ func (s *server) createExpense(ctx context.Context, in *struct{ Body ExpenseCrea
 		apply(&m.TaxableFulfillmentDue, b.TaxableFulfillmentDue)
 		m.DueOn = b.DueOn
 		if m.DueOn == "" {
-			m.DueOn, _ = billing.DueOn(m.IssuedOn, acc.DefaultDueDays)
+			days := acc.DefaultDueDays
+			if b.DueDays != nil {
+				days = *b.DueDays
+			}
+			m.DueOn, _ = billing.DueOn(m.IssuedOn, days)
 		}
 		if len(b.Lines) == 0 {
 			return 0, invalid("lines", "at least one line is required")
@@ -440,6 +454,12 @@ func (s *server) patchExpense(ctx context.Context, in *struct {
 		}
 		if m.LockedAt != nil {
 			return 0, conflict(CodeLocked, "the expense is locked; unlock it first")
+		}
+		if p.ClearSubject {
+			if p.SubjectID != nil {
+				return 0, invalid("clear_subject", "clear_subject and subject_id cannot be combined")
+			}
+			m.SubjectID = nil
 		}
 		if p.SubjectID != nil && (m.SubjectID == nil || *p.SubjectID != *m.SubjectID) {
 			subj, err := findSubject(ctx, tx, *p.SubjectID)

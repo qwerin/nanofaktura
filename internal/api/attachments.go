@@ -298,6 +298,20 @@ func (s *server) downloadAttachment(ctx context.Context, in *struct {
 	}}, nil
 }
 
+// ownerAttachments lists the attachments of an owner record (oldest first).
+func ownerAttachments(ctx context.Context, db *gorm.DB, ownerType string, ownerID uint) ([]Attachment, error) {
+	var rows []model.Attachment
+	if err := db.Scopes(inAccount(ctx)).Where("owner_type = ? AND owner_id = ?", ownerType, ownerID).
+		Order("created_at, id").Find(&rows).Error; err != nil {
+		return nil, dbErr(err, "attachments")
+	}
+	out := make([]Attachment, len(rows))
+	for i := range rows {
+		out[i] = toAttachment(&rows[i])
+	}
+	return out, nil
+}
+
 // deleteOwnerAttachments deletes the attachment rows of an owner record
 // inside tx and returns their storage keys; the caller removes the files with
 // s.removeFiles only after the transaction commits (a rollback keeps both).

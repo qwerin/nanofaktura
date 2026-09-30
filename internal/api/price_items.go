@@ -180,7 +180,7 @@ func (s *server) createPriceItem(ctx context.Context, in *struct{ Body PriceItem
 			return recordPriceItem(ctx, tx, events.PriceItemCreated, m)
 		}
 		mv := &model.StockMove{AccountID: acc.ID, PriceItemID: m.ID, Direction: model.StockIn,
-			QuantityMilli: initial, MovedOn: s.today(), Note: "initial stock"}
+			QuantityMilli: initial, MovedOn: s.today(), Note: "Počáteční stav"}
 		if initial < 0 {
 			mv.Direction, mv.QuantityMilli = model.StockOut, -initial
 		}

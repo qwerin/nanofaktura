@@ -97,7 +97,7 @@ func TestPriceItemsCRUD(t *testing.T) {
 		t.Fatalf("cable: %+v", cable)
 	}
 	if mv := stockMoves(a, cable.ID); len(mv) != 1 || mv[0].Direction != "in" || mv[0].Quantity != "10.5" ||
-		mv[0].MovedOn != "2026-03-15" || mv[0].Note != "initial stock" || mv[0].InvoiceID != nil {
+		mv[0].MovedOn != "2026-03-15" || mv[0].Note != "Počáteční stav" || mv[0].InvoiceID != nil {
 		t.Fatalf("initial move: %+v", mv)
 	}
 	newPriceItem(a, api.PriceItemCreate{Name: "Adaptér", SKU: "ADP"})

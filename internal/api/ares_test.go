@@ -3,6 +3,7 @@ package api_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -19,6 +20,9 @@ type fakeARES map[string]ares.Result
 func (f fakeARES) Lookup(_ context.Context, ico string) (*ares.Result, error) {
 	if ico == "00000019" {
 		return nil, errors.New("connection refused")
+	}
+	if ico == "00000027" {
+		return nil, fmt.Errorf("ares: %w", context.DeadlineExceeded)
 	}
 	r, ok := f[ico]
 	if !ok {
@@ -54,6 +58,8 @@ func TestAresLookup(t *testing.T) {
 	assertError(t, res, body, http.StatusNotFound, "not found")
 	res, body = c.do("GET", "/api/ares/0000019", nil) // 7 digits, padded
 	assertError(t, res, body, http.StatusBadGateway, "ARES is unavailable")
+	res, body = c.do("GET", "/api/ares/00000027", nil)
+	assertCode(t, res, body, http.StatusGatewayTimeout, "upstream_timeout")
 	res, body = ts.anon().do("GET", "/api/ares/27074358", nil)
 	assertError(t, res, body, http.StatusUnauthorized, "authentication required")
 }

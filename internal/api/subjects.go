@@ -89,6 +89,7 @@ type SubjectPatch struct {
 	IBAN           *string `json:"iban,omitempty" maxLength:"42"`
 	SwiftBIC       *string `json:"swift_bic,omitempty" maxLength:"11"`
 	DueDays        *int    `json:"due_days,omitempty" minimum:"0" maximum:"365"`
+	ClearDueDays   bool    `json:"clear_due_days,omitempty" doc:"Reset due_days to null (the account's default_due_days applies)"`
 	Note           *string `json:"note,omitempty" maxLength:"5000"`
 }
 
@@ -235,6 +236,8 @@ func (s *server) patchSubject(ctx context.Context, in *struct {
 	if p.DueDays != nil {
 		v := *p.DueDays
 		m.DueDays = &v
+	} else if p.ClearDueDays {
+		m.DueDays = nil
 	}
 	apply(&m.Note, p.Note)
 	if err := normalizeSubject(&m); err != nil {
