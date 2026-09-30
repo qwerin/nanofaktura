@@ -19,6 +19,7 @@ import { InvoiceFilterBar, StatusChips } from '@/components/invoice/invoice-filt
 import { StatusBadge } from '@/components/invoice/status-badge'
 import { documentTypeShortLabels } from '@/components/invoice/status'
 import { useDebouncedValue } from '@/components/invoice/use-debounced'
+import { useCanEditDocuments } from '@/components/invoice/use-can-edit'
 import { PageBody, PageHeader } from '@/components/page-header'
 import { PageError } from '@/components/page-states'
 import { ResponsiveList, type ListColumn } from '@/components/responsive-list'
@@ -42,6 +43,8 @@ function InvoicesPage() {
   const { slug } = Route.useParams()
   const search = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
+  // Účetní jen čte — vystavení faktury se mu nenabízí.
+  const canEdit = useCanEditDocuments()
   const filters = useMemo(() => toApiFilters(search), [search])
 
   const setSearch = (patch: Partial<InvoiceSearch>) =>
@@ -147,7 +150,7 @@ function InvoicesPage() {
 
   return (
     <>
-      <PageHeader title="Faktury" description="Vydané faktury, zálohy a opravné doklady." actions={[newAction, exportMenu.action]}>
+      <PageHeader title="Faktury" description="Vydané faktury, zálohy a opravné doklady." actions={[...(canEdit ? [newAction] : []), exportMenu.action]}>
         <div className="flex flex-col gap-3 pt-1 md:pt-0">
           <InvoiceFilterBar search={search} queryInput={queryInput} onQueryInput={setQueryInput} onChange={setSearch} />
           <StatusChips value={search.status} onChange={(status) => setSearch({ status })} />
@@ -192,10 +195,12 @@ function InvoicesPage() {
                     title="Zatím žádné faktury"
                     description="Vystavte první fakturu — zabere to minutu."
                     action={
-                      <ButtonLink to="/a/$slug/invoices/new" params={{ slug }}>
-                        <PlusIcon data-icon="inline-start" />
-                        Vystavit fakturu
-                      </ButtonLink>
+                      canEdit && (
+                        <ButtonLink to="/a/$slug/invoices/new" params={{ slug }}>
+                          <PlusIcon data-icon="inline-start" />
+                          Vystavit fakturu
+                        </ButtonLink>
+                      )
                     }
                   />
                 )

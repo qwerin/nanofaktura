@@ -45,7 +45,8 @@ import { useLogoutAction } from './use-logout-action'
 
 /** Desktopová navigace (≥ md). Na mobilu ji nahrazuje BottomTabBar. */
 export function AppSidebar() {
-  const { slug } = useCurrentAccount()
+  // Účetní jen čte — tlačítko „Nová faktura“ se mu nezobrazuje.
+  const { slug, canEdit } = useCurrentAccount()
   const matchRoute = useMatchRoute()
 
   return (
@@ -58,18 +59,20 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent className="flex flex-col gap-2">
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  tooltip="Nová faktura"
-                  render={<Link to="/a/$slug/invoices/new" params={{ slug }} />}
-                  className="bg-primary font-medium text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
-                >
-                  <PlusIcon />
-                  <span>Nová faktura</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
+            {canEdit && (
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    tooltip="Nová faktura"
+                    render={<Link to="/a/$slug/invoices/new" params={{ slug }} />}
+                    className="bg-primary font-medium text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
+                  >
+                    <PlusIcon />
+                    <span>Nová faktura</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            )}
             <SidebarMenu>
               {mainNav.map((item) => (
                 <SidebarMenuItem key={item.to}>

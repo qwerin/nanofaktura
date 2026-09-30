@@ -31,7 +31,7 @@ const tabClass =
  * Respektuje safe area (home indicator) a při otevřené klávesnici se skryje.
  */
 export function BottomTabBar() {
-  const { slug } = useCurrentAccount()
+  const { slug, canEdit } = useCurrentAccount()
   const matchRoute = useMatchRoute()
   const [moreOpen, setMoreOpen] = useState(false)
   const is = (to: Parameters<typeof matchRoute>[0]['to']) =>
@@ -52,16 +52,19 @@ export function BottomTabBar() {
             label="Faktury"
             active={is('/a/$slug/invoices') && !is('/a/$slug/invoices/new')}
           />
-          <div className="flex flex-1 items-center justify-center">
-            <Link
-              to="/a/$slug/invoices/new"
-              params={{ slug }}
-              aria-label="Nová faktura"
-              className="flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/25 transition-transform active:scale-95"
-            >
-              <PlusIcon className="size-6" strokeWidth={2.25} />
-            </Link>
-          </div>
+          {/* Účetní jen čte — bez tlačítka pro novou fakturu. */}
+          {canEdit && (
+            <div className="flex flex-1 items-center justify-center">
+              <Link
+                to="/a/$slug/invoices/new"
+                params={{ slug }}
+                aria-label="Nová faktura"
+                className="flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/25 transition-transform active:scale-95"
+              >
+                <PlusIcon className="size-6" strokeWidth={2.25} />
+              </Link>
+            </div>
+          )}
           <Tab to="/a/$slug/subjects" slug={slug} icon={UsersIcon} label="Kontakty" active={is('/a/$slug/subjects')} />
           <button
             type="button"
