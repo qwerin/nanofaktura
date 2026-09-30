@@ -27,6 +27,11 @@ type Recurring struct {
 	ID               uint       `json:"id"`
 	Name             string     `json:"name"`
 	TemplateID       uint       `json:"template_id"`
+	TemplateName     string     `json:"template_name"`
+	SubjectID        uint       `json:"subject_id" doc:"Subject of the template"`
+	SubjectName      string     `json:"subject_name"`
+	Total            int64      `json:"total" doc:"Total of the next invoice (from the template)"`
+	TotalCurrency    string     `json:"total_currency"`
 	StartOn          string     `json:"start_on"`
 	NextOccurrenceOn string     `json:"next_occurrence_on" doc:"Issue date of the next invoice"`
 	EndOn            string     `json:"end_on" doc:"Last possible issue date; empty = no end"`
@@ -107,7 +112,7 @@ func (s *server) listRecurring(ctx context.Context, in *struct {
 	if in.TemplateID != 0 {
 		q = q.Where("template_id = ?", in.TemplateID)
 	}
-	return paginate(q, in.PageParams, toRecurring)
+	return listOut(q, in.PageParams, func(ms []model.Recurring) ([]Recurring, error) { return recurringsOut(ctx, s.db.WithContext(ctx), ms) })
 }
 
 func (s *server) loadRecurring(ctx context.Context, db *gorm.DB, id uint) (*model.Recurring, error) {
@@ -123,7 +128,7 @@ func (s *server) getRecurring(ctx context.Context, in *recurringID) (*Out[Recurr
 	if err != nil {
 		return nil, err
 	}
-	return &Out[Recurring]{Body: toRecurring(m)}, nil
+	return s.recurringOut(ctx, m)
 }
 
 func (s *server) createRecurring(ctx context.Context, in *struct{ Body RecurringCreate }) (*Out[Recurring], error) {
@@ -148,7 +153,7 @@ func (s *server) createRecurring(ctx context.Context, in *struct{ Body Recurring
 	if err := db.Create(m).Error; err != nil {
 		return nil, dbErr(err, "recurring")
 	}
-	return &Out[Recurring]{Body: toRecurring(m)}, nil
+	return s.recurringOut(ctx, m)
 }
 
 func (s *server) patchRecurring(ctx context.Context, in *struct {
@@ -199,7 +204,7 @@ func (s *server) patchRecurring(ctx context.Context, in *struct {
 	if err := db.Save(m).Error; err != nil {
 		return nil, dbErr(err, "recurring")
 	}
-	return &Out[Recurring]{Body: toRecurring(m)}, nil
+	return s.recurringOut(ctx, m)
 }
 
 func (s *server) deleteRecurring(ctx context.Context, in *recurringID) (*NoContent, error) {
@@ -246,7 +251,7 @@ func (s *server) setRecurringActive(ctx context.Context, id uint, active bool) (
 	if err := db.Save(m).Error; err != nil {
 		return nil, dbErr(err, "recurring")
 	}
-	return &Out[Recurring]{Body: toRecurring(m)}, nil
+	return s.recurringOut(ctx, m)
 }
 
 // runRecurringNow issues an invoice right away (dated today, whatever the

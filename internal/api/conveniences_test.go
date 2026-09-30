@@ -38,6 +38,30 @@ func TestExpenseDueDaysClearSubjectAttachments(t *testing.T) {
 	}
 }
 
+func TestTemplateRecurringDisplayFields(t *testing.T) {
+	ts := newTestServer(t)
+	a := ts.signup("a@example.cz", "Firma A")
+	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
+	tpl := newTemplate(a, subj.ID, "Hosting") // 2 × 500 Kč, non VAT payer
+	if tpl.SubjectName != "ACME" || tpl.Total != 100000 || tpl.TotalCurrency != "CZK" {
+		t.Fatalf("template %+v", tpl)
+	}
+	rec := newRecurring(a, api.RecurringCreate{Name: "R", TemplateID: tpl.ID})
+	if rec.TemplateName != "Hosting" || rec.SubjectID != subj.ID || rec.SubjectName != "ACME" || rec.Total != 100000 {
+		t.Fatalf("recurring %+v", rec)
+	}
+	l := doJSON[api.ListResponse[api.Recurring]](a, http.StatusOK, "GET", a.acct("/recurring"), nil)
+	tl := doJSON[api.ListResponse[api.Template]](a, http.StatusOK, "GET", a.acct("/templates"), nil)
+	if l.Items[0].SubjectName != "ACME" || tl.Items[0].Total != 100000 {
+		t.Fatalf("lists %+v %+v", l.Items, tl.Items)
+	}
+	// VAT payer: default rate applies to lines without a rate
+	setVatPayer(a)
+	if got := doJSON[api.Template](a, http.StatusOK, "GET", fmt.Sprintf("%s/%d", a.acct("/templates"), tpl.ID), nil); got.Total != 121000 {
+		t.Fatalf("payer total %d", got.Total)
+	}
+}
+
 func TestSubjectClearDueDays(t *testing.T) {
 	ts := newTestServer(t)
 	a := ts.signup("a@example.cz", "Firma A")

@@ -37,6 +37,9 @@ type Template struct {
 	Name                string         `json:"name"`
 	DocumentType        string         `json:"document_type" enum:"invoice,proforma"`
 	SubjectID           uint           `json:"subject_id"`
+	SubjectName         string         `json:"subject_name" doc:"Current name of the subject"`
+	Total               int64          `json:"total" doc:"Total of an invoice issued from the template now (account defaults applied)"`
+	TotalCurrency       string         `json:"total_currency" doc:"Currency of total (template currency or account default)"`
 	DueDays             *int           `json:"due_days,omitempty"`
 	Currency            string         `json:"currency" doc:"Empty = account default"`
 	ExchangeRate        string         `json:"exchange_rate" doc:"Empty = 1"`
@@ -169,7 +172,9 @@ func (s *server) listTemplates(ctx context.Context, in *struct {
 	if in.SubjectID != 0 {
 		q = q.Where("subject_id = ?", in.SubjectID)
 	}
-	return paginate(q, in.PageParams, toTemplate)
+	return listOut(q, in.PageParams, func(ms []model.InvoiceTemplate) ([]Template, error) {
+		return templatesOut(ctx, s.db.WithContext(ctx), ms)
+	})
 }
 
 func (s *server) loadTemplate(ctx context.Context, db *gorm.DB, id uint) (*model.InvoiceTemplate, error) {
@@ -187,7 +192,7 @@ func (s *server) getTemplate(ctx context.Context, in *struct {
 	if err != nil {
 		return nil, err
 	}
-	return &Out[Template]{Body: toTemplate(m)}, nil
+	return s.templateOut(ctx, m)
 }
 
 func (s *server) createTemplate(ctx context.Context, in *struct{ Body TemplateCreate }) (*Out[Template], error) {
@@ -210,7 +215,7 @@ func (s *server) createTemplate(ctx context.Context, in *struct{ Body TemplateCr
 	if err := s.db.WithContext(ctx).Create(m).Error; err != nil {
 		return nil, dbErr(err, "template")
 	}
-	return &Out[Template]{Body: toTemplate(m)}, nil
+	return s.templateOut(ctx, m)
 }
 
 func (s *server) patchTemplate(ctx context.Context, in *struct {
@@ -270,7 +275,7 @@ func (s *server) patchTemplate(ctx context.Context, in *struct {
 	if err := db.Save(m).Error; err != nil {
 		return nil, dbErr(err, "template")
 	}
-	return &Out[Template]{Body: toTemplate(m)}, nil
+	return s.templateOut(ctx, m)
 }
 
 func (s *server) deleteTemplate(ctx context.Context, in *struct {
@@ -366,7 +371,7 @@ func (s *server) saveAsTemplate(ctx context.Context, in *struct {
 	if err := db.Create(m).Error; err != nil {
 		return nil, dbErr(err, "template")
 	}
-	return &Out[Template]{Body: toTemplate(m)}, nil
+	return s.templateOut(ctx, m)
 }
 
 // ---- helpers ----
