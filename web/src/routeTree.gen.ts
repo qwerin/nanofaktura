@@ -26,6 +26,7 @@ import { Route as ASlugExpensesIndexRouteImport } from './routes/a/$slug/expense
 import { Route as ASlugExpensesNewRouteImport } from './routes/a/$slug/expenses/new'
 import { Route as ASlugInvoicesIndexRouteImport } from './routes/a/$slug/invoices/index'
 import { Route as ASlugInvoicesNewRouteImport } from './routes/a/$slug/invoices/new'
+import { Route as ASlugNewsIndexRouteImport } from './routes/a/$slug/news/index'
 import { Route as ASlugPriceItemsIndexRouteImport } from './routes/a/$slug/price-items/index'
 import { Route as ASlugPriceItemsNewRouteImport } from './routes/a/$slug/price-items/new'
 import { Route as ASlugRecurringIndexRouteImport } from './routes/a/$slug/recurring/index'
@@ -143,6 +144,11 @@ const ASlugInvoicesIndexRoute = ASlugInvoicesIndexRouteImport.update({
 const ASlugInvoicesNewRoute = ASlugInvoicesNewRouteImport.update({
   id: '/invoices/new',
   path: '/invoices/new',
+  getParentRoute: () => ASlugRouteRoute,
+} as any)
+const ASlugNewsIndexRoute = ASlugNewsIndexRouteImport.update({
+  id: '/news/',
+  path: '/news/',
   getParentRoute: () => ASlugRouteRoute,
 } as any)
 const ASlugPriceItemsIndexRoute = ASlugPriceItemsIndexRouteImport.update({
@@ -358,6 +364,7 @@ export interface FileRoutesByFullPath {
   '/a/$slug/bank/': typeof ASlugBankIndexRoute
   '/a/$slug/expenses/': typeof ASlugExpensesIndexRoute
   '/a/$slug/invoices/': typeof ASlugInvoicesIndexRoute
+  '/a/$slug/news/': typeof ASlugNewsIndexRoute
   '/a/$slug/price-items/': typeof ASlugPriceItemsIndexRoute
   '/a/$slug/recurring/': typeof ASlugRecurringIndexRoute
   '/a/$slug/reports/': typeof ASlugReportsIndexRoute
@@ -407,6 +414,7 @@ export interface FileRoutesByTo {
   '/a/$slug/bank': typeof ASlugBankIndexRoute
   '/a/$slug/expenses': typeof ASlugExpensesIndexRoute
   '/a/$slug/invoices': typeof ASlugInvoicesIndexRoute
+  '/a/$slug/news': typeof ASlugNewsIndexRoute
   '/a/$slug/price-items': typeof ASlugPriceItemsIndexRoute
   '/a/$slug/recurring': typeof ASlugRecurringIndexRoute
   '/a/$slug/reports': typeof ASlugReportsIndexRoute
@@ -460,6 +468,7 @@ export interface FileRoutesById {
   '/a/$slug/bank/': typeof ASlugBankIndexRoute
   '/a/$slug/expenses/': typeof ASlugExpensesIndexRoute
   '/a/$slug/invoices/': typeof ASlugInvoicesIndexRoute
+  '/a/$slug/news/': typeof ASlugNewsIndexRoute
   '/a/$slug/price-items/': typeof ASlugPriceItemsIndexRoute
   '/a/$slug/recurring/': typeof ASlugRecurringIndexRoute
   '/a/$slug/reports/': typeof ASlugReportsIndexRoute
@@ -514,6 +523,7 @@ export interface FileRouteTypes {
     | '/a/$slug/bank/'
     | '/a/$slug/expenses/'
     | '/a/$slug/invoices/'
+    | '/a/$slug/news/'
     | '/a/$slug/price-items/'
     | '/a/$slug/recurring/'
     | '/a/$slug/reports/'
@@ -563,6 +573,7 @@ export interface FileRouteTypes {
     | '/a/$slug/bank'
     | '/a/$slug/expenses'
     | '/a/$slug/invoices'
+    | '/a/$slug/news'
     | '/a/$slug/price-items'
     | '/a/$slug/recurring'
     | '/a/$slug/reports'
@@ -615,6 +626,7 @@ export interface FileRouteTypes {
     | '/a/$slug/bank/'
     | '/a/$slug/expenses/'
     | '/a/$slug/invoices/'
+    | '/a/$slug/news/'
     | '/a/$slug/price-items/'
     | '/a/$slug/recurring/'
     | '/a/$slug/reports/'
@@ -762,6 +774,13 @@ declare module '@tanstack/react-router' {
       path: '/invoices/new'
       fullPath: '/a/$slug/invoices/new'
       preLoaderRoute: typeof ASlugInvoicesNewRouteImport
+      parentRoute: typeof ASlugRouteRoute
+    }
+    '/a/$slug/news/': {
+      id: '/a/$slug/news/'
+      path: '/news'
+      fullPath: '/a/$slug/news/'
+      preLoaderRoute: typeof ASlugNewsIndexRouteImport
       parentRoute: typeof ASlugRouteRoute
     }
     '/a/$slug/price-items/': {
@@ -1059,6 +1078,7 @@ interface ASlugRouteRouteChildren {
   ASlugBankIndexRoute: typeof ASlugBankIndexRoute
   ASlugExpensesIndexRoute: typeof ASlugExpensesIndexRoute
   ASlugInvoicesIndexRoute: typeof ASlugInvoicesIndexRoute
+  ASlugNewsIndexRoute: typeof ASlugNewsIndexRoute
   ASlugPriceItemsIndexRoute: typeof ASlugPriceItemsIndexRoute
   ASlugRecurringIndexRoute: typeof ASlugRecurringIndexRoute
   ASlugSubjectsIndexRoute: typeof ASlugSubjectsIndexRoute
@@ -1093,6 +1113,7 @@ const ASlugRouteRouteChildren: ASlugRouteRouteChildren = {
   ASlugBankIndexRoute: ASlugBankIndexRoute,
   ASlugExpensesIndexRoute: ASlugExpensesIndexRoute,
   ASlugInvoicesIndexRoute: ASlugInvoicesIndexRoute,
+  ASlugNewsIndexRoute: ASlugNewsIndexRoute,
   ASlugPriceItemsIndexRoute: ASlugPriceItemsIndexRoute,
   ASlugRecurringIndexRoute: ASlugRecurringIndexRoute,
   ASlugSubjectsIndexRoute: ASlugSubjectsIndexRoute,

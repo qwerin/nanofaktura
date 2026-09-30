@@ -36,6 +36,7 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar'
 import { SidebarSearchButton } from '@/components/search/search-trigger'
+import { NewsBadge } from '@/components/news/news-badge'
 import { TodoCountBadge } from '@/components/todos/todo-count-badge'
 import { useCurrentAccount } from '@/hooks/use-current-account'
 import { roleLabel } from '@/lib/roles'
@@ -81,6 +82,7 @@ export function AppSidebar() {
                     <span>{item.label}</span>
                   </SidebarMenuButton>
                   {item.to === '/a/$slug/todos' && <TodoCountBadge slug={slug} variant="sidebar" />}
+                  {item.to === '/a/$slug/news' && <NewsBadge variant="sidebar" />}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>

@@ -4,6 +4,8 @@ WORKDIR /app/web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
 COPY web/ ./
+# sekce Novinky čte ../CHANGELOG.md
+COPY CHANGELOG.md /app/CHANGELOG.md
 RUN npm run build
 
 # ── Stage 2: Go binary (pure Go, no CGO) ─────────────────────────────────────

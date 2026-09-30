@@ -13,6 +13,7 @@ import {
 import { useState, type ReactNode } from 'react'
 import { CreateAccountDialog } from '@/components/account/create-account-dialog'
 import { ThemeSegmented } from '@/components/theme'
+import { NewsBadge } from '@/components/news/news-badge'
 import { TodoCountBadge } from '@/components/todos/todo-count-badge'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
@@ -71,6 +72,7 @@ export function BottomTabBar() {
             <span className="relative flex w-full justify-center">
               <EllipsisIcon className="size-6" />
               <TodoCountBadge slug={slug} variant="dot" />
+              <NewsBadge variant="dot" />
             </span>
             Více
           </button>
@@ -157,6 +159,7 @@ function MoreDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (open
                   trailing={
                     <>
                       {item.to === '/a/$slug/todos' && <TodoCountBadge slug={slug} />}
+                      {item.to === '/a/$slug/news' && <NewsBadge />}
                       <ChevronRightIcon className="size-4 text-muted-foreground" />
                     </>
                   }

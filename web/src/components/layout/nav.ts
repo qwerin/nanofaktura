@@ -11,6 +11,7 @@ import {
   MailIcon,
   PackageIcon,
   RepeatIcon,
+  SparklesIcon,
   ReceiptIcon,
   PaletteIcon,
   WebhookIcon,
@@ -29,6 +30,7 @@ export const moreNav = [
   { label: 'Pravidelné faktury', to: '/a/$slug/recurring', icon: RepeatIcon },
   { label: 'Banka', to: '/a/$slug/bank', icon: LandmarkIcon },
   { label: 'Přehledy', to: '/a/$slug/reports', icon: ChartColumnIcon },
+  { label: 'Novinky', to: '/a/$slug/news', icon: SparklesIcon },
 ] as const
 
 export const mainNav = [

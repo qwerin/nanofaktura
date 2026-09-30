@@ -44,6 +44,8 @@ export default defineConfig({
     alias: { '@': path.resolve(import.meta.dirname, './src') },
   },
   server: {
+    // CHANGELOG.md (sekce Novinky) leží v kořeni repa, mimo web/
+    fs: { allow: ['..'] },
     proxy: {
       '/api': { target: 'http://localhost:8080' },
     },

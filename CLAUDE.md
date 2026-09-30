@@ -227,3 +227,16 @@ it as a **new** account in one transaction (`GET /api/accounts/{slug}/backup`, `
 `import.go` (IDs of the backup only, never looked up in the DB) and in `dumpAccount` of `internal/api/backup_test.go`
 (roundtrip test comparing a canonical dump of the source and the imported account). Incompatible DTO change → bump `Version`.
 
+
+## Novinky (CHANGELOG.md) — povinné při každé změně
+
+`CHANGELOG.md` v kořeni repa je **uživatelský** přehled novinek; frontend ho zabalí při buildu (`web/src/hooks/use-news.ts`,
+`?raw` import) a zobrazuje v sekci *Novinky* (`/a/$slug/news`) s tečkou v menu, dokud je uživatel nepřečte.
+
+- Každý commit/PR, který mění něco, co uživatel uvidí nebo pocítí (nová funkce, změna chování, oprava chyby, kterou mohl
+  zaznamenat), **ve stejném commitu** doplní záznam. Interní refaktoring, testy a CI sem nepatří.
+- Nejnovější nahoře. Nový den vydání = nový záznam `## RRRR-MM-DD · Krátký název`; změny ze stejného dne přidej do
+  existujícího záznamu. Datum musí být unikátní (hlídá to `web/src/lib/changelog.test.ts`).
+- Piš česky, pro uživatele, ne pro vývojáře: `- **Co** — k čemu je to dobré / kde to najde.` Bez technického žargonu,
+  bez názvů endpointů, bez zmínek o jiných fakturačních produktech.
+- Podporovaný Markdown: odstavce, `###`, odrážky, `**tučně**`, `*zvýraznění*` (cesty v menu), `` `kód` ``, `[odkaz](https://…)`. Nic jiného se nevykreslí.
