@@ -70,7 +70,7 @@ type InvoiceSummary struct {
 
 	Currency            string `json:"currency"`
 	ExchangeRate        string `json:"exchange_rate"`
-	Language            string `json:"language" enum:"cs,en"`
+	Language            string `json:"language" enum:"cs,en,sk,de"`
 	PaymentMethod       string `json:"payment_method" enum:"bank,cash,card,cod,paypal,custom"`
 	CustomPaymentMethod string `json:"custom_payment_method"`
 	BankAccountID       *uint  `json:"bank_account_id,omitempty"`
@@ -303,7 +303,7 @@ type InvoiceCreate struct {
 
 	Currency            string   `json:"currency,omitempty" pattern:"^[A-Z]{3}$" doc:"Default: account default_currency"`
 	ExchangeRate        string   `json:"exchange_rate,omitempty" pattern:"^[0-9]{1,6}([.][0-9]{1,6})?$" doc:"Default 1"`
-	Language            string   `json:"language,omitempty" enum:"cs,en"`
+	Language            string   `json:"language,omitempty" enum:"cs,en,sk,de"`
 	PaymentMethod       string   `json:"payment_method,omitempty" enum:"bank,cash,card,cod,paypal,custom"`
 	CustomPaymentMethod string   `json:"custom_payment_method,omitempty" maxLength:"100"`
 	BankAccountID       *uint    `json:"bank_account_id,omitempty" doc:"Default: the default bank account of the currency"`
@@ -334,7 +334,7 @@ type InvoicePatch struct {
 
 	Currency            *string  `json:"currency,omitempty" pattern:"^[A-Z]{3}$"`
 	ExchangeRate        *string  `json:"exchange_rate,omitempty" pattern:"^[0-9]{1,6}([.][0-9]{1,6})?$"`
-	Language            *string  `json:"language,omitempty" enum:"cs,en"`
+	Language            *string  `json:"language,omitempty" enum:"cs,en,sk,de"`
 	PaymentMethod       *string  `json:"payment_method,omitempty" enum:"bank,cash,card,cod,paypal,custom"`
 	CustomPaymentMethod *string  `json:"custom_payment_method,omitempty" maxLength:"100"`
 	BankAccountID       *uint    `json:"bank_account_id,omitempty" doc:"Re-snapshots bank_account/iban/swift_bic"`

@@ -339,6 +339,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/accounts/{slug}/email-templates/defaults": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug email templates defaults */
+        get: operations["get-api-accounts-by-slug-email-templates-defaults"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/accounts/{slug}/email-templates/preview": {
         parameters: {
             query?: never;
@@ -688,6 +705,26 @@ export interface paths {
          * @description Allowed roles: owner, admin.
          */
         delete: operations["delete-api-accounts-by-slug-invitations-by-id"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/invitations/{id}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug invitations by ID resend
+         * @description Allowed roles: owner, admin.
+         */
+        post: operations["post-api-accounts-by-slug-invitations-by-id-resend"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1927,6 +1964,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/invoices/{token}/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Supplier logo of a public invoice */
+        get: operations["get-public-invoice-logo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/public/invoices/{token}/pdf": {
         parameters: {
             query?: never;
@@ -2008,6 +2062,8 @@ export interface components {
             c_pracufo: string;
             /** @description EPO code of the tax office (finanční úřad), e.g. 451 */
             c_ufo: string;
+            /** @description What the current user's role may do (derived from role) */
+            capabilities: components["schemas"]["Capabilities"];
             city: string;
             country: string;
             /** Format: date-time */
@@ -2017,7 +2073,7 @@ export interface components {
             default_due_days: number;
             default_footer_note: string;
             /** @enum {string} */
-            default_language: "cs" | "en";
+            default_language: "cs" | "en" | "sk" | "de";
             default_note: string;
             /** @enum {string} */
             default_payment_method: "bank" | "cash" | "card" | "cod" | "paypal" | "custom";
@@ -2036,8 +2092,24 @@ export interface components {
              */
             logo_attachment_id?: number;
             name: string;
+            /**
+             * Format: date-time
+             * @description When the onboarding was finished (null = show onboarding)
+             */
+            onboarded_at?: string;
             /** @description Send a thank-you e-mail when an invoice gets fully paid */
             paid_thanks_enabled: boolean;
+            /** @description Accent colour #RRGGBB; empty = template default */
+            pdf_accent: string;
+            /** @description Extra footer text on every PDF page */
+            pdf_footer: string;
+            /** @description QR Platba on PDFs */
+            pdf_show_qr: boolean;
+            /**
+             * @description Default PDF template
+             * @enum {string}
+             */
+            pdf_template: "classic" | "modern" | "minimal";
             phone: string;
             registered_by: string;
             registration_no: string;
@@ -2087,7 +2159,7 @@ export interface components {
             default_due_days?: number;
             default_footer_note?: string;
             /** @enum {string} */
-            default_language?: "cs" | "en";
+            default_language?: "cs" | "en" | "sk" | "de";
             default_note?: string;
             /** @enum {string} */
             default_payment_method?: "bank" | "cash" | "card" | "cod" | "paypal" | "custom";
@@ -2104,7 +2176,15 @@ export interface components {
              */
             logo_attachment_id?: number;
             name?: string;
+            /** @description true marks the onboarding as finished (sets onboarded_at), false shows it again */
+            onboarded?: boolean;
             paid_thanks_enabled?: boolean;
+            /** @description #RRGGBB; empty = template default */
+            pdf_accent?: string;
+            pdf_footer?: string;
+            pdf_show_qr?: boolean;
+            /** @enum {string} */
+            pdf_template?: "classic" | "modern" | "minimal";
             phone?: string;
             registered_by?: string;
             registration_no?: string;
@@ -2155,6 +2235,13 @@ export interface components {
             signup_allowed: boolean;
         };
         BankAccount: {
+            /**
+             * Format: int64
+             * @description Closing balance of the newest imported statement that carries one (minor units); omitted when unknown
+             */
+            balance?: number;
+            /** @description Date of balance (last booking day of that statement) */
+            balance_on?: string;
             /** Format: date-time */
             created_at: string;
             currency: string;
@@ -2272,6 +2359,10 @@ export interface components {
             matched_expense_id?: number;
             /** Format: int64 */
             matched_invoice_id?: number;
+            /** @description Client / supplier of the matched document */
+            matched_name?: string;
+            /** @description Number of the matched document (expense: the supplier's original number when set) */
+            matched_number?: string;
             message: string;
             /**
              * Format: int64
@@ -2297,6 +2388,20 @@ export interface components {
              */
             invoice_id?: number;
         };
+        Capabilities: {
+            /** @description Create/modify documents, subjects, expenses, payments, attachments */
+            edit: boolean;
+            /** @description Exports (CSV, XLSX, PDF ZIP) */
+            export: boolean;
+            /** @description Invite and manage members */
+            manage_members: boolean;
+            /** @description Add/remove owners and change their role */
+            manage_owners: boolean;
+            /** @description Account settings, bank accounts, number formats, webhooks */
+            manage_settings: boolean;
+            /** @description Tax reports */
+            view_reports: boolean;
+        };
         CatalogEntry: {
             description: string;
             name: string;
@@ -2320,6 +2425,22 @@ export interface components {
             prefix: string;
             /** @description Plaintext token, returned only once */
             token: string;
+        };
+        CurrencySum: {
+            /** Format: int64 */
+            count: number;
+            /** @example CZK */
+            currency: string;
+            /**
+             * Format: int64
+             * @description Σ (total − paid), cancelled/uncollectible documents excluded
+             */
+            sum_remaining: number;
+            /**
+             * Format: int64
+             * @description Σ total (minor units)
+             */
+            sum_total: number;
         };
         Dashboard: {
             currency: string;
@@ -2358,6 +2479,36 @@ export interface components {
             unpaid_total: number;
             /** Format: int64 */
             year: number;
+        };
+        DocWarning: {
+            /**
+             * @description no_bank_account: bank transfer, but no bank account in the invoice currency — the document has no payment details (account number, QR)
+             * @enum {string}
+             */
+            code: "no_bank_account";
+            message: string;
+        };
+        DocumentListExpenseSummary: {
+            items: components["schemas"]["ExpenseSummary"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            per_page: number;
+            /** @description Per currency, over every page of the filter */
+            sums: components["schemas"]["CurrencySum"][];
+            /** Format: int64 */
+            total: number;
+        };
+        DocumentListInvoiceSummary: {
+            items: components["schemas"]["InvoiceSummary"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            per_page: number;
+            /** @description Per currency, over every page of the filter */
+            sums: components["schemas"]["CurrencySum"][];
+            /** Format: int64 */
+            total: number;
         };
         DocumentRow: {
             /** @description 21 % */
@@ -2415,6 +2566,17 @@ export interface components {
             lang: "cs" | "en";
             subject: string;
         };
+        EmailTemplateDefault: {
+            body: string;
+            /** @enum {string} */
+            kind: "invoice" | "reminder" | "paid_thanks";
+            /** @enum {string} */
+            lang: "cs" | "en";
+            subject: string;
+        };
+        EmailTemplateDefaults: {
+            items: components["schemas"]["EmailTemplateDefault"][];
+        };
         EmailTemplateInput: {
             /** @description Empty = default body */
             body?: string;
@@ -2434,6 +2596,11 @@ export interface components {
             value?: unknown;
         };
         ErrorModel: {
+            /**
+             * @description Machine-readable reason (stable, snake_case). Generic per status when nothing more specific applies: bad_request, unauthorized, forbidden, not_found, conflict, gone, too_large, unsupported_media_type, validation_failed, rate_limited, internal, upstream_unavailable, upstream_timeout.
+             * @example has_invoices
+             */
+            code?: string;
             /**
              * @description A human-readable explanation specific to this occurrence of the problem.
              * @example Property foo is required but is missing.
@@ -2509,6 +2676,7 @@ export interface components {
             rate_date: string;
         };
         Expense: {
+            attachments: components["schemas"]["Attachment"][];
             category: string;
             /** Format: date-time */
             created_at: string;
@@ -2583,8 +2751,13 @@ export interface components {
             currency?: string;
             description?: string;
             /**
+             * Format: int64
+             * @description Used when due_on is empty; default: the supplier's due_days, else the account's default_due_days
+             */
+            due_days?: number;
+            /**
              * Format: date
-             * @description Default: issued_on + account default_due_days
+             * @description Default: issued_on + due_days
              */
             due_on?: string;
             /** @description Default 1 */
@@ -2654,6 +2827,8 @@ export interface components {
         };
         ExpensePatch: {
             category?: string;
+            /** @description Unlink the supplier contact (subject_id → null); supplier_* stay as free text */
+            clear_subject?: boolean;
             currency?: string;
             description?: string;
             /** Format: date */
@@ -2832,11 +3007,15 @@ export interface components {
             expires_at: string;
             /** Format: int64 */
             id: number;
+            /** @description The invitation link (for copying); empty for invitations created before links were stored */
+            invite_url: string;
             /**
              * Format: int64
              * @description User ID of the inviter
              */
             invited_by: number;
+            /** @description Name of the inviter (empty when the user no longer exists) */
+            invited_by_name: string;
             /** @enum {string} */
             role: "owner" | "admin" | "accountant" | "member";
         };
@@ -2857,6 +3036,7 @@ export interface components {
             user_exists: boolean;
         };
         Invoice: {
+            attachments: components["schemas"]["Attachment"][];
             bank_account: string;
             /** Format: int64 */
             bank_account_id?: number;
@@ -2911,6 +3091,11 @@ export interface components {
             public_viewed_at?: string;
             /**
              * Format: int64
+             * @description The recurring invoice that generated this document
+             */
+            recurring_id?: number;
+            /**
+             * Format: int64
              * @description Correction → corrected invoice, final invoice → proforma
              */
             related_id?: number;
@@ -2947,6 +3132,8 @@ export interface components {
             vat_recap: components["schemas"]["VatRecapItem"][];
             /** Format: int64 */
             vat_total: number;
+            /** @description Things the issuer should check (not errors) */
+            warnings: components["schemas"]["DocWarning"][];
             your_city: string;
             your_country: string;
             your_name: string;
@@ -3215,6 +3402,11 @@ export interface components {
             public_viewed_at?: string;
             /**
              * Format: int64
+             * @description The recurring invoice that generated this document
+             */
+            recurring_id?: number;
+            /**
+             * Format: int64
              * @description Correction → corrected invoice, final invoice → proforma
              */
             related_id?: number;
@@ -3324,26 +3516,8 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
-        ListResponseExpenseSummary: {
-            items: components["schemas"]["ExpenseSummary"][];
-            /** Format: int64 */
-            page: number;
-            /** Format: int64 */
-            per_page: number;
-            /** Format: int64 */
-            total: number;
-        };
         ListResponseInvitation: {
             items: components["schemas"]["Invitation"][];
-            /** Format: int64 */
-            page: number;
-            /** Format: int64 */
-            per_page: number;
-            /** Format: int64 */
-            total: number;
-        };
-        ListResponseInvoiceSummary: {
-            items: components["schemas"]["InvoiceSummary"][];
             /** Format: int64 */
             page: number;
             /** Format: int64 */
@@ -3686,6 +3860,8 @@ export interface components {
             issued_on: string;
             language: string;
             lines: components["schemas"]["PublicInvoiceLine"][];
+            /** @description Supplier logo (GET /api/public/invoices/{token}/logo); omitted without a logo */
+            logo_url?: string;
             note: string;
             number: string;
             order_number: string;
@@ -3791,8 +3967,21 @@ export interface components {
             next_occurrence_on: string;
             send_email: boolean;
             start_on: string;
+            /**
+             * Format: int64
+             * @description Subject of the template
+             */
+            subject_id: number;
+            subject_name: string;
             /** Format: int64 */
             template_id: number;
+            template_name: string;
+            /**
+             * Format: int64
+             * @description Total of the next invoice (from the template)
+             */
+            total: number;
+            total_currency: string;
             /** Format: date-time */
             updated_at: string;
         };
@@ -4008,6 +4197,8 @@ export interface components {
         SubjectPatch: {
             bank_account?: string;
             city?: string;
+            /** @description Reset due_days to null (the account's default_due_days applies) */
+            clear_due_days?: boolean;
             country?: string;
             custom_id?: string;
             /** Format: int64 */
@@ -4063,7 +4254,16 @@ export interface components {
             round_total?: boolean;
             /** Format: int64 */
             subject_id: number;
+            /** @description Current name of the subject */
+            subject_name: string;
             tags: string[];
+            /**
+             * Format: int64
+             * @description Total of an invoice issued from the template now (account defaults applied)
+             */
+            total: number;
+            /** @description Currency of total (template currency or account default) */
+            total_currency: string;
             /** Format: date-time */
             updated_at: string;
         };
@@ -4280,7 +4480,7 @@ export interface components {
              */
             vat_period: "month" | "quarter";
             /** @description Documents that could not be classified */
-            warnings: string[];
+            warnings: components["schemas"]["Warning"][];
         };
         VatReturn: {
             /** @description ř. 1: taxable supplies at the basic rate */
@@ -4342,6 +4542,18 @@ export interface components {
             valid: boolean;
             /** @example CZ27082440 */
             vat_no: string;
+        };
+        Warning: {
+            /** @enum {string} */
+            code: "unsupported_rate" | "reverse_charge_no_dic" | "eu_reverse_charge_no_vat" | "zero_rate_not_reported" | "supplier_no_dic" | "calculation_error";
+            /** @description Document number */
+            document: string;
+            /** @description English description */
+            message: string;
+            /** @description Values for the translated text (rate, amount) */
+            params?: {
+                [key: string]: string;
+            };
         };
         Webhook: {
             active: boolean;
@@ -5335,6 +5547,38 @@ export interface operations {
             };
         };
     };
+    "get-api-accounts-by-slug-email-templates-defaults": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateDefaults"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "get-api-accounts-by-slug-email-templates-preview": {
         parameters: {
             query?: {
@@ -5343,6 +5587,10 @@ export interface operations {
                 lang?: "cs" | "en";
                 /** @description Render with this invoice; omitted = sample data */
                 invoice_id?: number;
+                /** @description Unsaved subject template to render instead of the stored one */
+                subject?: string;
+                /** @description Unsaved body template to render instead of the stored one */
+                body?: string;
             };
             header?: never;
             path: {
@@ -5452,11 +5700,13 @@ export interface operations {
             query?: {
                 page?: number;
                 per_page?: number;
-                /** @description Effective status: open excludes overdue expenses */
-                status?: "open" | "overdue" | "paid";
+                /** @description Effective status, comma-separated for several: open, overdue, paid, unpaid (= open + overdue). open excludes overdue expenses */
+                status?: string;
                 /** @description Exact category */
                 category?: string;
                 subject_id?: number;
+                /** @description Total or remaining amount equals this value (minor units; manual payment matching) */
+                amount?: number;
                 /** @description issued_on ≥ since */
                 since?: string;
                 /** @description issued_on ≤ until */
@@ -5480,7 +5730,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ListResponseExpenseSummary"];
+                    "application/json": components["schemas"]["DocumentListExpenseSummary"];
                 };
             };
             /** @description Error */
@@ -5772,11 +6022,13 @@ export interface operations {
     "export-expenses-csv": {
         parameters: {
             query?: {
-                /** @description Effective status: open excludes overdue expenses */
-                status?: "open" | "overdue" | "paid";
+                /** @description Effective status, comma-separated for several: open, overdue, paid, unpaid (= open + overdue). open excludes overdue expenses */
+                status?: string;
                 /** @description Exact category */
                 category?: string;
                 subject_id?: number;
+                /** @description Total or remaining amount equals this value (minor units; manual payment matching) */
+                amount?: number;
                 /** @description issued_on ≥ since */
                 since?: string;
                 /** @description issued_on ≤ until */
@@ -5817,11 +6069,13 @@ export interface operations {
     "export-expenses-xlsx": {
         parameters: {
             query?: {
-                /** @description Effective status: open excludes overdue expenses */
-                status?: "open" | "overdue" | "paid";
+                /** @description Effective status, comma-separated for several: open, overdue, paid, unpaid (= open + overdue). open excludes overdue expenses */
+                status?: string;
                 /** @description Exact category */
                 category?: string;
                 subject_id?: number;
+                /** @description Total or remaining amount equals this value (minor units; manual payment matching) */
+                amount?: number;
                 /** @description issued_on ≥ since */
                 since?: string;
                 /** @description issued_on ≤ until */
@@ -5862,10 +6116,14 @@ export interface operations {
     "export-invoices-csv": {
         parameters: {
             query?: {
-                /** @description Effective status: open/sent exclude overdue documents */
-                status?: "open" | "sent" | "overdue" | "paid" | "cancelled" | "uncollectible";
+                /** @description Effective status, comma-separated for several: open, sent, overdue, paid, cancelled, uncollectible, unpaid (= open + sent + overdue). open/sent exclude overdue documents */
+                status?: string;
                 document_type?: "invoice" | "proforma" | "correction";
                 subject_id?: number;
+                /** @description Documents generated by this recurring invoice */
+                recurring_id?: number;
+                /** @description Total or remaining amount equals this value (minor units; manual payment matching) */
+                amount?: number;
                 /** @description issued_on ≥ since */
                 since?: string;
                 /** @description issued_on ≤ until */
@@ -5906,10 +6164,14 @@ export interface operations {
     "export-invoices-xlsx": {
         parameters: {
             query?: {
-                /** @description Effective status: open/sent exclude overdue documents */
-                status?: "open" | "sent" | "overdue" | "paid" | "cancelled" | "uncollectible";
+                /** @description Effective status, comma-separated for several: open, sent, overdue, paid, cancelled, uncollectible, unpaid (= open + sent + overdue). open/sent exclude overdue documents */
+                status?: string;
                 document_type?: "invoice" | "proforma" | "correction";
                 subject_id?: number;
+                /** @description Documents generated by this recurring invoice */
+                recurring_id?: number;
+                /** @description Total or remaining amount equals this value (minor units; manual payment matching) */
+                amount?: number;
                 /** @description issued_on ≥ since */
                 since?: string;
                 /** @description issued_on ≤ until */
@@ -5950,10 +6212,14 @@ export interface operations {
     "export-pdf-zip": {
         parameters: {
             query?: {
-                /** @description Effective status: open/sent exclude overdue documents */
-                status?: "open" | "sent" | "overdue" | "paid" | "cancelled" | "uncollectible";
+                /** @description Effective status, comma-separated for several: open, sent, overdue, paid, cancelled, uncollectible, unpaid (= open + sent + overdue). open/sent exclude overdue documents */
+                status?: string;
                 document_type?: "invoice" | "proforma" | "correction";
                 subject_id?: number;
+                /** @description Documents generated by this recurring invoice */
+                recurring_id?: number;
+                /** @description Total or remaining amount equals this value (minor units; manual payment matching) */
+                amount?: number;
                 /** @description issued_on ≥ since */
                 since?: string;
                 /** @description issued_on ≤ until */
@@ -6133,15 +6399,52 @@ export interface operations {
             };
         };
     };
+    "post-api-accounts-by-slug-invitations-by-id-resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invitation"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "get-api-accounts-by-slug-invoices": {
         parameters: {
             query?: {
                 page?: number;
                 per_page?: number;
-                /** @description Effective status: open/sent exclude overdue documents */
-                status?: "open" | "sent" | "overdue" | "paid" | "cancelled" | "uncollectible";
+                /** @description Effective status, comma-separated for several: open, sent, overdue, paid, cancelled, uncollectible, unpaid (= open + sent + overdue). open/sent exclude overdue documents */
+                status?: string;
                 document_type?: "invoice" | "proforma" | "correction";
                 subject_id?: number;
+                /** @description Documents generated by this recurring invoice */
+                recurring_id?: number;
+                /** @description Total or remaining amount equals this value (minor units; manual payment matching) */
+                amount?: number;
                 /** @description issued_on ≥ since */
                 since?: string;
                 /** @description issued_on ≤ until */
@@ -6165,7 +6468,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ListResponseInvoiceSummary"];
+                    "application/json": components["schemas"]["DocumentListInvoiceSummary"];
                 };
             };
             /** @description Error */
@@ -7060,6 +7363,12 @@ export interface operations {
                 lang?: "cs" | "en" | "sk" | "de";
                 /** @description Default invoice */
                 document_type?: "invoice" | "proforma" | "correction";
+                /** @description Unsaved pdf_accent to preview */
+                accent?: string;
+                /** @description Unsaved pdf_show_qr to preview */
+                show_qr?: "true" | "false";
+                /** @description Unsaved pdf_footer to preview */
+                footer?: string;
             };
             header?: never;
             path: {
@@ -8786,6 +9095,15 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ErrorModel"];
                 };
             };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
         };
     };
     "post-api-auth-login": {
@@ -8886,7 +9204,9 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: never;
+            cookie?: {
+                nf_session?: string;
+            };
         };
         requestBody: {
             content: {
@@ -9276,6 +9596,40 @@ export interface operations {
                 };
                 content: {
                     "application/xml": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-public-invoice-logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Public token of the invoice */
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Logo image */
+            200: {
+                headers: {
+                    "Content-Disposition"?: string;
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
                 };
             };
             /** @description Error */

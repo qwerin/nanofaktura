@@ -43,7 +43,7 @@ type Template struct {
 	DueDays             *int           `json:"due_days,omitempty"`
 	Currency            string         `json:"currency" doc:"Empty = account default"`
 	ExchangeRate        string         `json:"exchange_rate" doc:"Empty = 1"`
-	Language            string         `json:"language" doc:"cs|en; empty = account default"`
+	Language            string         `json:"language" doc:"cs|en|sk|de; empty = account default"`
 	PaymentMethod       string         `json:"payment_method" doc:"Empty = account default"`
 	CustomPaymentMethod string         `json:"custom_payment_method"`
 	BankAccountID       *uint          `json:"bank_account_id,omitempty"`
@@ -77,7 +77,7 @@ type TemplateCreate struct {
 	DueDays             *int                `json:"due_days,omitempty" minimum:"0" maximum:"365"`
 	Currency            string              `json:"currency,omitempty" pattern:"^[A-Z]{3}$"`
 	ExchangeRate        string              `json:"exchange_rate,omitempty" pattern:"^[0-9]{1,6}([.][0-9]{1,6})?$"`
-	Language            string              `json:"language,omitempty" enum:"cs,en"`
+	Language            string              `json:"language,omitempty" enum:"cs,en,sk,de"`
 	PaymentMethod       string              `json:"payment_method,omitempty" enum:"bank,cash,card,cod,paypal,custom"`
 	CustomPaymentMethod string              `json:"custom_payment_method,omitempty" maxLength:"100"`
 	BankAccountID       *uint               `json:"bank_account_id,omitempty"`
@@ -100,7 +100,7 @@ type TemplatePatch struct {
 	DueDays             *int                `json:"due_days,omitempty" minimum:"0" maximum:"365"`
 	Currency            *string             `json:"currency,omitempty" pattern:"^([A-Z]{3})?$" doc:"\"\" = account default"`
 	ExchangeRate        *string             `json:"exchange_rate,omitempty" pattern:"^([0-9]{1,6}([.][0-9]{1,6})?)?$"`
-	Language            *string             `json:"language,omitempty" enum:"cs,en,"`
+	Language            *string             `json:"language,omitempty" enum:"cs,en,sk,de,"`
 	PaymentMethod       *string             `json:"payment_method,omitempty" enum:"bank,cash,card,cod,paypal,custom,"`
 	CustomPaymentMethod *string             `json:"custom_payment_method,omitempty" maxLength:"100"`
 	BankAccountID       *uint               `json:"bank_account_id,omitempty" doc:"0 = default bank account of the currency"`

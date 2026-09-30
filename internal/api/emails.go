@@ -203,9 +203,10 @@ var documentNames = map[string]map[string][2]string{ // type → lang → {lower
 	model.DocCorrection: {"cs": {"opravný daňový doklad", "Opravný daňový doklad"}, "en": {"credit note", "Credit note"}},
 }
 
-// emailLang is the e-mail language of an invoice (cs|en).
+// emailLang is the e-mail language of an invoice (cs|en): Slovak documents
+// get Czech texts, German ones English.
 func emailLang(inv *model.Invoice) string {
-	if inv.Language == "en" {
+	if inv.Language == "en" || inv.Language == "de" {
 		return "en"
 	}
 	return "cs"
