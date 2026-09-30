@@ -155,6 +155,8 @@ func TestRoleMatrix(t *testing.T) {
 		{"POST", "/webhooks" + missing + "/test", nil, managers},
 		{"GET", "/webhooks" + missing + "/deliveries", nil, managers},
 		{"POST", "/webhooks" + missing + "/deliveries/1/redeliver", nil, managers},
+
+		{"GET", "/backup", nil, managers},
 	} {
 		for role, c := range clients {
 			res, body := c.do(op.method, c.acct(op.path), op.body)

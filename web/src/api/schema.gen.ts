@@ -22,6 +22,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/accounts/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a new account from a backup ZIP */
+        post: operations["post-api-accounts-import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/accounts/{slug}": {
         parameters: {
             query?: never;
@@ -94,6 +111,28 @@ export interface paths {
         };
         /** Get API accounts by slug attachments by ID download */
         get: operations["get-api-accounts-by-slug-attachments-by-id-download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a complete backup of the account (ZIP)
+         * @description Everything of the account except secrets (Fio tokens, webhook secrets, invitation/session/API tokens). Records an account.exported event.
+         *
+         *     Allowed roles: owner, admin.
+         */
+        get: operations["get-account-backup"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2980,6 +3019,22 @@ export interface components {
             /** @example ok */
             status: string;
         };
+        ImportResult: {
+            /** @description The new account (the caller is its owner) */
+            account: components["schemas"]["Account"];
+            warnings: components["schemas"]["ImportWarning"][];
+        };
+        ImportWarning: {
+            /** @enum {string} */
+            code: "recurring_deactivated" | "reminders_disabled" | "paid_thanks_disabled" | "webhooks_inactive" | "bank_tokens_removed" | "public_links_regenerated" | "members_not_imported" | "attachments_missing" | "orphans_skipped";
+            /**
+             * Format: int64
+             * @description Number of affected records
+             */
+            count?: number;
+            /** @description English description; clients translate by code */
+            message: string;
+        };
         IncomeTax: {
             /** @description Flat-rate expense options (paušál) with statutory caps */
             flat_rates: components["schemas"]["FlatRate"][];
@@ -4725,6 +4780,47 @@ export interface operations {
             };
         };
     };
+    "post-api-accounts-import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description Backup ZIP (nanofaktura-<slug>-<date>.zip)
+                     */
+                    file: string;
+                    /** @description Name of the new account; empty = name from the backup */
+                    name?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResult"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "get-api-accounts-by-slug": {
         parameters: {
             query?: never;
@@ -4966,6 +5062,38 @@ export interface operations {
                 };
                 content: {
                     "application/octet-stream": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-account-backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Backup ZIP */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
                 };
             };
             /** @description Error */

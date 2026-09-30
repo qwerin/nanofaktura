@@ -213,7 +213,8 @@ func (s *server) patchWebhook(ctx context.Context, in *struct {
 		m.Active = *p.Active
 	}
 	plain := ""
-	if p.RotateSecret {
+	// a webhook without secret (imported from a backup) gets one when activated
+	if p.RotateSecret || (m.Active && m.Secret == "") {
 		if plain, m.Secret, err = s.newWebhookSecret(); err != nil {
 			return nil, err
 		}

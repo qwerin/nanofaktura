@@ -82,7 +82,7 @@ func limitBody(api huma.API, max int64) func(huma.Context, func(huma.Context)) {
 	return func(ctx huma.Context, next func(huma.Context)) {
 		r, w := humachi.Unwrap(ctx)
 		if r.ContentLength > max {
-			_ = huma.WriteErr(api, ctx, http.StatusRequestEntityTooLarge, "file is larger than 20 MB")
+			_ = huma.WriteErr(api, ctx, http.StatusRequestEntityTooLarge, fmt.Sprintf("file is larger than %d MB", max>>20))
 			return
 		}
 		r.Body = http.MaxBytesReader(w, r.Body, max)

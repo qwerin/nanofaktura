@@ -26,7 +26,7 @@ import (
 // Event is what happened; Name is one of the constants below (Catalog).
 type Event struct {
 	Name        string
-	SubjectType string // invoice, expense, subject, price_item, bank_transaction, bank_account, recurring, webhook
+	SubjectType string // invoice, expense, subject, price_item, bank_transaction, bank_account, recurring, webhook, account
 	SubjectID   uint
 	Text        string         // Czech sentence for people
 	Data        map[string]any // key fields (JSON), also sent to webhooks
@@ -50,6 +50,7 @@ const (
 	SubjectBankAccount     = "bank_account"
 	SubjectRecurring       = "recurring"
 	SubjectWebhook         = "webhook"
+	SubjectAccount         = "account"
 )
 
 // Event names.
@@ -95,6 +96,8 @@ const (
 	BankUnmatched               = "bank.unmatched"
 	WebhookFailed               = "webhook.failed"
 	WebhookDisabled             = "webhook.disabled"
+	AccountExported             = "account.exported"
+	AccountImported             = "account.imported"
 )
 
 // CatalogEntry describes one event name (for UIs choosing webhook filters).
@@ -146,6 +149,8 @@ var Catalog = []CatalogEntry{
 	{BankUnmatched, "Párování bankovního pohybu zrušeno"},
 	{WebhookFailed, "Webhook se nepodařilo doručit"},
 	{WebhookDisabled, "Webhook automaticky vypnut"},
+	{AccountExported, "Záloha účtu stažena"},
+	{AccountImported, "Účet obnoven ze zálohy"},
 }
 
 // Record stores e and queues a delivery for every active webhook of the

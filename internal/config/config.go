@@ -32,6 +32,10 @@ type Config struct {
 	FioURL       string // NANOFAKTURA_FIO_URL: Fio banka API base URL override (tests)
 	SecretKey    string // NANOFAKTURA_SECRET_KEY: 32-byte key (base64/hex) encrypting stored secrets; empty = DataDir/secret.key
 
+	// ImportMaxMB (NANOFAKTURA_IMPORT_MAX_MB, default 512) limits the total
+	// uncompressed size of an imported account backup (and the upload).
+	ImportMaxMB int
+
 	// WebhooksAllowPrivate (NANOFAKTURA_WEBHOOKS_ALLOW_PRIVATE) lets webhooks call private,
 	// loopback and link-local addresses (SSRF protection off; LAN setups, tests).
 	WebhooksAllowPrivate bool
@@ -76,6 +80,9 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("NANOFAKTURA_SMTP_PORT: invalid port")
 	}
 	cfg.SMTPPort = port
+	if cfg.ImportMaxMB, err = strconv.Atoi(env("NANOFAKTURA_IMPORT_MAX_MB", "512")); err != nil || cfg.ImportMaxMB <= 0 {
+		return Config{}, fmt.Errorf("NANOFAKTURA_IMPORT_MAX_MB: invalid size")
+	}
 	if cfg.AllowSignup, err = envBool("NANOFAKTURA_ALLOW_SIGNUP"); err != nil {
 		return Config{}, err
 	}

@@ -171,6 +171,7 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 	s.registerTodos(account)
 	s.registerWebhooks(account)
 	s.registerSearch(account)
+	s.registerBackup(authed, account)
 
 	return router, api
 }
