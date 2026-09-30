@@ -29,7 +29,7 @@ export function SettingsPage({
         back={{ to: '/a/$slug/settings', params: { slug } }}
         actions={actions}
       />
-      <PageBody className={cn('md:pt-2', className)}>
+      <PageBody className={cn('md:mx-0 md:max-w-none md:px-0 md:pt-0', className)}>
         {description && <p className="mb-6 max-w-2xl text-sm text-muted-foreground">{description}</p>}
         {children}
       </PageBody>
@@ -48,12 +48,15 @@ export function FormSection({
   children: ReactNode
 }) {
   return (
-    <section className="grid gap-4 border-b py-6 first:pt-0 last:border-b-0 md:grid-cols-[minmax(0,14rem)_minmax(0,1fr)] md:gap-10 md:py-8">
-      <div>
-        <h2 className="text-base font-semibold tracking-tight">{title}</h2>
-        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+    // Dva sloupce podle skutečné šířky obsahu (container query), ne okna — vedle menu nastavení je obsah užší.
+    <section className="@container border-b py-6 first:pt-0 last:border-b-0 md:py-8">
+      <div className="grid gap-4 @3xl:grid-cols-[minmax(0,14rem)_minmax(0,1fr)] @3xl:gap-10">
+        <div>
+          <h2 className="text-base font-semibold tracking-tight">{title}</h2>
+          {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+        </div>
+        <div className="flex min-w-0 flex-col gap-5">{children}</div>
       </div>
-      <div className="flex min-w-0 flex-col gap-5">{children}</div>
     </section>
   )
 }

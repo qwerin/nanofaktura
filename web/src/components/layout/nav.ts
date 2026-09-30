@@ -41,18 +41,25 @@ export const mainNav = [
   ...moreNav,
 ] as const
 
+/** Skupiny sekcí nastavení (pořadí = pořadí v menu). */
+export const settingsGroups = [
+  { id: 'company', label: 'Firma a doklady' },
+  { id: 'team', label: 'Tým, integrace a data' },
+  { id: 'me', label: 'Můj účet' },
+] as const
+
 export const settingsNav = [
-  { label: 'Firma', to: '/a/$slug/settings/company', icon: BuildingIcon, description: 'Fakturační údaje a výchozí hodnoty' },
-  { label: 'Bankovní účty', to: '/a/$slug/settings/bank-accounts', icon: LandmarkIcon, description: 'Účty pro platby a QR kód' },
-  { label: 'Číselné řady', to: '/a/$slug/settings/number-formats', icon: HashIcon, description: 'Formát čísel dokladů' },
-  { label: 'Vzhled dokladů', to: '/a/$slug/settings/appearance', icon: PaletteIcon, description: 'Logo, podpis a náhled PDF' },
-  { label: 'Tým', to: '/a/$slug/settings/members', icon: UserCogIcon, description: 'Uživatelé účtu, role a pozvánky' },
-  { label: 'Můj profil', to: '/a/$slug/settings/profile', icon: UserIcon, description: 'Jméno a heslo' },
-  { label: 'Zabezpečení', to: '/a/$slug/settings/security', icon: ShieldCheckIcon, description: 'Dvoufázové ověření a bezpečnostní klíče' },
-  { label: 'API tokeny', to: '/a/$slug/settings/tokens', icon: KeyRoundIcon, description: 'Přístup pro integrace' },
-  { label: 'E-maily a upomínky', to: '/a/$slug/settings/emails', icon: MailIcon, description: 'Texty e-mailů, podpis, automatické upomínky' },
-  { label: 'Webhooky', to: '/a/$slug/settings/webhooks', icon: WebhookIcon, description: 'Oznámení o událostech do jiných aplikací' },
-  { label: 'Záloha a přenos', to: '/a/$slug/settings/backup', icon: ArchiveIcon, description: 'Stažení zálohy a obnova účtu' },
+  { label: 'Firma', to: '/a/$slug/settings/company', icon: BuildingIcon, description: 'Fakturační údaje a výchozí hodnoty', group: 'company' },
+  { label: 'Bankovní účty', to: '/a/$slug/settings/bank-accounts', icon: LandmarkIcon, description: 'Účty pro platby a QR kód', group: 'company' },
+  { label: 'Číselné řady', to: '/a/$slug/settings/number-formats', icon: HashIcon, description: 'Formát čísel dokladů', group: 'company' },
+  { label: 'Vzhled dokladů', to: '/a/$slug/settings/appearance', icon: PaletteIcon, description: 'Logo, podpis a náhled PDF', group: 'company' },
+  { label: 'E-maily a upomínky', to: '/a/$slug/settings/emails', icon: MailIcon, description: 'Texty e-mailů, podpis, automatické upomínky', group: 'company' },
+  { label: 'Tým', to: '/a/$slug/settings/members', icon: UserCogIcon, description: 'Uživatelé účtu, role a pozvánky', group: 'team' },
+  { label: 'API tokeny', to: '/a/$slug/settings/tokens', icon: KeyRoundIcon, description: 'Přístup pro integrace', group: 'team' },
+  { label: 'Webhooky', to: '/a/$slug/settings/webhooks', icon: WebhookIcon, description: 'Oznámení o událostech do jiných aplikací', group: 'team' },
+  { label: 'Záloha a přenos', to: '/a/$slug/settings/backup', icon: ArchiveIcon, description: 'Stažení zálohy a obnova účtu', group: 'team' },
+  { label: 'Můj profil', to: '/a/$slug/settings/profile', icon: UserIcon, description: 'Jméno a heslo', group: 'me' },
+  { label: 'Zabezpečení', to: '/a/$slug/settings/security', icon: ShieldCheckIcon, description: 'Dvoufázové ověření a bezpečnostní klíče', group: 'me' },
 ] as const
 
 /** Iniciály pro avatar účtu/uživatele: „Jan Novák“ → „JN“. */

@@ -17,6 +17,7 @@ Pravidla (viz CLAUDE.md → „Novinky“):
 
 - **Záloha celého účtu** — v *Nastavení → Záloha a přenos* stáhnete jedním tlačítkem ZIP se vším: kontakty, faktury, náklady, ceník, sklad, bankovní pohyby, šablony, historii i přílohy. Hesla a přístupové tokeny se do zálohy nikdy neukládají.
 - **Obnova ze zálohy** — při zakládání nového účtu zvolte „Obnovit ze zálohy“ a účet se přenese i na jinou instanci NanoFaktury. Číslování dokladů plynule navazuje; pravidelné faktury, webhooky a automatické upomínky zůstanou po obnově vypnuté, aby nic neodešlo dvakrát.
+- **Přehlednější nastavení** — sekce nastavení jsou na počítači v levém menu rozdělené do skupin *Firma a doklady*, *Tým, integrace a data* a *Můj účet*, takže je vidět všechny najednou.
 - **Sekce Novinky** — právě ji čtete. Tečka u položky *Novinky* v menu prozradí, že přibylo něco nového.
 
 ### Vyšší zabezpečení
