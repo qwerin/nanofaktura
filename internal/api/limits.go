@@ -29,6 +29,9 @@ type limits struct {
 	password   *ratelimit.Limiter // wrong current passwords per user
 	mail       *ratelimit.Limiter // user-triggered e-mails per account
 	export     *ratelimit.Limiter // heavy exports (PDF ZIP, backup) per account
+	resetMail  *ratelimit.Limiter // password reset requests per IP and per e-mail
+	resetLink  *ratelimit.Limiter // password reset link lookups/confirms per IP
+	twoFactor  *ratelimit.Limiter // wrong second factors (login, TOTP enable) per user
 }
 
 func newLimits(now func() time.Time) limits {
@@ -41,6 +44,9 @@ func newLimits(now func() time.Time) limits {
 		password:   ratelimit.New(5, 5, 15*time.Minute, now),
 		mail:       ratelimit.New(50, 50, time.Hour, now),
 		export:     ratelimit.New(10, 10, time.Hour, now),
+		resetMail:  ratelimit.New(5, 5, time.Hour, now),
+		resetLink:  ratelimit.New(20, 20, 10*time.Minute, now),
+		twoFactor:  ratelimit.New(10, 10, time.Hour, now),
 	}
 }
 

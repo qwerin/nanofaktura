@@ -55,6 +55,12 @@ func (s *server) registerPasswordReset(public huma.API) {
 // requestPasswordReset always answers 204 so it does not reveal registered
 // e-mails; mail errors are only logged for the same reason.
 func (s *server) requestPasswordReset(ctx context.Context, in *struct{ Body PasswordResetRequest }) (*NoContent, error) {
+	if err := s.rateLimit(s.limits.resetMail, "ip:"+clientIP(ctx)); err != nil {
+		return nil, err
+	}
+	if err := s.rateLimit(s.limits.resetMail, "email:"+normalizeEmail(in.Body.Email)); err != nil {
+		return nil, err
+	}
 	db := s.db.WithContext(ctx)
 	var user model.User
 	if err := db.Where("email = ?", normalizeEmail(in.Body.Email)).First(&user).Error; err != nil {
@@ -106,6 +112,9 @@ func (s *server) validPasswordReset(tx *gorm.DB, token string, lock bool) (*mode
 func (s *server) getPasswordReset(ctx context.Context, in *struct {
 	Token string `path:"token" maxLength:"100"`
 }) (*Out[PasswordResetInfo], error) {
+	if err := s.rateLimit(s.limits.resetLink, clientIP(ctx)); err != nil {
+		return nil, err
+	}
 	db := s.db.WithContext(ctx)
 	reset, err := s.validPasswordReset(db, in.Token, false)
 	if err != nil {
@@ -126,6 +135,12 @@ func (s *server) confirmPasswordReset(ctx context.Context, in *struct {
 	Token string `path:"token" maxLength:"100"`
 	Body  PasswordResetConfirm
 }) (*NoContent, error) {
+	if err := s.rateLimit(s.limits.resetLink, clientIP(ctx)); err != nil {
+		return nil, err
+	}
+	if err := checkPasswordBytes("password", in.Body.Password); err != nil {
+		return nil, err
+	}
 	hash, err := auth.HashPassword(in.Body.Password)
 	if err != nil {
 		return nil, err

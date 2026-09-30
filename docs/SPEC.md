@@ -281,7 +281,9 @@ unpaid_total, unpaid_count, overdue_total, overdue_count, revenue_total }` (jen 
 - **Limity pokusů** (v paměti procesu, 429 `rate_limited` + `Retry-After`): login 20/IP (pak 2/min) a 5 neúspěchů/e-mail za 15 min,
   registrace 5/IP (10/h), pozvánky (náhled/přijetí) 20/IP za 10 min, veřejné odkazy faktur 60/IP/min, špatné současné heslo 5/uživatel
   za 15 min, e-maily odeslané uživatelem (faktury, pozvánky) 50/účet/h a max. 10 příjemců, těžké exporty (ZIP PDF, záloha) 10/účet/h,
-  souběžně jeden na účet a dva na instanci (429 `export_in_progress`). IP klienta z `X-Forwarded-For` jen od `NANOFAKTURA_TRUSTED_PROXIES`.
+  souběžně jeden na účet a dva na instanci (429 `export_in_progress`). Obnova hesla (§3.1): žádost 5/IP i 5/e-mail za hodinu,
+  náhled/potvrzení odkazu 20/IP za 10 min. 2FA: kroky přihlášení se počítají do loginu per IP, špatný druhý faktor (login
+  i potvrzení TOTP) 10/uživatel za hodinu napříč výzvami; špatné heslo ve správě 2FA sdílí limit „současné heslo“. IP klienta z `X-Forwarded-For` jen od `NANOFAKTURA_TRUSTED_PROXIES`.
 - **Obrázky** (logo, razítko): PNG/JPEG max. 2 MB a 4000×4000 px (kontrola hlavičky, 422). Každý obrázek pro PDF se před vložením
   znovu ověří a překóduje (zmenšení na 1200 px, cache podle obsahu); nevyhovující se do PDF nevloží. Souběžné rendery PDF jsou omezené.
 - **Chyby 5xx** neobsahují interní příčinu (loguje se); validační chyby hesel/tokenů nevracejí zadanou hodnotu.

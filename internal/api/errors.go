@@ -126,7 +126,8 @@ func newErrorModel(status int, code, msg string, errs ...error) *ErrorModel {
 // isSecretField: validation errors of these inputs omit the submitted value.
 func isSecretField(location string) bool {
 	l := strings.ToLower(location)
-	return strings.Contains(l, "password") || strings.Contains(l, "token") || strings.Contains(l, "secret")
+	return strings.Contains(l, "password") || strings.Contains(l, "token") || strings.Contains(l, "secret") ||
+		l == "body.code" || strings.HasPrefix(l, "body.credential") // 2FA codes, WebAuthn responses
 }
 
 // apiError is an error with a specific machine-readable code, e.g.

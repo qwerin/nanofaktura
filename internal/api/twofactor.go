@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -188,11 +189,18 @@ func (s *server) checkCurrentPassword(ctx context.Context, password string) (*mo
 	if err := s.db.WithContext(ctx).First(&user, auth.UserFrom(ctx).ID).Error; err != nil {
 		return nil, dbErr(err, "user")
 	}
+	key := userKey(user.ID)
+	if err := s.rateBlocked(s.limits.password, key); err != nil {
+		return nil, err
+	}
 	if !auth.CheckPassword(user.PasswordHash, password) {
+		s.rateFail(s.limits.password, key)
 		return nil, wrongPassword()
 	}
 	return &user, nil
 }
+
+func userKey(id uint) string { return strconv.FormatUint(uint64(id), 10) }
 
 func (s *server) webAuthnRP() (*webauthn.WebAuthn, error) {
 	if s.webauthnErr != nil {
@@ -319,6 +327,9 @@ func (s *server) login(ctx context.Context, in *struct{ Body LoginRequest }) (*l
 func (s *server) finishLogin(ctx context.Context, token string, failErr error,
 	verify func(tx *gorm.DB, user *model.User, ch *model.AuthChallenge) (bool, error),
 ) (*meWithCookie, error) {
+	if err := s.rateLimit(s.limits.loginIP, clientIP(ctx)); err != nil {
+		return nil, err
+	}
 	var user model.User
 	var fail error
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -330,6 +341,12 @@ func (s *server) finishLogin(ctx context.Context, token string, failErr error,
 			fail = challengeExpired()
 			return nil
 		}
+		// wrong factors are limited per user too: new challenges (password
+		// known) must not give a TOTP guesser 5 fresh attempts each
+		if err := s.rateBlocked(s.limits.twoFactor, userKey(ch.UserID)); err != nil {
+			fail = err
+			return nil
+		}
 		if err := tx.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate}).First(&user, ch.UserID).Error; err != nil {
 			return dbErr(err, "user")
 		}
@@ -339,6 +356,7 @@ func (s *server) finishLogin(ctx context.Context, token string, failErr error,
 		}
 		if !ok {
 			fail = failErr
+			s.rateFail(s.limits.twoFactor, userKey(ch.UserID))
 			return failAttempt(tx, ch) // committed: the attempt counts
 		}
 		return dbErrOrNil(tx.Delete(ch).Error, "challenge")
@@ -378,6 +396,9 @@ func (s *server) loginWithCode(ctx context.Context, in *struct{ Body LoginCodeRe
 }
 
 func (s *server) loginWebAuthnOptions(ctx context.Context, in *struct{ Body ChallengeRequest }) (*Out[WebAuthnOptions], error) {
+	if err := s.rateLimit(s.limits.loginIP, clientIP(ctx)); err != nil {
+		return nil, err
+	}
 	rp, err := s.webAuthnRP()
 	if err != nil {
 		return nil, err
@@ -514,6 +535,10 @@ func (s *server) enableTOTP(ctx context.Context, in *struct {
 	Session string `cookie:"nf_session"`
 	Body    TOTPEnableRequest
 }) (*Out[RecoveryCodes], error) {
+	key := userKey(auth.UserFrom(ctx).ID)
+	if err := s.rateBlocked(s.limits.twoFactor, key); err != nil {
+		return nil, err
+	}
 	codes := []string{}
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var user model.User
@@ -532,6 +557,7 @@ func (s *server) enableTOTP(ctx context.Context, in *struct {
 		}
 		step, ok := auth.VerifyTOTP(secret, in.Body.Code, s.deps.Now(), 0)
 		if !ok {
+			s.rateFail(s.limits.twoFactor, key)
 			return invalidCode()
 		}
 		err = tx.Model(&user).Updates(map[string]any{
