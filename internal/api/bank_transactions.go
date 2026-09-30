@@ -60,6 +60,8 @@ type BankTransaction struct {
 	State            string            `json:"state" enum:"unmatched,suggested,matched,ignored"`
 	MatchedInvoiceID *uint             `json:"matched_invoice_id,omitempty"`
 	MatchedExpenseID *uint             `json:"matched_expense_id,omitempty"`
+	MatchedNumber    string            `json:"matched_number,omitempty" doc:"Number of the matched document (expense: the supplier's original number when set)"`
+	MatchedName      string            `json:"matched_name,omitempty" doc:"Client / supplier of the matched document"`
 	PaymentID        *uint             `json:"payment_id,omitempty" doc:"Payment (invoice) or expense payment created by the match"`
 	AutoMatched      bool              `json:"auto_matched"`
 	Ignored          bool              `json:"ignored"`
@@ -208,7 +210,9 @@ func (s *server) listBankTransactions(ctx context.Context, in *struct {
 		q = q.Where(`(LOWER(counterparty_name) LIKE ? ESCAPE '\' OR LOWER(counterparty_account) LIKE ? ESCAPE '\'`+
 			` OR LOWER(message) LIKE ? ESCAPE '\' OR variable_symbol LIKE ? ESCAPE '\')`, like, like, like, like)
 	}
-	return paginate(q, in.PageParams, toBankTransaction)
+	return listOut(q, in.PageParams, func(ms []model.BankTransaction) ([]BankTransaction, error) {
+		return bankTxsOut(ctx, s.db.WithContext(ctx), ms)
+	})
 }
 
 func (s *server) getBankTransaction(ctx context.Context, in *bankTxID) (*Out[BankTransaction], error) {
@@ -216,7 +220,7 @@ func (s *server) getBankTransaction(ctx context.Context, in *bankTxID) (*Out[Ban
 	if err := s.scoped(ctx).First(&m, in.ID).Error; err != nil {
 		return nil, dbErr(err, "bank transaction")
 	}
-	return &Out[BankTransaction]{Body: toBankTransaction(&m)}, nil
+	return bankTxOut(ctx, s.db.WithContext(ctx), &m)
 }
 
 // ---- import & sync ----
@@ -428,6 +432,9 @@ func (s *server) storeStatement(ctx context.Context, tx *gorm.DB, ba *model.Bank
 		}
 		return res, invalid("file", "the statement belongs to another bank account ("+acc+")")
 	}
+	if err := s.storeBalance(ctx, tx, ba, st); err != nil {
+		return res, err
+	}
 	var fresh []*model.BankTransaction
 	for _, t := range st.Transactions {
 		m := &model.BankTransaction{
@@ -468,6 +475,80 @@ func (s *server) storeStatement(ctx context.Context, tx *gorm.DB, ba *model.Bank
 	}
 	res.paid = mt.paid
 	return res, recordBankImport(ctx, tx, ba, res)
+}
+
+// storeBalance keeps the closing balance of st on the bank account unless a
+// newer one is already stored (statements may be imported out of order).
+func (s *server) storeBalance(ctx context.Context, tx *gorm.DB, ba *model.BankAccount, st *bankimport.Statement) error {
+	if st.ClosingBalance == nil {
+		return nil
+	}
+	on := ""
+	for _, t := range st.Transactions {
+		on = max(on, t.BookedOn)
+	}
+	if on == "" {
+		on = s.today()
+	}
+	if ba.Balance != nil && ba.BalanceOn > on {
+		return nil
+	}
+	ba.Balance, ba.BalanceOn = st.ClosingBalance, on
+	return dbErrOrNil(tx.Model(ba).Select("balance", "balance_on").Updates(ba).Error, "bank account")
+}
+
+// bankTxsOut converts transactions with the matched document's number and name.
+func bankTxsOut(ctx context.Context, db *gorm.DB, ms []model.BankTransaction) ([]BankTransaction, error) {
+	var invIDs, expIDs []uint
+	for _, m := range ms {
+		if m.MatchedInvoiceID != nil {
+			invIDs = append(invIDs, *m.MatchedInvoiceID)
+		}
+		if m.MatchedExpenseID != nil {
+			expIDs = append(expIDs, *m.MatchedExpenseID)
+		}
+	}
+	type doc struct{ number, name string }
+	invs, exps := map[uint]doc{}, map[uint]doc{}
+	if len(invIDs) > 0 {
+		var rows []model.Invoice
+		if err := db.Scopes(inAccount(ctx)).Select("id", "number", "client_name").Where("id IN ?", invIDs).Find(&rows).Error; err != nil {
+			return nil, dbErr(err, "invoices")
+		}
+		for _, r := range rows {
+			invs[r.ID] = doc{r.Number, r.ClientName}
+		}
+	}
+	if len(expIDs) > 0 {
+		var rows []model.Expense
+		if err := db.Scopes(inAccount(ctx)).Select("id", "number", "original_number", "supplier_name").Where("id IN ?", expIDs).Find(&rows).Error; err != nil {
+			return nil, dbErr(err, "expenses")
+		}
+		for _, r := range rows {
+			exps[r.ID] = doc{defaultStr(r.OriginalNumber, r.Number), r.SupplierName}
+		}
+	}
+	out := make([]BankTransaction, len(ms))
+	for i := range ms {
+		out[i] = toBankTransaction(&ms[i])
+		var d doc
+		switch {
+		case ms[i].MatchedInvoiceID != nil:
+			d = invs[*ms[i].MatchedInvoiceID]
+		case ms[i].MatchedExpenseID != nil:
+			d = exps[*ms[i].MatchedExpenseID]
+		}
+		out[i].MatchedNumber, out[i].MatchedName = d.number, d.name
+	}
+	return out, nil
+}
+
+func bankTxOut(ctx context.Context, db *gorm.DB, m *model.BankTransaction) (*Out[BankTransaction], error) {
+	out, err := bankTxsOut(ctx, db, []model.BankTransaction{*m})
+	if err != nil {
+		return nil, err
+	}
+	return &Out[BankTransaction]{Body: out[0]}, nil
 }
 
 // ---- matching ----
@@ -688,7 +769,7 @@ func (s *server) mutateBankTx(ctx context.Context, id uint, fn func(tx *gorm.DB,
 	if err != nil {
 		return nil, err
 	}
-	return &Out[BankTransaction]{Body: toBankTransaction(&m)}, nil
+	return bankTxOut(ctx, s.db.WithContext(ctx), &m)
 }
 
 func (s *server) matchBankTransaction(ctx context.Context, in *struct {

@@ -31,6 +31,9 @@ type BankAccount struct {
 	SyncFrom     string     `json:"sync_from" doc:"First day of the initial sync (YYYY-MM-DD); empty = 30 days back"`
 	LastSyncedAt *time.Time `json:"last_synced_at,omitempty"`
 
+	Balance   *int64 `json:"balance,omitempty" doc:"Closing balance of the newest imported statement that carries one (minor units); omitted when unknown"`
+	BalanceOn string `json:"balance_on,omitempty" doc:"Date of balance (last booking day of that statement)"`
+
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -67,6 +70,7 @@ func toBankAccount(m *model.BankAccount) BankAccount {
 	return BankAccount{ID: m.ID, Name: m.Name, Currency: m.Currency, Number: m.Number, IBAN: m.IBAN,
 		SwiftBIC: m.SwiftBIC, IsDefault: m.IsDefault, SyncProvider: defaultStr(m.SyncProvider, model.SyncNone),
 		HasFioToken: m.FioToken != "", SyncFrom: m.SyncFrom, LastSyncedAt: m.LastSyncedAt,
+		Balance: m.Balance, BalanceOn: m.BalanceOn,
 		CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt}
 }
 

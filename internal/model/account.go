@@ -59,6 +59,11 @@ type BankAccount struct {
 	SyncFrom     string // YYYY-MM-DD: first day of the initial sync ("" = 30 days back)
 	LastSyncedAt *time.Time
 
+	// Balance is the closing balance of the newest imported statement that
+	// carries one (minor units), as of BalanceOn (its last booking day).
+	Balance   *int64
+	BalanceOn string
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

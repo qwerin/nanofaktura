@@ -197,8 +197,17 @@ func TestBankImportAndMatching(t *testing.T) {
 		tx1.PaymentID == nil || tx1.Amount != 1210000 || tx1.CounterpartyAccount != "123456789/0100" || tx1.VariableSymbol != "2026001" {
 		t.Fatalf("tx1: %+v", tx1)
 	}
-	if tx3 := txByExternal(a, "26543210003"); tx3.MatchedExpenseID == nil || *tx3.MatchedExpenseID != exp.ID {
+	if tx1.MatchedNumber != inv.Number || tx1.MatchedName != "Žluťoučký kůň s.r.o." {
+		t.Fatalf("tx1 matched doc: %q %q", tx1.MatchedNumber, tx1.MatchedName)
+	}
+	if tx3 := txByExternal(a, "26543210003"); tx3.MatchedExpenseID == nil || *tx3.MatchedExpenseID != exp.ID ||
+		tx3.MatchedNumber != exp.Number || tx3.MatchedName != "Jan Novák" {
 		t.Fatalf("tx3: %+v", tx3)
+	}
+	// the statement's closing balance is kept on the bank account
+	if ba := doJSON[api.BankAccount](a, http.StatusOK, "GET", fmt.Sprintf("%s/%d", a.acct("/bank-accounts"), bank.ID), nil); ba.Balance == nil ||
+		*ba.Balance != 1025432100 || ba.BalanceOn != "2026-09-25" {
+		t.Fatalf("balance: %+v", ba)
 	}
 
 	// re-import: everything is a duplicate, nothing paid twice
