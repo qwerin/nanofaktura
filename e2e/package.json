@@ -1,0 +1,20 @@
+{
+  "name": "nanofaktura-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "install-browsers": "playwright install --with-deps chromium",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/mailparser": "^3.9.0",
+    "@types/node": "^26.6.3",
+    "@types/smtp-server": "^3.5.13",
+    "mailparser": "^3.9.32",
+    "otplib": "^13.5.0",
+    "smtp-server": "^3.19.16",
+    "typescript": "^7.0.2"
+  }
+}
