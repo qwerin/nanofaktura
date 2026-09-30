@@ -51,6 +51,7 @@ globalThis.IntersectionObserver ??= IntersectionObserverStub as unknown as typeo
 window.scrollTo = () => {}
 Element.prototype.scrollIntoView ??= function () {}
 Element.prototype.hasPointerCapture ??= () => false
+Element.prototype.setPointerCapture ??= () => {}
 Element.prototype.releasePointerCapture ??= () => {}
 if (!window.PointerEvent) {
   // Base UI používá PointerEvent; jsdom ho nemá.
