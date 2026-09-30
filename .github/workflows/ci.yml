@@ -16,7 +16,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.26"
+          go-version-file: go.mod
 
       - name: Vet
         run: go vet ./...
@@ -25,6 +25,9 @@ jobs:
         run: go test ./... -count=1
         env:
           CGO_ENABLED: "0"
+
+      - name: Vulnerability check
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
   test-frontend:
     name: TypeScript typecheck
