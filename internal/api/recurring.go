@@ -329,6 +329,10 @@ func (s *server) issueRecurring(ctx context.Context, id uint, today string, forc
 		if err != nil {
 			return err
 		}
+		m.RecurringID = &r.ID
+		if err := tx.Model(m).Update("recurring_id", r.ID).Error; err != nil {
+			return dbErr(err, "invoice")
+		}
 		next, err := billing.AddMonths(r.NextOccurrenceOn, r.MonthsPeriod, r.AnchorDay())
 		if err != nil {
 			return huma.Error500InternalServerError("invalid next_occurrence_on", err)

@@ -15,6 +15,7 @@ type Invoice struct {
 	Status         string `gorm:"not null;index"`
 	SubjectID      uint   `gorm:"not null;index"`
 	RelatedID      *uint  `gorm:"index"`
+	RecurringID    *uint  `gorm:"index"` // the recurring invoice that generated it
 	PublicToken    string `gorm:"size:64;uniqueIndex"` // random, for the public client link
 
 	ClientName           string

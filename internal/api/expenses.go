@@ -286,11 +286,19 @@ type expenseID struct {
 func (s *server) listExpenses(ctx context.Context, in *struct {
 	PageParams
 	ExpenseFilter
-}) (*Out[ListResponse[ExpenseSummary]], error) {
+}) (*Out[DocumentList[ExpenseSummary]], error) {
 	today := s.today()
-	return paginate(in.ExpenseFilter.query(s.scoped(ctx), today), in.PageParams, func(m *model.Expense) ExpenseSummary {
+	page, err := paginate(in.ExpenseFilter.query(s.scoped(ctx), today), in.PageParams, func(m *model.Expense) ExpenseSummary {
 		return toExpenseSummary(m, today)
 	})
+	if err != nil {
+		return nil, err
+	}
+	sums, err := currencySums(in.ExpenseFilter.where(s.scoped(ctx), today))
+	if err != nil {
+		return nil, err
+	}
+	return &Out[DocumentList[ExpenseSummary]]{Body: DocumentList[ExpenseSummary]{ListResponse: page.Body, Sums: sums}}, nil
 }
 
 func (s *server) expenseCategories(ctx context.Context, in *struct {

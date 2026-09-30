@@ -34,6 +34,7 @@ type InvoiceSummary struct {
 	Status         string `json:"status" enum:"open,sent,overdue,paid,cancelled,uncollectible" doc:"Stored status, or overdue when open/sent and due_on < today"`
 	SubjectID      uint   `json:"subject_id"`
 	RelatedID      *uint  `json:"related_id,omitempty" doc:"Correction → corrected invoice, final invoice → proforma"`
+	RecurringID    *uint  `json:"recurring_id,omitempty" doc:"The recurring invoice that generated this document"`
 	PublicToken    string `json:"public_token" doc:"Token of the public client link"`
 
 	ClientName           string `json:"client_name"`
@@ -163,7 +164,7 @@ func toInvoiceSummary(m *model.Invoice, today string) InvoiceSummary {
 	}
 	return InvoiceSummary{
 		ID: m.ID, DocumentType: m.DocumentType, Number: m.Number, VariableSymbol: m.VariableSymbol,
-		Status: billing.EffectiveStatus(m.Status, m.DueOn, today), SubjectID: m.SubjectID, RelatedID: m.RelatedID,
+		Status: billing.EffectiveStatus(m.Status, m.DueOn, today), SubjectID: m.SubjectID, RelatedID: m.RelatedID, RecurringID: m.RecurringID,
 		PublicToken: m.PublicToken,
 
 		ClientName: m.ClientName, ClientFullName: m.ClientFullName, ClientRegistrationNo: m.ClientRegistrationNo,
@@ -366,11 +367,19 @@ func (s *server) today() string { return billing.Today(s.deps.Now()) }
 func (s *server) listInvoices(ctx context.Context, in *struct {
 	PageParams
 	InvoiceFilter
-}) (*Out[ListResponse[InvoiceSummary]], error) {
+}) (*Out[DocumentList[InvoiceSummary]], error) {
 	today := s.today()
-	return paginate(in.InvoiceFilter.query(s.scoped(ctx), today), in.PageParams, func(m *model.Invoice) InvoiceSummary {
+	page, err := paginate(in.InvoiceFilter.query(s.scoped(ctx), today), in.PageParams, func(m *model.Invoice) InvoiceSummary {
 		return toInvoiceSummary(m, today)
 	})
+	if err != nil {
+		return nil, err
+	}
+	sums, err := currencySums(in.InvoiceFilter.where(s.scoped(ctx), today))
+	if err != nil {
+		return nil, err
+	}
+	return &Out[DocumentList[InvoiceSummary]]{Body: DocumentList[InvoiceSummary]{ListResponse: page.Body, Sums: sums}}, nil
 }
 
 // loadInvoice loads an invoice of the current account with ordered lines and payments.
