@@ -39,6 +39,9 @@ export const defaultHandlers: RequestHandler[] = [
   http.get(`${API}/api/auth/status`, () => HttpResponse.json({ has_users: true, signup_allowed: true })),
   http.get(`${API}/api/accounts/:slug`, () => HttpResponse.json(state.account)),
   http.get(`${API}/api/accounts/:slug/todos`, () => HttpResponse.json(emptyList())),
+  // Vše ostatní, co test nenamockoval (vedlejší widgety stránek), odpoví 404 → komponenty ukážou prázdný stav
+  // a test neběží proti síti. Handlery z `server.use(...)` mají vždy přednost.
+  http.all(`${API}/api/*`, () => problem(404, 'not mocked in test')),
 ]
 
 export const server = setupServer(...defaultHandlers)

@@ -4,7 +4,7 @@ import '@/lib/zod-config'
 import { cleanup } from '@testing-library/react'
 import { afterAll, afterEach, beforeEach, vi } from 'vitest'
 import { resetState, server } from './server'
-import { resetViewport, viewport } from './viewport'
+import { applyViewport, resetViewport, viewport } from './viewport'
 
 // msw musí nahradit fetch dřív, než se naimportuje api klient (openapi-fetch si fetch drží).
 server.listen({ onUnhandledRequest: 'warn' })
@@ -62,6 +62,7 @@ if (!window.PointerEvent) {
 }
 
 beforeEach(() => {
+  applyViewport()
   localStorage.clear()
 })
 
