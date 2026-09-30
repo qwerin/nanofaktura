@@ -196,6 +196,16 @@ func TestEmailSettingsAndPreview(t *testing.T) {
 	}
 	res, body := a.do("GET", a.acct("/email-templates/preview?kind=nope"), nil)
 	assertError(t, res, body, http.StatusUnprocessableEntity, "kind")
+
+	// unsaved texts override the stored template
+	p = doJSON[api.EmailPreview](a, http.StatusOK, "GET", a.acct("/email-templates/preview?subject=Test+%7Bnumber%7D&body=Ahoj+%7Baccount_name%7D"), nil)
+	if p.Subject != "Test 2026-0001" || !strings.HasPrefix(p.Body, "Ahoj Firma A") {
+		t.Fatalf("override preview: %+v", p)
+	}
+	defs := doJSON[api.EmailTemplateDefaults](a, http.StatusOK, "GET", a.acct("/email-templates/defaults"), nil)
+	if len(defs.Items) != 6 || defs.Items[0].Kind != "invoice" || defs.Items[0].Lang != "cs" || !strings.Contains(defs.Items[0].Subject, "{number}") {
+		t.Fatalf("defaults: %+v", defs)
+	}
 }
 
 func uintStr(v uint) string { return strconv.FormatUint(uint64(v), 10) }

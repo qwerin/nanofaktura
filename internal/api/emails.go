@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	netmail "net/mail"
 	"slices"
 	"strconv"
@@ -343,6 +344,30 @@ func (s *server) registerEmails(g huma.API) {
 	huma.Post(g, "/invoices/{id}/send", s.sendInvoice, auth.ForEditors)
 	huma.Get(g, "/invoices/{id}/emails", s.listInvoiceEmails)
 	huma.Get(g, "/email-templates/preview", s.previewEmail)
+	huma.Get(g, "/email-templates/defaults", s.defaultEmailTemplatesList)
+}
+
+// EmailTemplateDefault is a built-in e-mail text ("Obnovit výchozí").
+type EmailTemplateDefault struct {
+	Kind    string `json:"kind" enum:"invoice,reminder,paid_thanks"`
+	Lang    string `json:"lang" enum:"cs,en"`
+	Subject string `json:"subject"`
+	Body    string `json:"body"`
+}
+
+type EmailTemplateDefaults struct {
+	Items []EmailTemplateDefault `json:"items" nullable:"false"`
+}
+
+func (s *server) defaultEmailTemplatesList(_ context.Context, _ *struct{}) (*Out[EmailTemplateDefaults], error) {
+	out := EmailTemplateDefaults{Items: []EmailTemplateDefault{}}
+	for _, kind := range emailKinds {
+		for _, lang := range emailLangs {
+			t := defaultEmailTemplates[kind+":"+lang]
+			out.Items = append(out.Items, EmailTemplateDefault{Kind: kind, Lang: lang, Subject: t.Subject, Body: t.Body})
+		}
+	}
+	return &Out[EmailTemplateDefaults]{Body: out}, nil
 }
 
 func (s *server) sendInvoice(ctx context.Context, in *struct {
@@ -400,6 +425,8 @@ func (s *server) previewEmail(ctx context.Context, in *struct {
 	Kind      string `query:"kind" enum:"invoice,reminder,paid_thanks" default:"invoice"`
 	Lang      string `query:"lang" enum:"cs,en" doc:"Default: the invoice language (or the account default)"`
 	InvoiceID uint   `query:"invoice_id" doc:"Render with this invoice; omitted = sample data"`
+	Subject   string `query:"subject" maxLength:"500" doc:"Unsaved subject template to render instead of the stored one"`
+	BodyText  string `query:"body" maxLength:"10000" doc:"Unsaved body template to render instead of the stored one"`
 }) (*Out[EmailPreview], error) {
 	acc := auth.AccountFrom(ctx)
 	db := s.db.WithContext(ctx)
@@ -416,6 +443,24 @@ func (s *server) previewEmail(ctx context.Context, in *struct {
 	}
 	if in.Lang != "" {
 		inv.Language = in.Lang
+	}
+	if in.Subject != "" || in.BodyText != "" {
+		// render unsaved texts as if they were the stored template (incl. signature)
+		cp := *acc
+		cp.EmailTemplates = maps.Clone(acc.EmailTemplates)
+		if cp.EmailTemplates == nil {
+			cp.EmailTemplates = map[string]model.MailTemplate{}
+		}
+		key := in.Kind + ":" + emailLang(inv)
+		t := cp.EmailTemplates[key]
+		if in.Subject != "" {
+			t.Subject = in.Subject
+		}
+		if in.BodyText != "" {
+			t.Body = in.BodyText
+		}
+		cp.EmailTemplates[key] = t
+		acc = &cp
 	}
 	subj, body := s.renderEmail(acc, inv, in.Kind, nil, nil, s.today())
 	return &Out[EmailPreview]{Body: EmailPreview{
