@@ -130,8 +130,18 @@ func TestInvitations(t *testing.T) {
 		t.Fatalf("mail: %+v", msg)
 	}
 	pending := doJSON[api.ListResponse[api.Invitation]](owner, http.StatusOK, "GET", owner.acct("/invitations"), nil)
-	if pending.Total != 1 || pending.Items[0].ID != inv.ID {
+	if pending.Total != 1 || pending.Items[0].ID != inv.ID || pending.Items[0].InviteURL != "http://localhost:8080/invite/"+token ||
+		pending.Items[0].InvitedByName != "Test owner@example.cz" || inv.InviteURL != pending.Items[0].InviteURL {
 		t.Fatalf("pending: %+v", pending)
+	}
+	// resend: same link, validity extended, another e-mail
+	ts.now = ts.now.Add(time.Hour)
+	re := doJSON[api.Invitation](owner, http.StatusOK, "POST", fmt.Sprintf("%s/%d/resend", owner.acct("/invitations"), inv.ID), nil)
+	if re.InviteURL != inv.InviteURL || !re.ExpiresAt.Equal(ts.now.Add(7*24*time.Hour)) || len(ts.mail.Messages()) != 2 {
+		t.Fatalf("resend: %+v", re)
+	}
+	if m, _ := ts.mail.Last(); !strings.Contains(m.Text, token) {
+		t.Fatalf("resent mail: %s", m.Text)
 	}
 
 	info := doJSON[api.InvitationInfo](anon, http.StatusOK, "GET", "/api/invitations/"+token, nil)

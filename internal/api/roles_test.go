@@ -72,6 +72,7 @@ func TestRoleMatrix(t *testing.T) {
 		{"POST", "/members/invite", map[string]any{}, managers},
 		{"GET", "/invitations", nil, managers},
 		{"DELETE", "/invitations" + missing, nil, managers},
+		{"POST", "/invitations" + missing + "/resend", nil, managers},
 
 		{"GET", "/price-items", nil, all},
 		{"GET", "/price-items" + missing, nil, all},

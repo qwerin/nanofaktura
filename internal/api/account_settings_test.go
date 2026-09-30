@@ -41,6 +41,23 @@ func TestAccountAppearanceOnboardingCapabilities(t *testing.T) {
 		t.Fatalf("preview %q", b[:10])
 	}
 
+	// public page: logo URL only with a logo; the logo is served by token
+	pubURL := "/api/public/invoices/" + inv.PublicToken
+	if pub := doJSON[api.PublicInvoice](ts.anon(), http.StatusOK, "GET", pubURL, nil); pub.LogoURL != "" {
+		t.Fatalf("logo url without logo %q", pub.LogoURL)
+	}
+	res, body = ts.anon().do("GET", pubURL+"/logo", nil)
+	assertCode(t, res, body, http.StatusNotFound, "not_found")
+	logo := uploadOK(a, "account", 0, "logo.png", pngData)
+	a.mustDo(http.StatusOK, "PATCH", a.acct(""), map[string]any{"logo_attachment_id": logo.ID})
+	if pub := doJSON[api.PublicInvoice](ts.anon(), http.StatusOK, "GET", pubURL, nil); pub.LogoURL != pubURL+"/logo" {
+		t.Fatalf("logo url %q", pub.LogoURL)
+	}
+	res, body = ts.anon().do("GET", pubURL+"/logo", nil)
+	if res.StatusCode != http.StatusOK || res.Header.Get("Content-Type") != "image/png" || !bytes.Equal(body, pngData) {
+		t.Fatalf("logo %d %v", res.StatusCode, res.Header)
+	}
+
 	acct := ts.memberOf(a, "u@example.cz", "accountant")
 	if got := doJSON[api.Account](acct, http.StatusOK, "GET", acct.acct(""), nil).Capabilities; got !=
 		(api.Capabilities{ViewReports: true, Export: true}) {

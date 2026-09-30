@@ -10,7 +10,8 @@ type Invitation struct {
 	Email      string    `gorm:"not null"` // lowercase
 	Role       string    `gorm:"not null"`
 	TokenHash  string    `gorm:"not null;uniqueIndex"` // hex sha256 of the token in the link
-	InvitedBy  uint      `gorm:"not null"`             // user ID
+	TokenEnc   string    // the token encrypted with secret.Box (link shown to managers, resend)
+	InvitedBy  uint      `gorm:"not null"` // user ID
 	ExpiresAt  time.Time `gorm:"not null"`
 	AcceptedAt *time.Time
 	CreatedAt  time.Time

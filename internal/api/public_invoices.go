@@ -91,6 +91,8 @@ type PublicInvoice struct {
 	Total           int64 `json:"total"`
 	PaidAmount      int64 `json:"paid_amount"`
 	RemainingAmount int64 `json:"remaining_amount"`
+
+	LogoURL string `json:"logo_url,omitempty" doc:"Supplier logo (GET /api/public/invoices/{token}/logo); omitted without a logo"`
 }
 
 type publicTokenInput struct {
@@ -110,6 +112,10 @@ func (s *server) registerPublicInvoices(public, account huma.API) {
 		OperationID: "get-public-invoice-isdoc", Method: http.MethodGet, Path: "/api/public/invoices/{token}/isdoc",
 		Summary: "ISDOC of a public invoice", Tags: []string{"Public"}, Responses: fileResponses("application/xml", "ISDOC document"),
 	}, s.getPublicInvoiceISDOC)
+	huma.Register(public, huma.Operation{
+		OperationID: "get-public-invoice-logo", Method: http.MethodGet, Path: "/api/public/invoices/{token}/logo",
+		Summary: "Supplier logo of a public invoice", Tags: []string{"Public"}, Responses: fileResponses("image/png", "Logo image"),
+	}, s.getPublicInvoiceLogo)
 	huma.Register(account, huma.Operation{
 		OperationID: "get-pdf-preview", Method: http.MethodGet, Path: "/pdf-preview",
 		Summary: "PDF template preview with sample data", Tags: []string{"Accounts"}, Responses: fileResponses("application/pdf", "PDF document"),
@@ -197,6 +203,9 @@ func (s *server) getPublicInvoice(ctx context.Context, in *publicTokenInput) (*O
 	if m.YourVatMode == model.VatModePayer {
 		out.VatRecap = toInvoice(m, s.today()).VatRecap
 	}
+	if acc.LogoAttachmentID != nil {
+		out.LogoURL = "/api/public/invoices/" + in.Token + "/logo"
+	}
 	return &Out[PublicInvoice]{Body: out}, nil
 }
 
@@ -278,4 +287,24 @@ func (s *server) getPDFPreview(ctx context.Context, in *struct {
 		return nil, huma.Error500InternalServerError("pdf rendering failed", err)
 	}
 	return &FileOutput{ContentType: "application/pdf", ContentDisposition: `inline; filename="nahled.pdf"`, Body: b}, nil
+}
+
+func (s *server) getPublicInvoiceLogo(ctx context.Context, in *publicTokenInput) (*FileOutput, error) {
+	ctx, _, err := s.publicInvoice(ctx, in.Token)
+	if err != nil {
+		return nil, err
+	}
+	acc := auth.AccountFrom(ctx)
+	if acc.LogoAttachmentID == nil {
+		return nil, notFound("logo")
+	}
+	att, err := s.attachment(ctx, *acc.LogoAttachmentID)
+	if err != nil {
+		return nil, notFound("logo")
+	}
+	b := s.attachmentBytes(ctx, acc.LogoAttachmentID)
+	if b == nil {
+		return nil, notFound("logo")
+	}
+	return &FileOutput{ContentType: att.ContentType, ContentDisposition: "inline", Body: b}, nil
 }

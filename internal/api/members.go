@@ -36,12 +36,14 @@ type InvitationCreate struct {
 
 // Invitation is a pending invitation as seen by account managers.
 type Invitation struct {
-	ID        uint      `json:"id"`
-	Email     string    `json:"email"`
-	Role      string    `json:"role" enum:"owner,admin,accountant,member"`
-	InvitedBy uint      `json:"invited_by" doc:"User ID of the inviter"`
-	ExpiresAt time.Time `json:"expires_at"`
-	CreatedAt time.Time `json:"created_at"`
+	ID            uint      `json:"id"`
+	Email         string    `json:"email"`
+	Role          string    `json:"role" enum:"owner,admin,accountant,member"`
+	InvitedBy     uint      `json:"invited_by" doc:"User ID of the inviter"`
+	InvitedByName string    `json:"invited_by_name" doc:"Name of the inviter (empty when the user no longer exists)"`
+	InviteURL     string    `json:"invite_url" doc:"The invitation link (for copying); empty for invitations created before links were stored"`
+	ExpiresAt     time.Time `json:"expires_at"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 // InvitationInfo is the public view of an invitation (by its link token).
@@ -55,6 +57,95 @@ type InvitationInfo struct {
 
 func toInvitation(i *model.Invitation) Invitation {
 	return Invitation{ID: i.ID, Email: i.Email, Role: i.Role, InvitedBy: i.InvitedBy, ExpiresAt: i.ExpiresAt, CreatedAt: i.CreatedAt}
+}
+
+// invitationOut adds the inviter's name and the link (decrypted token).
+func (s *server) invitationOut(ctx context.Context, rows []model.Invitation) ([]Invitation, error) {
+	ids := make([]uint, 0, len(rows))
+	for _, r := range rows {
+		ids = append(ids, r.InvitedBy)
+	}
+	names := map[uint]string{}
+	if len(ids) > 0 {
+		var users []model.User
+		if err := s.db.WithContext(ctx).Select("id", "name").Where("id IN ?", ids).Find(&users).Error; err != nil {
+			return nil, dbErr(err, "users")
+		}
+		for _, u := range users {
+			names[u.ID] = u.Name
+		}
+	}
+	out := make([]Invitation, len(rows))
+	for i := range rows {
+		out[i] = toInvitation(&rows[i])
+		out[i].InvitedByName = names[rows[i].InvitedBy]
+		if plain, err := s.invitationToken(&rows[i]); err == nil && plain != "" {
+			out[i].InviteURL = s.inviteLink(plain)
+		}
+	}
+	return out, nil
+}
+
+func (s *server) invitationToken(inv *model.Invitation) (string, error) {
+	if inv.TokenEnc == "" {
+		return "", nil
+	}
+	return s.deps.Secrets.Decrypt(inv.TokenEnc)
+}
+
+func (s *server) inviteLink(plain string) string { return s.publicURL() + "/invite/" + plain }
+
+// sendInvitation e-mails the invitation link.
+func (s *server) sendInvitation(ctx context.Context, inv *model.Invitation, plain, inviter string) error {
+	acc := auth.AccountFrom(ctx)
+	vars := map[string]string{
+		"inviter": inviter, "account_name": acc.Name, "role": roleLabels[inv.Role],
+		"link": s.inviteLink(plain), "expires_on": inv.ExpiresAt.Format("2. 1. 2006"),
+	}
+	msg := mail.Message{To: []string{inv.Email}, Subject: mail.Render(invitationSubject, vars), Text: mail.Render(invitationText, vars)}
+	if err := s.deps.Mailer.Send(ctx, msg); err != nil {
+		return huma.Error502BadGateway("failed to send the invitation e-mail", err)
+	}
+	return nil
+}
+
+// resendInvitation e-mails the same link again (the link stays valid) and
+// extends its validity by InvitationTTL. Invitations without a stored link
+// get a new one (the old link stops working).
+func (s *server) resendInvitation(ctx context.Context, in *struct {
+	ID uint `path:"id"`
+}) (*Out[Invitation], error) {
+	var inv model.Invitation
+	if err := s.scoped(ctx).Where("accepted_at IS NULL").First(&inv, in.ID).Error; err != nil {
+		return nil, dbErr(err, "invitation")
+	}
+	if err := canManageRole(ctx, inv.Role); err != nil {
+		return nil, err
+	}
+	plain, err := s.invitationToken(&inv)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("cannot read the invitation link", err)
+	}
+	if plain == "" {
+		var hash string
+		plain, hash = auth.NewSecret()
+		if inv.TokenEnc, err = s.deps.Secrets.Encrypt(plain); err != nil {
+			return nil, huma.Error500InternalServerError("cannot store the invitation link", err)
+		}
+		inv.TokenHash = hash
+	}
+	inv.ExpiresAt = s.deps.Now().Add(InvitationTTL)
+	if err := s.db.WithContext(ctx).Save(&inv).Error; err != nil {
+		return nil, dbErr(err, "invitation")
+	}
+	if err := s.sendInvitation(ctx, &inv, plain, auth.UserFrom(ctx).Name); err != nil {
+		return nil, err
+	}
+	out, err := s.invitationOut(ctx, []model.Invitation{inv})
+	if err != nil {
+		return nil, err
+	}
+	return &Out[Invitation]{Body: out[0]}, nil
 }
 
 // roleLabels are the Czech role names used in e-mails.
@@ -82,6 +173,7 @@ func (s *server) registerMembers(public, authed, account huma.API) {
 	huma.Post(account, "/members/invite", s.inviteMember, status(http.StatusCreated), auth.ForManagers)
 	huma.Get(account, "/invitations", s.listInvitations, auth.ForManagers)
 	huma.Delete(account, "/invitations/{id}", s.deleteInvitation, status(http.StatusNoContent), auth.ForManagers)
+	huma.Post(account, "/invitations/{id}/resend", s.resendInvitation, auth.ForManagers)
 
 	huma.Get(public, "/api/invitations/{token}", s.getInvitationInfo)
 	huma.Post(authed, "/api/invitations/{token}/accept", s.acceptInvitation)
@@ -218,11 +310,15 @@ func (s *server) inviteMember(ctx context.Context, in *struct{ Body InvitationCr
 	acc, user := auth.AccountFrom(ctx), auth.UserFrom(ctx)
 	email := normalizeEmail(in.Body.Email)
 	plain, hash := auth.NewSecret()
+	enc, err := s.deps.Secrets.Encrypt(plain)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("cannot store the invitation link", err)
+	}
 	inv := model.Invitation{
-		AccountID: acc.ID, Email: email, Role: in.Body.Role, TokenHash: hash,
+		AccountID: acc.ID, Email: email, Role: in.Body.Role, TokenHash: hash, TokenEnc: enc,
 		InvitedBy: user.ID, ExpiresAt: s.deps.Now().Add(InvitationTTL),
 	}
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var n int64
 		err := tx.Model(&model.Membership{}).Scopes(inAccount(ctx)).
 			Joins("JOIN users ON users.id = memberships.user_id").
@@ -244,21 +340,29 @@ func (s *server) inviteMember(ctx context.Context, in *struct{ Body InvitationCr
 		return nil, err
 	}
 
-	vars := map[string]string{
-		"inviter": user.Name, "account_name": acc.Name, "role": roleLabels[inv.Role],
-		"link": s.publicURL() + "/invite/" + plain, "expires_on": inv.ExpiresAt.Format("2. 1. 2006"),
-	}
-	msg := mail.Message{To: []string{email}, Subject: mail.Render(invitationSubject, vars), Text: mail.Render(invitationText, vars)}
-	if err := s.deps.Mailer.Send(ctx, msg); err != nil {
+	if err := s.sendInvitation(ctx, &inv, plain, user.Name); err != nil {
 		_ = s.db.WithContext(ctx).Delete(&inv).Error
-		return nil, huma.Error502BadGateway("failed to send the invitation e-mail", err)
+		return nil, err
 	}
-	return &Out[Invitation]{Body: toInvitation(&inv)}, nil
+	out, err := s.invitationOut(ctx, []model.Invitation{inv})
+	if err != nil {
+		return nil, err
+	}
+	return &Out[Invitation]{Body: out[0]}, nil
 }
 
 func (s *server) listInvitations(ctx context.Context, in *struct{ PageParams }) (*Out[ListResponse[Invitation]], error) {
 	q := s.scoped(ctx).Where("accepted_at IS NULL AND expires_at > ?", s.deps.Now()).Order("id DESC")
-	return paginate(q, in.PageParams, toInvitation)
+	page, err := paginate(q, in.PageParams, func(m *model.Invitation) model.Invitation { return *m })
+	if err != nil {
+		return nil, err
+	}
+	items, err := s.invitationOut(ctx, page.Body.Items)
+	if err != nil {
+		return nil, err
+	}
+	b := page.Body
+	return &Out[ListResponse[Invitation]]{Body: ListResponse[Invitation]{Items: items, Page: b.Page, PerPage: b.PerPage, Total: b.Total}}, nil
 }
 
 func (s *server) deleteInvitation(ctx context.Context, in *struct {
