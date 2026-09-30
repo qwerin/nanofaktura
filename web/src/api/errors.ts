@@ -87,6 +87,10 @@ export const codeMessages: Record<string, string> = {
   fio_token_rejected: 'Fio odmítlo API token (neplatný, prošlý nebo bez oprávnění). Zadejte nový.',
   fio_too_many_transactions: 'V období je příliš mnoho transakcí. Nastavte pozdější začátek stahování.',
   upstream_timeout: 'Externí služba neodpověděla včas, zkuste to znovu.',
+  unsupported_backup_version: 'Záloha pochází z novější verze NanoFaktury. Nejdřív aktualizujte tuto instanci.',
+  corrupt_backup: 'Soubor není platná záloha NanoFaktury nebo je poškozený.',
+  backup_too_large: 'Záloha je větší, než tato instance dovoluje importovat (NANOFAKTURA_IMPORT_MAX_MB).',
+  too_large: 'Soubor je příliš velký.',
 }
 
 const statusMessages: Record<number, string> = {

@@ -34,6 +34,7 @@ import { Route as ASlugReportsIndexRouteImport } from './routes/a/$slug/reports/
 import { Route as ASlugReportsVatRouteImport } from './routes/a/$slug/reports/vat'
 import { Route as ASlugSettingsIndexRouteImport } from './routes/a/$slug/settings/index'
 import { Route as ASlugSettingsAppearanceRouteImport } from './routes/a/$slug/settings/appearance'
+import { Route as ASlugSettingsBackupRouteImport } from './routes/a/$slug/settings/backup'
 import { Route as ASlugSettingsBankAccountsRouteImport } from './routes/a/$slug/settings/bank-accounts'
 import { Route as ASlugSettingsCompanyRouteImport } from './routes/a/$slug/settings/company'
 import { Route as ASlugSettingsEmailsRouteImport } from './routes/a/$slug/settings/emails'
@@ -182,6 +183,11 @@ const ASlugSettingsIndexRoute = ASlugSettingsIndexRouteImport.update({
 const ASlugSettingsAppearanceRoute = ASlugSettingsAppearanceRouteImport.update({
   id: '/appearance',
   path: '/appearance',
+  getParentRoute: () => ASlugSettingsRouteRoute,
+} as any)
+const ASlugSettingsBackupRoute = ASlugSettingsBackupRouteImport.update({
+  id: '/backup',
+  path: '/backup',
   getParentRoute: () => ASlugSettingsRouteRoute,
 } as any)
 const ASlugSettingsBankAccountsRoute =
@@ -336,6 +342,7 @@ export interface FileRoutesByFullPath {
   '/a/$slug/recurring/new': typeof ASlugRecurringNewRoute
   '/a/$slug/reports/vat': typeof ASlugReportsVatRoute
   '/a/$slug/settings/appearance': typeof ASlugSettingsAppearanceRoute
+  '/a/$slug/settings/backup': typeof ASlugSettingsBackupRoute
   '/a/$slug/settings/bank-accounts': typeof ASlugSettingsBankAccountsRoute
   '/a/$slug/settings/company': typeof ASlugSettingsCompanyRoute
   '/a/$slug/settings/emails': typeof ASlugSettingsEmailsRoute
@@ -384,6 +391,7 @@ export interface FileRoutesByTo {
   '/a/$slug/recurring/new': typeof ASlugRecurringNewRoute
   '/a/$slug/reports/vat': typeof ASlugReportsVatRoute
   '/a/$slug/settings/appearance': typeof ASlugSettingsAppearanceRoute
+  '/a/$slug/settings/backup': typeof ASlugSettingsBackupRoute
   '/a/$slug/settings/bank-accounts': typeof ASlugSettingsBankAccountsRoute
   '/a/$slug/settings/company': typeof ASlugSettingsCompanyRoute
   '/a/$slug/settings/emails': typeof ASlugSettingsEmailsRoute
@@ -436,6 +444,7 @@ export interface FileRoutesById {
   '/a/$slug/recurring/new': typeof ASlugRecurringNewRoute
   '/a/$slug/reports/vat': typeof ASlugReportsVatRoute
   '/a/$slug/settings/appearance': typeof ASlugSettingsAppearanceRoute
+  '/a/$slug/settings/backup': typeof ASlugSettingsBackupRoute
   '/a/$slug/settings/bank-accounts': typeof ASlugSettingsBankAccountsRoute
   '/a/$slug/settings/company': typeof ASlugSettingsCompanyRoute
   '/a/$slug/settings/emails': typeof ASlugSettingsEmailsRoute
@@ -489,6 +498,7 @@ export interface FileRouteTypes {
     | '/a/$slug/recurring/new'
     | '/a/$slug/reports/vat'
     | '/a/$slug/settings/appearance'
+    | '/a/$slug/settings/backup'
     | '/a/$slug/settings/bank-accounts'
     | '/a/$slug/settings/company'
     | '/a/$slug/settings/emails'
@@ -537,6 +547,7 @@ export interface FileRouteTypes {
     | '/a/$slug/recurring/new'
     | '/a/$slug/reports/vat'
     | '/a/$slug/settings/appearance'
+    | '/a/$slug/settings/backup'
     | '/a/$slug/settings/bank-accounts'
     | '/a/$slug/settings/company'
     | '/a/$slug/settings/emails'
@@ -588,6 +599,7 @@ export interface FileRouteTypes {
     | '/a/$slug/recurring/new'
     | '/a/$slug/reports/vat'
     | '/a/$slug/settings/appearance'
+    | '/a/$slug/settings/backup'
     | '/a/$slug/settings/bank-accounts'
     | '/a/$slug/settings/company'
     | '/a/$slug/settings/emails'
@@ -808,6 +820,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ASlugSettingsAppearanceRouteImport
       parentRoute: typeof ASlugSettingsRouteRoute
     }
+    '/a/$slug/settings/backup': {
+      id: '/a/$slug/settings/backup'
+      path: '/backup'
+      fullPath: '/a/$slug/settings/backup'
+      preLoaderRoute: typeof ASlugSettingsBackupRouteImport
+      parentRoute: typeof ASlugSettingsRouteRoute
+    }
     '/a/$slug/settings/bank-accounts': {
       id: '/a/$slug/settings/bank-accounts'
       path: '/bank-accounts'
@@ -994,6 +1013,7 @@ const ASlugReportsRouteRouteWithChildren =
 
 interface ASlugSettingsRouteRouteChildren {
   ASlugSettingsAppearanceRoute: typeof ASlugSettingsAppearanceRoute
+  ASlugSettingsBackupRoute: typeof ASlugSettingsBackupRoute
   ASlugSettingsBankAccountsRoute: typeof ASlugSettingsBankAccountsRoute
   ASlugSettingsCompanyRoute: typeof ASlugSettingsCompanyRoute
   ASlugSettingsEmailsRoute: typeof ASlugSettingsEmailsRoute
@@ -1007,6 +1027,7 @@ interface ASlugSettingsRouteRouteChildren {
 
 const ASlugSettingsRouteRouteChildren: ASlugSettingsRouteRouteChildren = {
   ASlugSettingsAppearanceRoute: ASlugSettingsAppearanceRoute,
+  ASlugSettingsBackupRoute: ASlugSettingsBackupRoute,
   ASlugSettingsBankAccountsRoute: ASlugSettingsBankAccountsRoute,
   ASlugSettingsCompanyRoute: ASlugSettingsCompanyRoute,
   ASlugSettingsEmailsRoute: ASlugSettingsEmailsRoute,

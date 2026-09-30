@@ -1,6 +1,8 @@
 // Vzhled událostí: rodina (prefix názvu), ikona a barevný tón. Názvy viz GET /events/catalog.
 
 import {
+  ArchiveIcon,
+  ArchiveRestoreIcon,
   BanIcon,
   BellRingIcon,
   CircleAlertIcon,
@@ -132,6 +134,8 @@ const specific: Record<string, EventVisual> = {
   'bank.unmatched': { icon: UnlinkIcon, tone: 'muted' },
   'webhook.failed': { icon: BellRingIcon, tone: 'destructive' },
   'webhook.disabled': { icon: BanIcon, tone: 'destructive' },
+  'account.exported': { icon: ArchiveIcon, tone: 'muted' },
+  'account.imported': { icon: ArchiveRestoreIcon, tone: 'info' },
 }
 
 /** Ikona a tón pro událost. Smazání je vždy „destructive“, neznámé názvy dostanou ikonu rodiny. */

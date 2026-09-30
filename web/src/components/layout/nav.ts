@@ -1,4 +1,5 @@
 import {
+  ArchiveIcon,
   BuildingIcon,
   ChartColumnIcon,
   FileTextIcon,
@@ -47,6 +48,7 @@ export const settingsNav = [
   { label: 'API tokeny', to: '/a/$slug/settings/tokens', icon: KeyRoundIcon, description: 'Přístup pro integrace' },
   { label: 'E-maily a upomínky', to: '/a/$slug/settings/emails', icon: MailIcon, description: 'Texty e-mailů, podpis, automatické upomínky' },
   { label: 'Webhooky', to: '/a/$slug/settings/webhooks', icon: WebhookIcon, description: 'Oznámení o událostech do jiných aplikací' },
+  { label: 'Záloha a přenos', to: '/a/$slug/settings/backup', icon: ArchiveIcon, description: 'Stažení zálohy a obnova účtu' },
 ] as const
 
 /** Iniciály pro avatar účtu/uživatele: „Jan Novák“ → „JN“. */
