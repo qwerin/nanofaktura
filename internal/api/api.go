@@ -8,6 +8,9 @@
 //   - authed  — auth.RequireUser middleware: 401 unless the request carries a valid
 //     nf_session cookie or `Authorization: Bearer nf_…` token; auth.UserFrom(ctx)
 //     is then non-nil.
+//   - admin   — authed + prefix "/api/admin" + requireInstanceAdmin: only
+//     instance administrators (NANOFAKTURA_ADMIN_EMAILS with a verified
+//     e-mail); others get 403 not_instance_admin (SPEC §3.2).
 //   - account — authed + prefix "/api/accounts/{slug}" + auth.RequireAccount: the
 //     slug is resolved to an account the user is a member of (non-member → 404);
 //     auth.AccountFrom(ctx) and auth.RoleFrom(ctx) are then set. The {slug} path
@@ -31,6 +34,7 @@ package api
 
 import (
 	"context"
+	"crypto/tls"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -51,6 +55,7 @@ import (
 	"github.com/qwerin/nanofaktura/internal/config"
 	"github.com/qwerin/nanofaktura/internal/httpsec"
 	"github.com/qwerin/nanofaktura/internal/mail"
+	"github.com/qwerin/nanofaktura/internal/maildiag"
 	"github.com/qwerin/nanofaktura/internal/numbering"
 	"github.com/qwerin/nanofaktura/internal/secret"
 	"github.com/qwerin/nanofaktura/internal/storage"
@@ -85,6 +90,11 @@ type Deps struct {
 	// keyed by NANOFAKTURA_SECRET_KEY or DATA_DIR/secret.key (secret.LoadOrCreateKey);
 	// the default is a random per-process key (tests, OpenAPI generation).
 	Secrets *secret.Box
+
+	// Resolver answers the DNS queries of the e-mail test (defaults to net.DefaultResolver).
+	Resolver maildiag.Resolver
+	// SMTPTLSConfig overrides the TLS config of the e-mail test (tests: RootCAs).
+	SMTPTLSConfig *tls.Config
 }
 
 // ExchangeRates returns ČNB rates (see cnb.Service.Rate for the error
@@ -114,6 +124,7 @@ type server struct {
 	exportSlots chan struct{} // semaphore bounding concurrent heavy exports (PDF ZIP, backup)
 	exportBusy  sync.Map      // account ID → struct{} while one of its heavy exports runs
 	limits      limits
+	started     time.Time // process start (admin status uptime)
 }
 
 // New builds the API router. db may be nil when only the OpenAPI document is needed.
@@ -154,9 +165,14 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 	account.UseMiddleware(s.auth.RequireAccount(api))
 	account.UseSimpleModifier(addSlugParam)
 
+	admin := huma.NewGroup(authed, "/api/admin")
+	admin.UseMiddleware(s.requireInstanceAdmin(api))
+
 	registerHealth(public)
 	s.registerAuth(public, authed)
 	s.registerPasswordReset(public)
+	s.registerEmailVerification(public, authed)
+	s.registerAdmin(admin)
 	s.registerTwoFactor(public, authed)
 	s.registerTokens(authed)
 	s.registerAccounts(authed, account)
@@ -235,7 +251,7 @@ func newServer(db *gorm.DB, cfg config.Config, deps Deps) *server {
 		webhookClient: webhooks.NewClient(cfg.WebhooksAllowPrivate),
 		pdfSlots:      make(chan struct{}, max(2, runtime.NumCPU())),
 		exportSlots:   make(chan struct{}, 2),
-		limits:        newLimits(deps.Now)}
+		limits:        newLimits(deps.Now), started: time.Now()}
 	s.webauthn, s.webauthnErr = newWebAuthn(s.publicURL(), cfg.WebAuthnOrigins)
 	return s
 }
@@ -256,10 +272,7 @@ func defaultMailer(cfg config.Config) mail.Mailer {
 	if cfg.SMTPHost == "" {
 		return mail.NewLogMailer(os.Stdout, cfg.MailFrom)
 	}
-	return mail.NewSMTP(mail.SMTPConfig{
-		Host: cfg.SMTPHost, Port: cfg.SMTPPort, Username: cfg.SMTPUser, Password: cfg.SMTPPassword,
-		TLS: cfg.SMTPTLS, From: cfg.MailFrom,
-	})
+	return mail.NewSMTP(cfg.SMTP()) // DKIM-signed when configured
 }
 
 // addSlugParam documents the {slug} path parameter of account-scoped operations.

@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -16,6 +17,7 @@ import (
 	netmail "net/mail"
 	"net/smtp"
 	"net/textproto"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -38,6 +40,7 @@ type SMTPConfig struct {
 	From      string        // default sender when Message.From is empty
 	Timeout   time.Duration // whole conversation when ctx has no deadline; default 30 s
 	TLSConfig *tls.Config   // optional (tests: custom RootCAs); ServerName defaults to Host
+	DKIM      *DKIMConfig   // optional: sign every message (never logged)
 }
 
 // SMTP sends messages over SMTP, one connection per message.
@@ -67,12 +70,30 @@ func (s *SMTP) tlsConfig() *tls.Config {
 	return c
 }
 
-func (s *SMTP) Send(ctx context.Context, m Message) error {
-	m, from, rcpt, err := withDefaults(m, s.cfg.From)
+// Config returns the configuration (diagnostics reuse it).
+func (s *SMTP) Config() SMTPConfig { return s.cfg }
+
+// Compose validates m, renders it as RFC 5322 data (with Date and Message-ID,
+// DKIM-signed when cfg.DKIM is set) and returns the data with the envelope
+// sender and recipients. Send and the SMTP diagnostics use it.
+func Compose(cfg SMTPConfig, m Message, now time.Time) (data []byte, from string, rcpt []string, err error) {
+	m, from, rcpt, err = withDefaults(m, cfg.From)
 	if err != nil {
-		return err
+		return nil, "", nil, err
 	}
-	data, err := buildMessage(m, s.now())
+	if data, err = buildMessage(m, now); err != nil {
+		return nil, "", nil, err
+	}
+	if cfg.DKIM != nil {
+		if data, err = signDKIM(data, cfg.DKIM); err != nil {
+			return nil, "", nil, err
+		}
+	}
+	return data, from, rcpt, nil
+}
+
+func (s *SMTP) Send(ctx context.Context, m Message) error {
+	data, from, rcpt, err := Compose(s.cfg, m, s.now())
 	if err != nil {
 		return err
 	}
@@ -110,7 +131,8 @@ func (s *SMTP) Send(ctx context.Context, m Message) error {
 		}
 	}
 	if s.cfg.Username != "" {
-		if err := c.Auth(smtp.PlainAuth("", s.cfg.Username, s.cfg.Password, s.cfg.Host)); err != nil {
+		_, mechs := c.Extension("AUTH")
+		if err := c.Auth(chooseAuth(mechs, s.cfg.Username, s.cfg.Password, s.cfg.Host)); err != nil {
 			return fmt.Errorf("smtp auth: %w", err)
 		}
 	}
@@ -133,6 +155,58 @@ func (s *SMTP) Send(ctx context.Context, m Message) error {
 		return fmt.Errorf("smtp DATA: %w", err)
 	}
 	return c.Quit()
+}
+
+// chooseAuth picks PLAIN, or LOGIN when the server offers only that
+// (mechs = the AUTH extension parameter, e.g. "LOGIN XOAUTH2").
+func chooseAuth(mechs, user, pass, host string) smtp.Auth {
+	if AuthMechanism(mechs) == "LOGIN" {
+		return &loginAuth{user: user, pass: pass, host: host}
+	}
+	return smtp.PlainAuth("", user, pass, host)
+}
+
+// AuthMechanism is the mechanism chooseAuth uses for the advertised mechs.
+func AuthMechanism(mechs string) string {
+	f := strings.Fields(strings.ToUpper(mechs))
+	if !slices.Contains(f, "PLAIN") && slices.Contains(f, "LOGIN") {
+		return "LOGIN"
+	}
+	return "PLAIN"
+}
+
+// loginAuth implements AUTH LOGIN; like smtp.PlainAuth it refuses to send
+// credentials over an unencrypted connection except to localhost.
+type loginAuth struct{ user, pass, host string }
+
+func (a *loginAuth) Start(server *smtp.ServerInfo) (string, []byte, error) {
+	if !server.TLS && !isLocalhost(server.Name) {
+		return "", nil, errors.New("unencrypted connection")
+	}
+	if server.Name != a.host {
+		return "", nil, errors.New("wrong host name")
+	}
+	return "LOGIN", nil, nil
+}
+
+func (a *loginAuth) Next(fromServer []byte, more bool) ([]byte, error) {
+	if !more {
+		return nil, nil
+	}
+	switch strings.ToLower(strings.TrimSpace(string(fromServer))) {
+	case "username:", "user name", "username":
+		return []byte(a.user), nil
+	case "password:", "password":
+		return []byte(a.pass), nil
+	}
+	if len(fromServer) == 0 { // some servers send an empty first challenge
+		return []byte(a.user), nil
+	}
+	return nil, errors.New("unexpected AUTH LOGIN challenge")
+}
+
+func isLocalhost(name string) bool {
+	return name == "localhost" || name == "127.0.0.1" || name == "::1"
 }
 
 // buildMessage renders m as an RFC 5322 / MIME message (CRLF line endings):
@@ -282,7 +356,7 @@ func randomID() string {
 
 func domainOf(addr string) string {
 	if i := strings.LastIndexByte(addr, '@'); i >= 0 {
-		return addr[i+1:]
+		return strings.ToLower(addr[i+1:])
 	}
 	return "localhost"
 }

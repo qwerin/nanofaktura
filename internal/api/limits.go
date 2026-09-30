@@ -32,6 +32,9 @@ type limits struct {
 	resetMail  *ratelimit.Limiter // password reset requests per IP and per e-mail
 	resetLink  *ratelimit.Limiter // password reset link lookups/confirms per IP
 	twoFactor  *ratelimit.Limiter // wrong second factors (login, TOTP enable) per user
+	verifyMail *ratelimit.Limiter // e-mail verification links sent per user
+	verifyLink *ratelimit.Limiter // verification link lookups/confirms per IP
+	emailTest  *ratelimit.Limiter // SMTP diagnostics (test e-mails) per instance admin
 }
 
 func newLimits(now func() time.Time) limits {
@@ -47,6 +50,9 @@ func newLimits(now func() time.Time) limits {
 		resetMail:  ratelimit.New(5, 5, time.Hour, now),
 		resetLink:  ratelimit.New(20, 20, 10*time.Minute, now),
 		twoFactor:  ratelimit.New(10, 10, time.Hour, now),
+		verifyMail: ratelimit.New(3, 3, time.Hour, now),
+		verifyLink: ratelimit.New(20, 20, 10*time.Minute, now),
+		emailTest:  ratelimit.New(10, 10, time.Hour, now),
 	}
 }
 

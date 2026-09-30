@@ -38,6 +38,14 @@ type MeAccount struct {
 type Me struct {
 	User     User        `json:"user"`
 	Accounts []MeAccount `json:"accounts" nullable:"false"`
+	// EmailVerified: the user proved they receive mail at their address (SPEC §3.2).
+	EmailVerified bool `json:"email_verified"`
+	// InstanceAdmin: listed in NANOFAKTURA_ADMIN_EMAILS with a verified e-mail
+	// (may use /api/admin/*).
+	InstanceAdmin bool `json:"instance_admin"`
+	// InstanceAdminPending: listed in NANOFAKTURA_ADMIN_EMAILS but the e-mail
+	// is not verified yet (verify it to get admin rights).
+	InstanceAdminPending bool `json:"instance_admin_pending"`
 }
 
 type RegisterRequest struct {
@@ -208,7 +216,10 @@ func (s *server) me(ctx context.Context, user *model.User) (*Me, error) {
 	if accounts == nil {
 		accounts = []MeAccount{}
 	}
-	return &Me{User: User{ID: user.ID, Email: user.Email, Name: user.Name}, Accounts: accounts}, nil
+	listed := s.cfg.IsAdminEmail(user.Email)
+	return &Me{User: User{ID: user.ID, Email: user.Email, Name: user.Name}, Accounts: accounts,
+		EmailVerified: user.EmailVerifiedAt != nil, InstanceAdmin: s.isInstanceAdmin(user),
+		InstanceAdminPending: listed && user.EmailVerifiedAt == nil}, nil
 }
 
 func (s *server) getMe(ctx context.Context, _ *struct{}) (*Out[Me], error) {

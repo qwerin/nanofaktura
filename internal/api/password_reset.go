@@ -153,6 +153,14 @@ func (s *server) confirmPasswordReset(ctx context.Context, in *struct {
 		if err := tx.Model(&model.User{}).Where("id = ?", reset.UserID).Update("password_hash", hash).Error; err != nil {
 			return dbErr(err, "user")
 		}
+		// the link arrived in the user's inbox: the address is verified (SPEC §3.2)
+		var user model.User
+		if err := tx.First(&user, reset.UserID).Error; err != nil {
+			return dbErr(err, "user")
+		}
+		if err := markEmailVerified(tx, &user, s.deps.Now()); err != nil {
+			return err
+		}
 		// every browser is logged out and no other link works any more
 		if err := auth.DeleteOtherSessions(tx, reset.UserID, ""); err != nil {
 			return dbErr(err, "sessions")

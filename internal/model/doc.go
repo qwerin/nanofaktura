@@ -10,7 +10,7 @@ package model
 func All() []any {
 	return []any{
 		&User{}, &Account{}, &Membership{}, &Session{}, &APIToken{},
-		&PasswordReset{}, &RecoveryCode{}, &WebAuthnCredential{}, &AuthChallenge{},
+		&PasswordReset{}, &EmailVerification{}, &RecoveryCode{}, &WebAuthnCredential{}, &AuthChallenge{},
 		&BankAccount{}, &NumberFormat{}, &NumberCounter{},
 		&Subject{}, &Invoice{}, &InvoiceLine{}, &Payment{},
 		&Invitation{}, &Attachment{},

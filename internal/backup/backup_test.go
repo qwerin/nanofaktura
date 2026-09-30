@@ -24,6 +24,7 @@ var coverage = map[string]string{
 	"Session":            "excluded: login sessions (secrets)",
 	"APIToken":           "excluded: API tokens (secrets)",
 	"PasswordReset":      "excluded: password reset links (secrets, user-level)",
+	"EmailVerification":  "excluded: e-mail verification links (secrets, user-level)",
 	"RecoveryCode":       "excluded: 2FA recovery codes (secrets, user-level)",
 	"WebAuthnCredential": "excluded: security keys (user-level, bound to the instance domain)",
 	"AuthChallenge":      "excluded: short-lived login/2FA state",

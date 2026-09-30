@@ -1,6 +1,6 @@
 // Command server runs the NanoFaktura HTTP server (no arguments or "serve")
 // and the administration commands ("backup export|import", see backup.go;
-// "user reset-2fa", see user.go).
+// "user reset-2fa|verify-email", see user.go; "mail test", see mail.go).
 package main
 
 import (
@@ -36,8 +36,10 @@ func main() {
 		stop()
 	case len(os.Args) > 1 && os.Args[1] == "user":
 		err = runUser(context.Background(), os.Args[2:], os.Stdout)
+	case len(os.Args) > 1 && os.Args[1] == "mail":
+		err = runMail(context.Background(), os.Args[2:], os.Stdout)
 	case len(os.Args) > 1 && os.Args[1] != "serve":
-		err = errors.New("unknown command " + os.Args[1] + " (serve | backup | user)")
+		err = errors.New("unknown command " + os.Args[1] + " (serve | backup | user | mail)")
 	default:
 		err = run()
 	}

@@ -1,6 +1,15 @@
 package config
 
-import "testing"
+import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
 
 func TestLoad(t *testing.T) {
 	t.Setenv("NANOFAKTURA_DB_DRIVER", "")
@@ -56,5 +65,44 @@ func TestLoadInvalid(t *testing.T) {
 	cfg, err := Load()
 	if err != nil || cfg.SMTPPort != 465 || cfg.PublicURL != "https://f.example.cz" {
 		t.Fatalf("tls defaults: %+v %v", cfg, err)
+	}
+}
+
+func TestLoadAdminsAndDKIM(t *testing.T) {
+	t.Setenv("NANOFAKTURA_DB_DRIVER", "")
+	t.Setenv("NANOFAKTURA_ADMIN_EMAILS", " Admin@Example.cz ,, druhy@example.cz,admin@example.cz")
+	cfg, err := Load()
+	if err != nil || len(cfg.AdminEmails) != 2 || !cfg.IsAdminEmail("ADMIN@example.cz ") || cfg.IsAdminEmail("x@example.cz") || cfg.DKIM() != nil {
+		t.Fatalf("%+v %v", cfg.AdminEmails, err)
+	}
+
+	key, _ := rsa.GenerateKey(rand.Reader, 2048)
+	der, _ := x509.MarshalPKCS8PrivateKey(key)
+	pemText := string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}))
+	file := filepath.Join(t.TempDir(), "dkim.pem")
+	if err := os.WriteFile(file, []byte(pemText), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("NANOFAKTURA_DKIM_DOMAIN", "Example.cz")
+	if _, err := Load(); err == nil {
+		t.Fatal("partial DKIM config accepted")
+	}
+	t.Setenv("NANOFAKTURA_DKIM_SELECTOR", "nf")
+	t.Setenv("NANOFAKTURA_DKIM_PRIVATE_KEY_FILE", file)
+	cfg, err = Load()
+	if err != nil || cfg.DKIM() == nil || cfg.DKIM().Domain != "example.cz" || cfg.SMTP().DKIM == nil {
+		t.Fatalf("file key: %v", err)
+	}
+	t.Setenv("NANOFAKTURA_DKIM_PRIVATE_KEY", pemText)
+	if _, err := Load(); err == nil {
+		t.Fatal("both key and key file accepted")
+	}
+	t.Setenv("NANOFAKTURA_DKIM_PRIVATE_KEY_FILE", "")
+	if cfg, err := Load(); err != nil || cfg.DKIMKey == nil {
+		t.Fatalf("env key: %v", err)
+	}
+	t.Setenv("NANOFAKTURA_DKIM_PRIVATE_KEY", "-----BEGIN PRIVATE KEY-----\nSECRETSTUFF\n-----END PRIVATE KEY-----")
+	if _, err := Load(); err == nil || strings.Contains(err.Error(), "SECRETSTUFF") {
+		t.Fatalf("invalid key: %v", err)
 	}
 }

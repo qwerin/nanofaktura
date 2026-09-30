@@ -77,6 +77,9 @@ const (
 	CodeTOTPEnabled              = "totp_enabled"
 	CodeTOTPNotPending           = "totp_not_pending"
 	CodeTwoFactorDisabled        = "two_factor_disabled"
+	CodeNotInstanceAdmin         = "not_instance_admin"
+	CodeVerificationExpired      = "verification_expired"
+	CodeEmailVerified            = "email_already_verified"
 )
 
 // statusCodes are the generic codes of errors created without apiError.

@@ -2,6 +2,7 @@
 package config
 
 import (
+	"crypto"
 	"fmt"
 	"net/netip"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/qwerin/nanofaktura/internal/httpsec"
+	"github.com/qwerin/nanofaktura/internal/mail"
 )
 
 // Config holds all runtime settings.
@@ -72,6 +74,40 @@ type Config struct {
 	// DisableAPIDocs (NANOFAKTURA_DISABLE_API_DOCS) hides /api/docs,
 	// /api/openapi.json and /api/schemas (public by default).
 	DisableAPIDocs bool
+
+	// AdminEmails (NANOFAKTURA_ADMIN_EMAILS, comma-separated, lowercased):
+	// instance administrators. A user is an admin only with a listed AND
+	// verified e-mail (SPEC §3.2).
+	AdminEmails []string
+
+	// DKIM signing of outgoing mail (all three or none): NANOFAKTURA_DKIM_DOMAIN,
+	// NANOFAKTURA_DKIM_SELECTOR and NANOFAKTURA_DKIM_PRIVATE_KEY (PEM) or
+	// NANOFAKTURA_DKIM_PRIVATE_KEY_FILE. DKIMKey is the parsed key (never logged).
+	DKIMDomain   string
+	DKIMSelector string
+	DKIMKey      crypto.Signer
+}
+
+// IsAdminEmail reports whether email is listed in NANOFAKTURA_ADMIN_EMAILS
+// (verification is checked by the caller).
+func (c Config) IsAdminEmail(email string) bool {
+	return slices.Contains(c.AdminEmails, strings.ToLower(strings.TrimSpace(email)))
+}
+
+// DKIM returns the signing configuration, nil when DKIM is off.
+func (c Config) DKIM() *mail.DKIMConfig {
+	if c.DKIMKey == nil {
+		return nil
+	}
+	return &mail.DKIMConfig{Domain: c.DKIMDomain, Selector: c.DKIMSelector, Key: c.DKIMKey}
+}
+
+// SMTP returns the mailer configuration (host empty = no SMTP).
+func (c Config) SMTP() mail.SMTPConfig {
+	return mail.SMTPConfig{
+		Host: c.SMTPHost, Port: c.SMTPPort, Username: c.SMTPUser, Password: c.SMTPPassword,
+		TLS: c.SMTPTLS, From: c.MailFrom, DKIM: c.DKIM(),
+	}
 }
 
 // PublicHTTPS reports whether PublicURL is an https URL.
@@ -156,7 +192,44 @@ func Load() (Config, error) {
 	if cfg.WebhooksAllowPrivate, err = envBool("NANOFAKTURA_WEBHOOKS_ALLOW_PRIVATE"); err != nil {
 		return Config{}, err
 	}
+	for _, e := range strings.Split(os.Getenv("NANOFAKTURA_ADMIN_EMAILS"), ",") {
+		if e = strings.ToLower(strings.TrimSpace(e)); e != "" && !slices.Contains(cfg.AdminEmails, e) {
+			cfg.AdminEmails = append(cfg.AdminEmails, e)
+		}
+	}
+	if err := loadDKIM(&cfg); err != nil {
+		return Config{}, err
+	}
 	return cfg, nil
+}
+
+// loadDKIM reads the optional DKIM settings; errors never contain key material.
+func loadDKIM(cfg *Config) error {
+	cfg.DKIMDomain = strings.ToLower(strings.TrimSpace(os.Getenv("NANOFAKTURA_DKIM_DOMAIN")))
+	cfg.DKIMSelector = strings.TrimSpace(os.Getenv("NANOFAKTURA_DKIM_SELECTOR"))
+	pemText := os.Getenv("NANOFAKTURA_DKIM_PRIVATE_KEY")
+	if file := os.Getenv("NANOFAKTURA_DKIM_PRIVATE_KEY_FILE"); file != "" {
+		if pemText != "" {
+			return fmt.Errorf("NANOFAKTURA_DKIM_PRIVATE_KEY and NANOFAKTURA_DKIM_PRIVATE_KEY_FILE: set only one")
+		}
+		b, err := os.ReadFile(file)
+		if err != nil {
+			return fmt.Errorf("NANOFAKTURA_DKIM_PRIVATE_KEY_FILE: %w", err)
+		}
+		pemText = string(b)
+	}
+	if cfg.DKIMDomain == "" && cfg.DKIMSelector == "" && pemText == "" {
+		return nil
+	}
+	if cfg.DKIMDomain == "" || cfg.DKIMSelector == "" || pemText == "" {
+		return fmt.Errorf("DKIM: set NANOFAKTURA_DKIM_DOMAIN, NANOFAKTURA_DKIM_SELECTOR and NANOFAKTURA_DKIM_PRIVATE_KEY(_FILE) together")
+	}
+	key, err := mail.ParseDKIMKey(pemText)
+	if err != nil {
+		return fmt.Errorf("NANOFAKTURA_DKIM_PRIVATE_KEY: %w", err)
+	}
+	cfg.DKIMKey = key
+	return nil
 }
 
 func env(key, def string) string {

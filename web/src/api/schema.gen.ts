@@ -1763,6 +1763,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/email-test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post API admin email test */
+        post: operations["post-api-admin-email-test"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API admin status */
+        get: operations["get-api-admin-status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API admin users */
+        get: operations["get-api-admin-users"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users/{id}/reset-2fa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post API admin users by ID reset2 fa */
+        post: operations["post-api-admin-users-by-id-reset2-fa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users/{id}/send-verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post API admin users by ID send verification */
+        post: operations["post-api-admin-users-by-id-send-verification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users/{id}/verify-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post API admin users by ID verify email */
+        post: operations["post-api-admin-users-by-id-verify-email"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ares/{ico}": {
         parameters: {
             query?: never;
@@ -2019,6 +2121,23 @@ export interface paths {
         patch: operations["patch-api-auth-me"];
         trace?: never;
     };
+    "/api/auth/me/verify-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post API auth me verify email */
+        post: operations["post-api-auth-me-verify-email"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/password-reset": {
         parameters: {
             query?: never;
@@ -2118,6 +2237,23 @@ export interface paths {
         post?: never;
         /** Delete API auth tokens by ID */
         delete: operations["delete-api-auth-tokens-by-id"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/verify-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post API auth verify email */
+        post: operations["post-api-auth-verify-email"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2477,6 +2613,25 @@ export interface components {
             web?: string;
             zip?: string;
         };
+        AdminUser: {
+            /**
+             * Format: int64
+             * @description Number of accounts the user is a member of
+             */
+            accounts: number;
+            /** @description Listed in NANOFAKTURA_ADMIN_EMAILS (admin once verified) */
+            admin_listed: boolean;
+            /** Format: date-time */
+            created_at: string;
+            email: string;
+            /** Format: date-time */
+            email_verified_at?: string;
+            /** Format: int64 */
+            id: number;
+            instance_admin: boolean;
+            name: string;
+            two_factor: boolean;
+        };
         AresSubject: {
             city: string;
             country: string;
@@ -2760,6 +2915,48 @@ export interface components {
             /** Format: int64 */
             year: number;
         };
+        DiagCheck: {
+            /** @description Technical details (server replies, records); never passwords */
+            details: string[];
+            /** Format: int64 */
+            duration_ms: number;
+            /** @description Czech advice what to do */
+            hint?: string;
+            /** @description Stable step id (resolve, connect, tls, banner, ehlo, starttls, auth, mail_from, rcpt_to, data, config; mx, spf, dmarc, dkim) */
+            id: string;
+            /** @description Czech explanation */
+            message: string;
+            /** @enum {string} */
+            status: "ok" | "info" | "warning" | "error";
+            title: string;
+        };
+        DiagReport: {
+            /** @description The test message was DKIM-signed by the application */
+            dkim_signed: boolean;
+            dns: components["schemas"]["DiagCheck"][];
+            /** Format: int64 */
+            duration_ms: number;
+            from: string;
+            /** @description Queue id from the server's final reply, when recognisable */
+            queue_id?: string;
+            /** @description The server accepted the test message */
+            sent: boolean;
+            /** @description Final reply of the server to DATA */
+            server_reply?: string;
+            smtp: components["schemas"]["DiagCheck"][];
+            smtp_host: string;
+            /** Format: int64 */
+            smtp_port: number;
+            /** Format: date-time */
+            started_at: string;
+            /**
+             * @description Worst status of all checks
+             * @enum {string}
+             */
+            status: "ok" | "info" | "warning" | "error";
+            tls_mode: string;
+            to: string;
+        };
         DocWarning: {
             /**
              * @description no_bank_account: bank transfer, but no bank account in the invoice currency — the document has no payment details (account number, QR)
@@ -2866,6 +3063,22 @@ export interface components {
             lang: "cs" | "en";
             /** @description Empty = default subject */
             subject?: string;
+        };
+        EmailTestRequest: {
+            /** @description DKIM selector to check when the application does not sign (e.g. the SMTP provider's) */
+            dkim_selector?: string;
+            /**
+             * Format: email
+             * @description Recipient; default = the admin's own e-mail
+             */
+            to?: string;
+        };
+        EmailVerificationConfirm: {
+            token: string;
+        };
+        EmailVerificationInfo: {
+            email: string;
+            verified: boolean;
         };
         ErrorDetail: {
             /** @description Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
@@ -3294,6 +3507,57 @@ export interface components {
              * @description income − real_expenses
              */
             real_tax_base: number;
+        };
+        InstanceConfig: {
+            admin_emails: string[];
+            allow_signup: boolean;
+            api_docs_enabled: boolean;
+            data_dir: string;
+            data_dir_writable: boolean;
+            dkim_domain?: string;
+            dkim_enabled: boolean;
+            /** @enum {string} */
+            dkim_key_type?: "rsa" | "ed25519";
+            /** @description TXT record to publish at <selector>._domainkey.<domain> (public key) */
+            dkim_record?: string;
+            dkim_selector?: string;
+            mail_from: string;
+            public_https: boolean;
+            public_url: string;
+            rate_limit_enabled: boolean;
+            /**
+             * @description env = NANOFAKTURA_SECRET_KEY, file = DATA_DIR/secret.key
+             * @enum {string}
+             */
+            secret_key_source: "env" | "file";
+            setup_token_set: boolean;
+            /** @description NANOFAKTURA_SMTP_USER is set (the password is never exposed) */
+            smtp_auth: boolean;
+            /** @description NANOFAKTURA_SMTP_HOST is set (otherwise e-mails are only logged) */
+            smtp_configured: boolean;
+            smtp_host: string;
+            /** Format: int64 */
+            smtp_port: number;
+            /** @enum {string} */
+            smtp_tls: "starttls" | "tls" | "none";
+            trusted_proxies: string[];
+        };
+        InstanceStatus: {
+            /** Format: int64 */
+            accounts: number;
+            config: components["schemas"]["InstanceConfig"];
+            /** @enum {string} */
+            db_driver: "sqlite" | "postgres";
+            go_version: string;
+            /** Format: date-time */
+            started_at: string;
+            /** Format: int64 */
+            uptime_seconds: number;
+            /** Format: int64 */
+            users: number;
+            version: string;
+            /** @description Czech descriptions of risky settings */
+            warnings: string[];
         };
         Invitation: {
             /** Format: date-time */
@@ -3767,6 +4031,15 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        ListResponseAdminUser: {
+            items: components["schemas"]["AdminUser"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            per_page: number;
+            /** Format: int64 */
+            total: number;
+        };
         ListResponseAttachment: {
             items: components["schemas"]["Attachment"][];
             /** Format: int64 */
@@ -3949,6 +4222,9 @@ export interface components {
         };
         Me: {
             accounts: components["schemas"]["MeAccount"][];
+            email_verified: boolean;
+            instance_admin: boolean;
+            instance_admin_pending: boolean;
             user: components["schemas"]["User"];
         };
         MeAccount: {
@@ -9495,6 +9771,188 @@ export interface operations {
             };
         };
     };
+    "post-api-admin-email-test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailTestRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiagReport"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-admin-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceStatus"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-admin-users": {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+                query?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListResponseAdminUser"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-admin-users-by-id-reset2-fa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-admin-users-by-id-send-verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-admin-users-by-id-verify-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "get-api-ares-by-ico": {
         parameters: {
             query?: never;
@@ -10054,6 +10512,33 @@ export interface operations {
             };
         };
     };
+    "post-api-auth-me-verify-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "post-api-auth-password-reset": {
         parameters: {
             query?: never;
@@ -10294,6 +10779,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-auth-verify-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailVerificationConfirm"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailVerificationInfo"];
+                };
             };
             /** @description Error */
             default: {

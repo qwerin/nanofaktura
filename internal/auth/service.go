@@ -175,7 +175,7 @@ func ResetSecondFactor(db *gorm.DB, userID uint) error {
 	return nil
 }
 
-// Cleanup deletes expired sessions, challenges and password reset links.
+// Cleanup deletes expired sessions, challenges, password reset and e-mail verification links.
 func Cleanup(db *gorm.DB, now time.Time) error {
 	if err := db.Where("expires_at <= ?", now).Delete(&model.Session{}).Error; err != nil {
 		return err
@@ -184,5 +184,8 @@ func Cleanup(db *gorm.DB, now time.Time) error {
 		return err
 	}
 	// used links are kept a day so a second click still says "already used"
-	return db.Where("expires_at <= ?", now.Add(-24*time.Hour)).Delete(&model.PasswordReset{}).Error
+	if err := db.Where("expires_at <= ?", now.Add(-24*time.Hour)).Delete(&model.PasswordReset{}).Error; err != nil {
+		return err
+	}
+	return db.Where("expires_at <= ?", now.Add(-24*time.Hour)).Delete(&model.EmailVerification{}).Error
 }

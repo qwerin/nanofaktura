@@ -14,8 +14,23 @@ type User struct {
 	TOTPSecretEnc  string
 	TOTPPendingEnc string
 	TOTPLastStep   int64
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	// EmailVerifiedAt: the user proved they receive mail at Email (verification
+	// link or password reset, SPEC §3.2); nil = unverified. Instance admin
+	// rights require it.
+	EmailVerifiedAt *time.Time
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+// EmailVerification is an e-mail verification link (SPEC §3.2).
+type EmailVerification struct {
+	ID        uint
+	UserID    uint      `gorm:"not null;index"`
+	TokenHash string    `gorm:"not null;uniqueIndex"` // hex sha256 of the token in the link
+	Email     string    `gorm:"not null"`             // the address the link was sent to
+	ExpiresAt time.Time `gorm:"not null"`
+	UsedAt    *time.Time
+	CreatedAt time.Time
 }
 
 // PasswordReset is a "forgotten password" link (SPEC §3.1).
