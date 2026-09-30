@@ -34,6 +34,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -103,6 +104,8 @@ type server struct {
 	auth *auth.Service
 
 	webhookClient *http.Client // SSRF-safe unless cfg.WebhooksAllowPrivate
+
+	pdfSlots chan struct{} // semaphore bounding concurrent PDF renders
 }
 
 // New builds the API router. db may be nil when only the OpenAPI document is needed.
@@ -213,7 +216,8 @@ func newServer(db *gorm.DB, cfg config.Config, deps Deps) *server {
 		deps.Secrets = secret.NewRandom()
 	}
 	return &server{db: db, cfg: cfg, deps: deps, auth: auth.NewService(db, deps.Now, cfg.SecureCookies),
-		webhookClient: webhooks.NewClient(cfg.WebhooksAllowPrivate)}
+		webhookClient: webhooks.NewClient(cfg.WebhooksAllowPrivate),
+		pdfSlots:      make(chan struct{}, max(2, runtime.NumCPU()))}
 }
 
 func defaultMailer(cfg config.Config) mail.Mailer {

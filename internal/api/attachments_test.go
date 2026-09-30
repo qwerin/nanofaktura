@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"image/jpeg"
 	"image/png"
 	"mime/multipart"
 	"net/http"
@@ -21,13 +22,32 @@ import (
 
 var (
 	pdfData  = []byte("%PDF-1.4\n1 0 obj << >> endobj\ntrailer << >>\n%%EOF\n")
-	pngData  = append([]byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"), bytes.Repeat([]byte{0}, 40)...)
-	jpegData = append([]byte("\xff\xd8\xff\xe0\x00\x10JFIF\x00"), bytes.Repeat([]byte{1}, 40)...)
+	pngData  = encodeImage("png", 4, 2)
+	jpegData = encodeImage("jpeg", 4, 2)
 	webpData = append([]byte("RIFF\x24\x00\x00\x00WEBPVP8 "), bytes.Repeat([]byte{2}, 40)...)
 	heicData = append([]byte("\x00\x00\x00\x18ftypheic\x00\x00\x00\x00mif1heic"), bytes.Repeat([]byte{3}, 40)...)
 	xmlData  = []byte(`<?xml version="1.0" encoding="UTF-8"?><Invoice xmlns="http://isdoc.cz/namespace/2013"></Invoice>`)
 	xml2Data = []byte("\n  <Invoice><ID>1</ID></Invoice>")
 )
+
+// encodeImage returns a real w×h PNG or JPEG (logos/stamps are decoded).
+func encodeImage(format string, w, h int) []byte {
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	for x := range w {
+		img.Set(x, x*h/w, color.RGBA{R: 200, A: 255})
+	}
+	var buf bytes.Buffer
+	var err error
+	if format == "jpeg" {
+		err = jpeg.Encode(&buf, img, nil)
+	} else {
+		err = png.Encode(&buf, img)
+	}
+	if err != nil {
+		panic(err)
+	}
+	return buf.Bytes()
+}
 
 // upload posts a multipart form with the given fields and one file.
 func (c *client) upload(fields map[string]string, filename string, data []byte) (*http.Response, []byte) {
@@ -173,7 +193,12 @@ func TestAccountLogoAndStamp(t *testing.T) {
 	member := ts.memberOf(a, "m@example.cz", "member")
 
 	logo := uploadOK(a, "account", 0, "logo.png", pngData) // owner_id 0 = current account
-	stamp := uploadOK(member, "account", logo.OwnerID, "razitko.jpg", jpegData)
+	stamp := uploadOK(a, "account", logo.OwnerID, "razitko.jpg", jpegData)
+	// account files are settings: a member can neither upload nor delete them
+	res, body := member.upload(map[string]string{"owner_type": "account", "owner_id": "0"}, "x.png", pngData)
+	assertError(t, res, body, http.StatusForbidden, "your role (member)")
+	res, body = member.do("DELETE", attURL(member, logo.ID, ""), nil)
+	assertError(t, res, body, http.StatusForbidden, "your role (member)")
 	pdf := uploadOK(a, "account", logo.OwnerID, "vypis.pdf", pdfData)
 	foreign := uploadOK(b, "account", 0, "b.png", pngData)
 
@@ -181,7 +206,7 @@ func TestAccountLogoAndStamp(t *testing.T) {
 	if acc.LogoAttachmentID == nil || *acc.LogoAttachmentID != logo.ID || acc.StampAttachmentID == nil || *acc.StampAttachmentID != stamp.ID {
 		t.Fatalf("patched: %+v", acc)
 	}
-	res, body := a.do("PATCH", a.acct(""), map[string]any{"logo_attachment_id": pdf.ID})
+	res, body = a.do("PATCH", a.acct(""), map[string]any{"logo_attachment_id": pdf.ID})
 	assertError(t, res, body, http.StatusUnprocessableEntity, "PNG or JPEG")
 	res, body = a.do("PATCH", a.acct(""), map[string]any{"stamp_attachment_id": foreign.ID})
 	assertError(t, res, body, http.StatusUnprocessableEntity, "attachment not found")

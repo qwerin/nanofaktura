@@ -175,8 +175,14 @@ func (s *server) uploadAttachment(ctx context.Context, in *struct {
 		return nil, invalid("file", "file is empty")
 	}
 	acc := auth.AccountFrom(ctx)
-	if data.OwnerType == model.OwnerAccount && data.OwnerID == 0 {
-		data.OwnerID = acc.ID
+	if data.OwnerType == model.OwnerAccount {
+		// account files (logo, stamp) are settings: managers only
+		if err := auth.RequireRole(ctx, auth.RolesManagers...); err != nil {
+			return nil, err
+		}
+		if data.OwnerID == 0 {
+			data.OwnerID = acc.ID
+		}
 	}
 	if err := s.checkOwner(ctx, data.OwnerType, data.OwnerID); err != nil {
 		return nil, err
@@ -356,6 +362,11 @@ func (s *server) deleteAttachment(ctx context.Context, in *struct {
 	m, err := s.attachment(ctx, in.ID)
 	if err != nil {
 		return nil, err
+	}
+	if m.OwnerType == model.OwnerAccount { // logo, stamp: settings
+		if err := auth.RequireRole(ctx, auth.RolesManagers...); err != nil {
+			return nil, err
+		}
 	}
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// the account's logo/stamp must not point to a deleted file

@@ -18,7 +18,7 @@ export const brandingField = {
 
 /** Formáty, které umí vykreslit PDF (backend jiné pro logo/razítko odmítne 422). */
 export const BRANDING_ACCEPT = 'image/png,image/jpeg'
-export const BRANDING_MAX_BYTES = 5 * 1024 * 1024
+export const BRANDING_MAX_BYTES = 2 * 1024 * 1024
 
 /** Kontrola souboru před nahráním; vrací českou chybu, nebo `null`. */
 export function validateBrandingFile(file: Pick<File, 'type' | 'size' | 'name'>): string | null {
@@ -27,7 +27,7 @@ export function validateBrandingFile(file: Pick<File, 'type' | 'size' | 'name'>)
   if (type ? type !== 'image/png' && type !== 'image/jpeg' : !byName) {
     return 'Nahrajte obrázek PNG nebo JPEG.'
   }
-  if (file.size > BRANDING_MAX_BYTES) return 'Obrázek je příliš velký (nejvýše 5 MB).'
+  if (file.size > BRANDING_MAX_BYTES) return 'Obrázek je příliš velký (nejvýše 2 MB).'
   if (file.size === 0) return 'Soubor je prázdný.'
   return null
 }

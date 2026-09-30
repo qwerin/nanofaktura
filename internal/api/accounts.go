@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/qwerin/nanofaktura/internal/auth"
 	"github.com/qwerin/nanofaktura/internal/model"
+	"github.com/qwerin/nanofaktura/internal/pdf"
 )
 
 // Account is the company profile and invoicing defaults (SPEC §4.1).
@@ -291,6 +293,16 @@ func (s *server) checkImageAttachment(ctx context.Context, field string, id uint
 	}
 	if a.ContentType != "image/png" && a.ContentType != "image/jpeg" {
 		return invalid(field, "attachment must be a PNG or JPEG image")
+	}
+	if a.Size > pdf.MaxImageBytes {
+		return invalid(field, fmt.Sprintf("image must be at most %d MB", pdf.MaxImageBytes>>20))
+	}
+	b := s.attachmentBytes(ctx, &id)
+	if b == nil {
+		return invalid(field, "attachment cannot be read")
+	}
+	if _, err := pdf.CheckImage(b); err != nil {
+		return invalid(field, fmt.Sprintf("image must be a valid PNG or JPEG of at most %d×%d px", pdf.MaxImageSide, pdf.MaxImageSide))
 	}
 	return nil
 }
