@@ -42,6 +42,7 @@ internal/backup/  account backup ZIP (SPEC §7.16): Export / Import (new account
 internal/slug/    account slugs (Make, Unique)
 internal/events/  events.Record (activity log + webhook delivery queue, same tx) + event name catalogue
 internal/webhooks/ HMAC signing, SSRF-safe HTTP client, retry schedule; internal/search/ Fold (case/diacritics) for global search
+internal/httpsec/ client IP/HTTPS behind trusted proxies, security headers (CSP …), CSRF; internal/ratelimit/ keyed token buckets
 internal/api/     api.New + one file per resource (DTOs next to handlers) + *_test.go (package api_test)
 ```
 
@@ -216,6 +217,27 @@ event's subject (`syncTodos` in `todos.go`; add a case there for a new todo kind
 Payments go through `addPayment(ctx, …)` / `addExpensePayment(ctx, …)` which record `payment.created` (+ `*.paid`).
 Webhook deliveries are POSTed by the `webhooks` job (every tick); tests run it with `runJob(ts, "webhooks")`
 (test config has `WebhooksAllowPrivate` so httptest servers work; `ts.secrets` is shared by API and jobs).
+
+## Security conventions (SPEC §5.1)
+
+- **Rate limits**: `s.rateLimit(s.limits.X, key)` → 429 `rate_limited` + `Retry-After` (keys: `clientIP(ctx)`, e-mail,
+  `accountKey(ctx)`); for "failures only" use `s.rateBlocked` before and `s.rateFail` on failure. New public or
+  credential-checking endpoints and anything sending e-mail must be limited (add a limiter to `limits` in `limits.go`).
+  Tests: `newTestServer` disables limits; enable with `newTestServer(t, withRateLimit)` (security_test.go).
+  Heavy streamed exports: `release, err := s.acquireExport(ctx)` + `defer release()` in the stream body, and
+  `extendWriteDeadline(hc, d)`; large uploads use the `slowUpload(d)` operation option (server has Read/Write timeouts).
+- **CSRF**: `httpsec.CSRF` rejects cookie-authenticated unsafe requests that are not same-origin and bodies without
+  a JSON/multipart `Content-Type`; `Authorization` requests are exempt. Never accept other body types; the SPA needs
+  no custom header. Client IP/HTTPS: `httpsec.InfoFrom(ctx)` (forwarded headers only from `NANOFAKTURA_TRUSTED_PROXIES`).
+- **Headers/CSP**: set by `httpsec.Middleware` (API in `api.New`, SPA in `cmd/server`); the SPA must not use inline
+  scripts, `eval`/`new Function` or external origins (Zod runs `jitless`, see `web/src/lib/zod-config.ts`); a handler
+  may override headers (attachment downloads set `CSP: sandbox`).
+- **Images for PDFs**: validate with `pdf.CheckImage` (PNG/JPEG ≤ 2 MB, ≤ 4000×4000 px, header only); `pdf.Render`
+  re-validates and re-encodes every image — never hand raw user images to maroto/gofpdf elsewhere.
+- **Errors**: 5xx never carry the internal cause (`newErrorModel` logs it); inputs named `*password*`/`*token*`/`*secret*` are
+  not echoed in validation errors. Secrets in URLs (webhooks) go to events/logs only as `webhooks.Host(url)`.
+- **Credentials**: invitation links only for roles the caller may grant (`canManageRole`); the inviter's right is
+  re-checked at accept time. Passwords ≤ 72 bytes (`checkPasswordBytes`).
 
 ## Backup (SPEC §7.16)
 

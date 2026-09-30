@@ -9,11 +9,22 @@ Pravidla (viz CLAUDE.md → „Novinky“):
 - Podporováno: odstavce, `###`, odrážky, **tučně**, *zvýraznění* (např. cesta v menu), `kód`, [odkazy](https://…). Nic dalšího.
 -->
 
-## 2026-09-30 · Záloha a přenos účtu, Novinky
+## 2026-09-30 · Záloha a přenos účtu, Novinky, vyšší zabezpečení
 
 - **Záloha celého účtu** — v *Nastavení → Záloha a přenos* stáhnete jedním tlačítkem ZIP se vším: kontakty, faktury, náklady, ceník, sklad, bankovní pohyby, šablony, historii i přílohy. Hesla a přístupové tokeny se do zálohy nikdy neukládají.
 - **Obnova ze zálohy** — při zakládání nového účtu zvolte „Obnovit ze zálohy“ a účet se přenese i na jinou instanci NanoFaktury. Číslování dokladů plynule navazuje; pravidelné faktury, webhooky a automatické upomínky zůstanou po obnově vypnuté, aby nic neodešlo dvakrát.
 - **Sekce Novinky** — právě ji čtete. Tečka u položky *Novinky* v menu prozradí, že přibylo něco nového.
+
+### Vyšší zabezpečení
+
+- **Ochrana přihlášení** — po několika špatných pokusech o přihlášení nebo změnu hesla aplikace chvíli počká, než dovolí další. Hádání hesel tím prakticky nejde.
+- **Bezpečnější pozvánky** — odkaz na pozvánku s rolí vlastníka vidí jen vlastník. Pozvánka přestane platit, pokud ten, kdo ji poslal, už nemá právo danou roli udělit.
+- **Logo a razítko** — nahrát nebo smazat je může jen vlastník nebo správce. Obrázek smí mít nejvýše 2 MB a 4000 × 4000 px; větší ho aplikace odmítne a do faktury ho nevloží.
+- **API tokeny s platností** — v *Nastavení → API tokeny* nově zvolíte, jak dlouho token platí. Změna hesla odhlásí ostatní zařízení a zneplatní i všechny vaše API tokeny.
+- **Dlouhá hesla s diakritikou** — příliš dlouhé heslo aplikace srozumitelně odmítne místo chyby serveru.
+- **Exporty do tabulek** — texty, které by tabulkový procesor mohl spustit jako vzorec, se v CSV exportu uloží jako obyčejný text.
+- **Rozesílání e-mailů** — jeden e-mail s fakturou jde nejvýše 10 příjemcům a počet odeslaných e-mailů za hodinu je omezený.
+- **Pro správce instance** — nová instance může při první registraci vyžadovat instalační token, přihlášení funguje na HTTPS automaticky bezpečněji a aplikace posílá prohlížeči přísnější bezpečnostní pravidla. Podrobnosti jsou v návodu k nasazení.
 
 ## 2026-09-29 · Hledání, úkoly a historie
 

@@ -62,15 +62,15 @@ Instance je multi-user a multi-account: uživatel může mít přístup k více 
 - `User`: id, email (unique, lowercase), name, password_hash, created_at, updated_at.
 - `Account`: id, slug (unique, z názvu, `[a-z0-9-]`), + firemní profil (viz 4.1).
 - `Membership`: user_id, account_id, role `owner|member` (unique pár).
-- `Session`: id, user_id, token_hash (sha256), expires_at (30 dní, posuvně), created_at. Cookie `nf_session`, HttpOnly, SameSite=Lax, Secure dle configu.
-- `APIToken`: id, user_id, name, token_hash, prefix (prvních 8 znaků pro zobrazení), last_used_at, created_at. Token `nf_` + 32 náhodných bajtů base64url; plaintext vrácen jen při vytvoření. Header `Authorization: Bearer nf_…`.
+- `Session`: id, user_id, token_hash (sha256), expires_at (30 dní, posuvně), created_at. Cookie `nf_session`, HttpOnly, SameSite=Lax, Secure automaticky při https `NANOFAKTURA_PUBLIC_URL` nebo HTTPS požadavku (přepis `NANOFAKTURA_SECURE_COOKIES`).
+- `APIToken`: id, user_id, name, token_hash, prefix (prvních 8 znaků pro zobrazení), last_used_at (s přesností na minutu), expires_at (volitelné, `expires_in_days` při vytvoření), created_at. Změna hesla tokeny uživatele zneplatní. Token `nf_` + 32 náhodných bajtů base64url; plaintext vrácen jen při vytvoření. Header `Authorization: Bearer nf_…`.
 
 Endpointy:
 | Metoda | Cesta | Popis |
 |---|---|---|
 | GET | `/api/health` | `{status:"ok"}` bez auth |
-| GET | `/api/auth/status` | `{signup_allowed: bool, has_users: bool}` bez auth |
-| POST | `/api/auth/register` | `{email,name,password,account_name}` → vytvoří user+account(owner)+session. Povoleno, pokud v DB není žádný uživatel, nebo `NANOFAKTURA_ALLOW_SIGNUP=true`. Jinak 403. Heslo min. 8 znaků. |
+| GET | `/api/auth/status` | `{signup_allowed: bool, has_users: bool, setup_token_required: bool}` bez auth |
+| POST | `/api/auth/register` | `{email,name,password,account_name}` → vytvoří user+account(owner)+session. Povoleno, pokud v DB není žádný uživatel, nebo `NANOFAKTURA_ALLOW_SIGNUP=true`. Jinak 403. Heslo 8–72 znaků a nejvýš 72 bajtů (jinak 422 `password_too_long`). Při nastaveném `NANOFAKTURA_SETUP_TOKEN` musí první registrace poslat `setup_token` (jinak 403 `setup_token_invalid`). |
 | POST | `/api/auth/login` | `{email,password}` → set cookie, vrací `Me` |
 | POST | `/api/auth/logout` | smaže session |
 | GET | `/api/auth/me` | `Me = {user:{id,email,name}, accounts:[{slug,name,role}]}` |
@@ -214,6 +214,29 @@ unpaid_total, unpaid_count, overdue_total, overdue_count, revenue_total }` (jen 
 `NANOFAKTURA_SECRET_KEY` (32 B base64/hex, šifruje uložená tajemství — Fio tokeny; nezadaný → vygeneruje se a uloží do `NANOFAKTURA_DATA_DIR/secret.key` s varováním v logu), `NANOFAKTURA_FIO_URL` (přepis Fio API, pro testy).
 `NANOFAKTURA_WEBHOOKS_ALLOW_PRIVATE` (`true` = webhooky smí volat privátní/loopback/link-local adresy; výchozí `false`, ochrana proti SSRF).
 `NANOFAKTURA_IMPORT_MAX_MB` (512 — limit nahrané zálohy i celkové rozbalené velikosti při importu, §7.16).
+
+**Bezpečnost (§5.1):** `NANOFAKTURA_SECURE_COOKIES` (`auto` = výchozí: Secure při https `PUBLIC_URL` nebo HTTPS požadavku; `true`/`false` vynutí),
+`NANOFAKTURA_TRUSTED_PROXIES` (čárkami oddělené IP/CIDR reverzních proxy, kterým se věří `X-Forwarded-For`/`-Proto`; výchozí žádné),
+`NANOFAKTURA_SETUP_TOKEN` (je-li nastaven, první registrace prázdné instance ho musí zadat), `NANOFAKTURA_DISABLE_RATE_LIMIT`
+(false; vypne limity pokusů), `NANOFAKTURA_DISABLE_API_DOCS` (false; skryje `/api/docs`, `/api/openapi.json`, `/api/schemas`).
+
+### 5.1 Zabezpečení HTTP
+- **Hlavičky** (`internal/httpsec`, na API i SPA): SPA má CSP `default-src 'self'; script-src 'self'` (žádný inline skript ani eval —
+  motiv před vykreslením nastaví `/theme-init.js`, Zod běží `jitless`), `style-src 'self' 'unsafe-inline'`, `img-src 'self' data: blob:`,
+  `frame-src 'self' blob:` (náhled PDF), `frame-ancestors 'none'`; API `frame-ancestors 'self'`. Dále `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy` (`strict-origin-when-cross-origin`, u `/p/*`, `/invite/*` a API `no-referrer`), `Permissions-Policy`, HSTS
+  (`max-age=31536000`) při HTTPS; `/api/public/*` `Cache-Control: private, no-store`.
+- **CSRF:** nebezpečné metody autentizované cookie musí být same-origin (`Sec-Fetch-Site`/`Origin`, `http.CrossOriginProtection`) → jinak
+  403 `cross_origin_request`; požadavky s hlavičkou `Authorization` (API tokeny) jsou vyjmuté. Tělo musí mít `Content-Type`
+  `application/json` (`+json`) nebo `multipart/form-data`, jinak 415.
+- **Limity pokusů** (v paměti procesu, 429 `rate_limited` + `Retry-After`): login 20/IP (pak 2/min) a 5 neúspěchů/e-mail za 15 min,
+  registrace 5/IP (10/h), pozvánky (náhled/přijetí) 20/IP za 10 min, veřejné odkazy faktur 60/IP/min, špatné současné heslo 5/uživatel
+  za 15 min, e-maily odeslané uživatelem (faktury, pozvánky) 50/účet/h a max. 10 příjemců, těžké exporty (ZIP PDF, záloha) 10/účet/h,
+  souběžně jeden na účet a dva na instanci (429 `export_in_progress`). IP klienta z `X-Forwarded-For` jen od `NANOFAKTURA_TRUSTED_PROXIES`.
+- **Obrázky** (logo, razítko): PNG/JPEG max. 2 MB a 4000×4000 px (kontrola hlavičky, 422). Každý obrázek pro PDF se před vložením
+  znovu ověří a překóduje (zmenšení na 1200 px, cache podle obsahu); nevyhovující se do PDF nevloží. Souběžné rendery PDF jsou omezené.
+- **Chyby 5xx** neobsahují interní příčinu (loguje se); validační chyby hesel/tokenů nevracejí zadanou hodnotu.
+- Server má `ReadTimeout` 2 min, `WriteTimeout` 5 min, `IdleTimeout` 2 min; uploady a streamované exporty si lhůty prodlužují.
 
 ## 6. Frontend
 Routy (TanStack Router, `web/src/routes/`): `/login`, `/register`, `/` → redirect na `/a/{slug}` (první účet), pod `/a/$slug/`:
@@ -371,6 +394,20 @@ EET (zrušeno), účetnictví (podvojné), mzdy, OCR účtenek (jen příprava: 
 
 ## Otevřené otázky
 (sem zapisují implementátoři odchylky a nejasnosti)
+
+**Zabezpečení (2026-09-30) — rozhodnutí:**
+- Odkaz pozvánky (`invite_url`) vidí jen ten, kdo smí danou roli udělit (owner pozvánky jen owner). Pozvánka propadá (410
+  `invitation_revoked`), pokud pozvávající už není členem s právem roli udělit (kontrola při náhledu, registraci i přijetí).
+- Přílohy s `owner_type=account` (logo, razítko) nahrává a maže jen owner/admin (jde o nastavení).
+- Změna hesla zneplatní i všechny API tokeny uživatele (dosud jen ostatní sessions); tokeny bez expirace fungují dál, dokud se heslo nezmění.
+- Hesla nad 72 bajtů se odmítají (422), nepředhashovávají — existující bcrypt hashe zůstávají platné.
+- Úlohou `auth-cleanup` (denně) se mažou prošlé sessions, API tokeny a pozvánky prošlé déle než 7 dní.
+- Události `webhook.*` obsahují jen `scheme://host` webhooku (dříve celé URL) a čtou je jen owner/admin.
+- Blokace SSRF webhooků pokrývá všechny IANA special-purpose rozsahy (NAT64/6to4 podle vložené IPv4, Teredo) a porty mimo 80, 443, 1024–65535.
+- CSV exporty předřazují `'` textovým buňkám začínajícím `= + - @ tab CR`.
+- Limity pokusů jsou v paměti procesu (restart je vynuluje, víc instancí je nesdílí) — pro jednu self-hosted instanci dostačující.
+- Neřešeno: `secret.Box` bez AAD (prohození šifrovaných hodnot mezi řádky vyžaduje zápis do DB), prefix `__Host-` u cookie
+  (odhlásil by všechny uživatele a nefunguje na http v dev), dashboard ukazuje tržby i roli member (ta vidí i všechny faktury).
 
 **Backend základ (auth, účty) — rozhodnutí a odchylky:**
 - Seznamy tokenů (`GET /api/auth/tokens`) a účtů (`GET /api/accounts`) používají také stránkovanou obálku `{items,page,per_page,total}` (jednotnost; `Me.accounts` zůstává plné pole).

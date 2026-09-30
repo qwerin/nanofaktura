@@ -58,6 +58,23 @@ CERT_RESOLVER=letsencrypt
 TRAEFIK_NETWORK=proxy
 ```
 
+Overlay nastaví `NANOFAKTURA_PUBLIC_URL=https://${DOMAIN}`, Secure cookie a důvěru v `X-Forwarded-*` od Traefiku
+a **zruší publikovaný port 8080** (aplikace je dostupná jen přes HTTPS; vyžaduje Docker Compose ≥ 2.24 kvůli `!reset`).
+Ověření: `docker compose -f docker-compose.yml -f docker-compose.traefik.yml config` nesmí u `app` vypsat `ports`.
+
+### Produkční checklist
+
+- **HTTPS** — aplikaci provozujte jen za reverzní proxy s TLS a nastavte `NANOFAKTURA_PUBLIC_URL=https://…`
+  (zapne `Secure` cookie a HSTS). Port aplikace nepublikujte veřejně (základní compose ho váže jen na `127.0.0.1`).
+- **`NANOFAKTURA_SETUP_TOKEN`** — nastavte náhodný řetězec (`openssl rand -hex 16`) ještě před prvním spuštěním
+  na veřejné adrese; při registraci prvního účtu ho zadáte. Bez něj se může jako první zaregistrovat kdokoli.
+- **`NANOFAKTURA_TRUSTED_PROXIES`** — adresy/podsíť vaší reverzní proxy (např. síť Traefiku). Jen od nich se věří
+  `X-Forwarded-For` (limity pokusů podle IP klienta) a `X-Forwarded-Proto`. Nikdy nezadávejte adresy, ze kterých
+  se k aplikaci dostane kdokoli přímo.
+- **SMTP** — bez `NANOFAKTURA_SMTP_HOST` se e-maily (i odkazy pozvánek) jen vypisují do logu.
+- **Zálohujte** databázi i datový volume (`/data`: přílohy a `secret.key`), nebo nastavte `NANOFAKTURA_SECRET_KEY`.
+- Server při startu varuje, pokud některé z výše uvedeného chybí.
+
 > Při prvním spuštění se PostgreSQL volume inicializuje s zadaným heslem.
 > Pokud změníš heslo, musíš smazat volume `nanofaktura_pgdata` a znovu nasadit.
 
@@ -72,7 +89,12 @@ Konfigurace se načítá z env proměnných.
 | `NANOFAKTURA_DB_DSN`          | `nanofaktura.db` | Cesta k SQLite souboru nebo PostgreSQL DSN          |
 | `NANOFAKTURA_STATIC_DIR`      | *(prázdné)*      | Adresář s buildem frontendu (SPA)                   |
 | `NANOFAKTURA_ALLOW_SIGNUP`    | `false`          | Povolit registraci i po vytvoření prvního uživatele |
-| `NANOFAKTURA_SECURE_COOKIES`  | `false`          | Session cookie s příznakem `Secure` (za HTTPS)      |
+| `NANOFAKTURA_PUBLIC_URL`      | `http://localhost:8080` | Veřejná adresa (odkazy v e-mailech; `https://` zapne Secure cookie a HSTS) |
+| `NANOFAKTURA_SECURE_COOKIES`  | `auto`           | `Secure` u session cookie: `auto` podle HTTPS, `true`/`false` vynutí |
+| `NANOFAKTURA_TRUSTED_PROXIES` | *(prázdné)*      | IP/CIDR reverzních proxy, kterým se věří `X-Forwarded-For`/`-Proto` |
+| `NANOFAKTURA_SETUP_TOKEN`     | *(prázdné)*      | Token vyžadovaný při první registraci prázdné instance |
+| `NANOFAKTURA_DISABLE_RATE_LIMIT` | `false`       | Vypne limity pokusů (přihlášení, registrace, e-maily …) |
+| `NANOFAKTURA_DISABLE_API_DOCS` | `false`         | Skryje `/api/docs` a `/api/openapi.json`            |
 | `NANOFAKTURA_IMPORT_MAX_MB`   | `512`            | Limit velikosti zálohy při obnově účtu              |
 
 ### Záloha a přenos účtu
@@ -113,7 +135,7 @@ Interaktivní dokumentace API běží na `/api/docs`, OpenAPI schéma na `/api/o
 
 | Vrstva    | Technologie                                                   |
 |-----------|---------------------------------------------------------------|
-| Backend   | Go 1.26, [chi](https://github.com/go-chi/chi), [Huma v2](https://github.com/danielgtaylor/huma), GORM |
+| Backend   | Go 1.26 (≥ 1.26.8), [chi](https://github.com/go-chi/chi), [Huma v2](https://github.com/danielgtaylor/huma), GORM |
 | Databáze  | SQLite (pure Go, bez CGO) nebo PostgreSQL                     |
 | Frontend  | React 19, TypeScript, Vite, Tailwind v4, shadcn/ui            |
 | Container | Docker (distroless), docker compose, PostgreSQL 17            |
