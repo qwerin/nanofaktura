@@ -68,6 +68,7 @@ Ověření: `docker compose -f docker-compose.yml -f docker-compose.traefik.yml 
   (zapne `Secure` cookie a HSTS). Port aplikace nepublikujte veřejně (základní compose ho váže jen na `127.0.0.1`).
 - **`NANOFAKTURA_SETUP_TOKEN`** — nastavte náhodný řetězec (`openssl rand -hex 16`) ještě před prvním spuštěním
   na veřejné adrese; při registraci prvního účtu ho zadáte. Bez něj se může jako první zaregistrovat kdokoli.
+- **Logy** — výchozí `NANOFAKTURA_DB_LOG=error` vypisuje jen chyby databáze; při ladění `warn` (+ pomalé dotazy nad `NANOFAKTURA_DB_SLOW_MS`) nebo `info` (všechny dotazy). Hodnoty parametrů se do logu nedostanou.
 - **`NANOFAKTURA_TRUSTED_PROXIES`** — adresy/podsíť vaší reverzní proxy (např. síť Traefiku). Jen od nich se věří
   `X-Forwarded-For` (limity pokusů podle IP klienta) a `X-Forwarded-Proto`. Nikdy nezadávejte adresy, ze kterých
   se k aplikaci dostane kdokoli přímo.

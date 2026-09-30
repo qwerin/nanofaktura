@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/netip"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -40,6 +41,12 @@ type Config struct {
 	// ImportMaxMB (NANOFAKTURA_IMPORT_MAX_MB, default 512) limits the total
 	// uncompressed size of an imported account backup (and the upload).
 	ImportMaxMB int
+
+	// DBLog (NANOFAKTURA_DB_LOG, default "error"): SQL logging — silent|error|warn|info.
+	// warn adds slow queries (≥ DBSlowMS), info every query; values are never logged.
+	DBLog string
+	// DBSlowMS (NANOFAKTURA_DB_SLOW_MS, default 1000): slow-query threshold for DBLog=warn.
+	DBSlowMS int
 
 	// WebhooksAllowPrivate (NANOFAKTURA_WEBHOOKS_ALLOW_PRIVATE) lets webhooks call private,
 	// loopback and link-local addresses (SSRF protection off; LAN setups, tests).
@@ -118,6 +125,13 @@ func Load() (Config, error) {
 	cfg.SMTPPort = port
 	if cfg.ImportMaxMB, err = strconv.Atoi(env("NANOFAKTURA_IMPORT_MAX_MB", "512")); err != nil || cfg.ImportMaxMB <= 0 {
 		return Config{}, fmt.Errorf("NANOFAKTURA_IMPORT_MAX_MB: invalid size")
+	}
+	cfg.DBLog = strings.ToLower(env("NANOFAKTURA_DB_LOG", "error"))
+	if !slices.Contains([]string{"silent", "error", "warn", "info"}, cfg.DBLog) {
+		return Config{}, fmt.Errorf("NANOFAKTURA_DB_LOG: use silent, error, warn or info")
+	}
+	if cfg.DBSlowMS, err = strconv.Atoi(env("NANOFAKTURA_DB_SLOW_MS", "1000")); err != nil || cfg.DBSlowMS <= 0 {
+		return Config{}, fmt.Errorf("NANOFAKTURA_DB_SLOW_MS: invalid milliseconds")
 	}
 	if cfg.AllowSignup, err = envBool("NANOFAKTURA_ALLOW_SIGNUP"); err != nil {
 		return Config{}, err

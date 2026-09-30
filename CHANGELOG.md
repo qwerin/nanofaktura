@@ -28,7 +28,7 @@ Pravidla (viz CLAUDE.md → „Novinky“):
 - **Dlouhá hesla s diakritikou** — příliš dlouhé heslo aplikace srozumitelně odmítne místo chyby serveru.
 - **Exporty do tabulek** — texty, které by tabulkový procesor mohl spustit jako vzorec, se v CSV exportu uloží jako obyčejný text.
 - **Rozesílání e-mailů** — jeden e-mail s fakturou jde nejvýše 10 příjemcům a počet odeslaných e-mailů za hodinu je omezený.
-- **Pro správce instance** — nová instance může při první registraci vyžadovat instalační token, přihlášení funguje na HTTPS automaticky bezpečněji a aplikace posílá prohlížeči přísnější bezpečnostní pravidla. Podrobnosti jsou v návodu k nasazení.
+- **Pro správce instance** — log serveru už nevypisuje běžné SQL dotazy ani jejich hodnoty (jen skutečné chyby databáze; podrobnější výpis zapne `NANOFAKTURA_DB_LOG`). nová instance může při první registraci vyžadovat instalační token, přihlášení funguje na HTTPS automaticky bezpečněji a aplikace posílá prohlížeči přísnější bezpečnostní pravidla. Podrobnosti jsou v návodu k nasazení.
 
 ## 2026-09-29 · Hledání, úkoly a historie
 

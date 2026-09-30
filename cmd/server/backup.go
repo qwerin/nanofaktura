@@ -49,7 +49,7 @@ func runBackup(ctx context.Context, args []string, stdout, stderr io.Writer) err
 }
 
 func openDB(cfg config.Config) (*gorm.DB, storage.Storage, error) {
-	gdb, err := db.Open(cfg.DBDriver, cfg.DBDSN)
+	gdb, err := db.Open(cfg.DBDriver, cfg.DBDSN, db.WithLogging(cfg.DBLog, time.Duration(cfg.DBSlowMS)*time.Millisecond))
 	if err != nil {
 		return nil, nil, err
 	}

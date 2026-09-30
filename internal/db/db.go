@@ -3,7 +3,11 @@ package db
 
 import (
 	"fmt"
+	"io"
+	"log"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/driver/postgres"
@@ -22,8 +26,16 @@ import (
 // the tx handle — a query on the outer *gorm.DB would wait forever.
 //
 // Duplicate-key errors are translated to gorm.ErrDuplicatedKey for both drivers.
-func Open(driver, dsn string) (*gorm.DB, error) {
-	cfg := &gorm.Config{TranslateError: true, Logger: logger.Default.LogMode(logger.Warn)}
+func Open(driver, dsn string, opts ...Option) (*gorm.DB, error) {
+	o := options{logLevel: "error", slow: time.Second, out: os.Stderr}
+	for _, opt := range opts {
+		opt(&o)
+	}
+	lg, err := newLogger(o)
+	if err != nil {
+		return nil, err
+	}
+	cfg := &gorm.Config{TranslateError: true, Logger: lg}
 	switch driver {
 	case "sqlite":
 		db, err := gorm.Open(sqlite.Open(sqliteDSN(dsn)), cfg)
@@ -45,6 +57,46 @@ func Open(driver, dsn string) (*gorm.DB, error) {
 	default:
 		return nil, fmt.Errorf("unsupported db driver %q", driver)
 	}
+}
+
+// Option configures Open.
+type Option func(*options)
+
+type options struct {
+	logLevel string
+	slow     time.Duration
+	out      io.Writer
+}
+
+// WithLogging sets the SQL log level (silent|error|warn|info; "" = error) and
+// the slow-query threshold reported at warn level (0 = default 1 s).
+func WithLogging(level string, slow time.Duration) Option {
+	return func(o *options) {
+		if level != "" {
+			o.logLevel = level
+		}
+		if slow > 0 {
+			o.slow = slow
+		}
+	}
+}
+
+// newLogger logs to stderr without colors and without query parameters
+// (values such as e-mails or names never reach the log); "record not found"
+// is a normal outcome of lookups and is never logged.
+func newLogger(o options) (logger.Interface, error) {
+	levels := map[string]logger.LogLevel{"silent": logger.Silent, "error": logger.Error, "warn": logger.Warn, "info": logger.Info}
+	lvl, ok := levels[strings.ToLower(o.logLevel)]
+	if !ok {
+		return nil, fmt.Errorf("NANOFAKTURA_DB_LOG: unknown level %q (silent|error|warn|info)", o.logLevel)
+	}
+	return logger.New(log.New(o.out, "", log.LstdFlags), logger.Config{
+		SlowThreshold:             o.slow,
+		LogLevel:                  lvl,
+		IgnoreRecordNotFoundError: true,
+		ParameterizedQueries:      true,
+		Colorful:                  false,
+	}), nil
 }
 
 func sqliteDSN(dsn string) string {

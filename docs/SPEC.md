@@ -261,6 +261,8 @@ unpaid_total, unpaid_count, overdue_total, overdue_count, revenue_total }` (jen 
 `NANOFAKTURA_CNB_URL`, `NANOFAKTURA_VIES_URL`, `NANOFAKTURA_VATREG_URL` (přepis adres externích služeb, pro testy).
 `NANOFAKTURA_SECRET_KEY` (32 B base64/hex, šifruje uložená tajemství — Fio tokeny; nezadaný → vygeneruje se a uloží do `NANOFAKTURA_DATA_DIR/secret.key` s varováním v logu), `NANOFAKTURA_FIO_URL` (přepis Fio API, pro testy).
 `NANOFAKTURA_WEBHOOKS_ALLOW_PRIVATE` (`true` = webhooky smí volat privátní/loopback/link-local adresy; výchozí `false`, ochrana proti SSRF).
+`NANOFAKTURA_DB_LOG` (`error` — logování SQL: `silent|error|warn|info`; hodnoty parametrů se nelogují nikdy, „record not found“ také ne),
+`NANOFAKTURA_DB_SLOW_MS` (1000 — hranice pomalého dotazu pro `warn`),
 `NANOFAKTURA_IMPORT_MAX_MB` (512 — limit nahrané zálohy i celkové rozbalené velikosti při importu, §7.16).
 `NANOFAKTURA_WEBAUTHN_ORIGINS` (další povolené origins pro bezpečnostní klíče, čárkou oddělené, např. `http://localhost:5173` při vývoji; §3.1).
 
