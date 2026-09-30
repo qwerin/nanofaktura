@@ -24,7 +24,7 @@ services:
       NANOFAKTURA_SECURE_COOKIES: "true"
       # Traefik je jediný, kdo se k aplikaci dostane (port není publikovaný), proto se
       # jeho X-Forwarded-For/-Proto z privátních sítí Dockeru věří. Zúžit lze na podsíť sítě Traefiku.
-      NANOFAKTURA_TRUSTED_PROXIES: ${TRUSTED_PROXIES:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
+      NANOFAKTURA_TRUSTED_PROXIES: ${NANOFAKTURA_TRUSTED_PROXIES:-${TRUSTED_PROXIES:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}}
     networks:
       - internal
       - traefik

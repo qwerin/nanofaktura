@@ -31,21 +31,28 @@ services:
         sslmode=disable
       NANOFAKTURA_STATIC_DIR: /app/dist
       NANOFAKTURA_DATA_DIR: /data
-      # Adresa, na které uživatelé aplikaci otevírají (odkazy v e-mailech; https:// zapne Secure cookie a HSTS)
-      NANOFAKTURA_PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
-      # Klíč šifrující uložená tajemství; prázdný = vygeneruje se do /data/secret.key (zálohujte volume)
-      NANOFAKTURA_SECRET_KEY: ${SECRET_KEY:-}
-      # Token pro první registraci (doporučeno, dokud se nezaregistrujete)
-      NANOFAKTURA_SETUP_TOKEN: ${SETUP_TOKEN:-}
-      # E-mail (prázdný SMTP_HOST = e-maily se jen vypisují do logu)
-      NANOFAKTURA_SMTP_HOST: ${SMTP_HOST:-}
-      NANOFAKTURA_SMTP_PORT: ${SMTP_PORT:-587}
-      NANOFAKTURA_SMTP_TLS: ${SMTP_TLS:-starttls}
-      NANOFAKTURA_SMTP_USER: ${SMTP_USER:-}
-      NANOFAKTURA_SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      NANOFAKTURA_MAIL_FROM: ${MAIL_FROM:-}
-      # Volitelné přepisy:
-      # NANOFAKTURA_ALLOW_SIGNUP: "true"
+      # Všechny další proměnné aplikace se předávají pod stejným (plným) názvem z .env / prostředí
+      # Portaineru. Krátké názvy (PUBLIC_URL, SMTP_HOST …) fungují jen jako starší zkratky.
+      NANOFAKTURA_PUBLIC_URL: ${NANOFAKTURA_PUBLIC_URL:-${PUBLIC_URL:-http://localhost:8080}}
+      NANOFAKTURA_SECRET_KEY: ${NANOFAKTURA_SECRET_KEY:-${SECRET_KEY:-}}
+      NANOFAKTURA_SETUP_TOKEN: ${NANOFAKTURA_SETUP_TOKEN:-${SETUP_TOKEN:-}}
+      NANOFAKTURA_ADMIN_EMAILS: ${NANOFAKTURA_ADMIN_EMAILS:-}
+      NANOFAKTURA_ALLOW_SIGNUP: ${NANOFAKTURA_ALLOW_SIGNUP:-}
+      NANOFAKTURA_SECURE_COOKIES: ${NANOFAKTURA_SECURE_COOKIES:-}
+      NANOFAKTURA_TRUSTED_PROXIES: ${NANOFAKTURA_TRUSTED_PROXIES:-${TRUSTED_PROXIES:-}}
+      NANOFAKTURA_SMTP_HOST: ${NANOFAKTURA_SMTP_HOST:-${SMTP_HOST:-}}
+      NANOFAKTURA_SMTP_PORT: ${NANOFAKTURA_SMTP_PORT:-${SMTP_PORT:-587}}
+      NANOFAKTURA_SMTP_TLS: ${NANOFAKTURA_SMTP_TLS:-${SMTP_TLS:-starttls}}
+      NANOFAKTURA_SMTP_USER: ${NANOFAKTURA_SMTP_USER:-${SMTP_USER:-}}
+      NANOFAKTURA_SMTP_PASSWORD: ${NANOFAKTURA_SMTP_PASSWORD:-${SMTP_PASSWORD:-}}
+      NANOFAKTURA_MAIL_FROM: ${NANOFAKTURA_MAIL_FROM:-${MAIL_FROM:-}}
+      NANOFAKTURA_DB_LOG: ${NANOFAKTURA_DB_LOG:-}
+      NANOFAKTURA_DB_SLOW_MS: ${NANOFAKTURA_DB_SLOW_MS:-}
+      NANOFAKTURA_IMPORT_MAX_MB: ${NANOFAKTURA_IMPORT_MAX_MB:-}
+      NANOFAKTURA_DISABLE_RATE_LIMIT: ${NANOFAKTURA_DISABLE_RATE_LIMIT:-}
+      NANOFAKTURA_DISABLE_API_DOCS: ${NANOFAKTURA_DISABLE_API_DOCS:-}
+      NANOFAKTURA_WEBHOOKS_ALLOW_PRIVATE: ${NANOFAKTURA_WEBHOOKS_ALLOW_PRIVATE:-}
+      NANOFAKTURA_WEBAUTHN_ORIGINS: ${NANOFAKTURA_WEBAUTHN_ORIGINS:-}
     volumes:
       - appdata:/data
     depends_on:
