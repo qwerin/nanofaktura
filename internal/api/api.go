@@ -39,6 +39,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"gorm.io/gorm"
 
 	"github.com/qwerin/nanofaktura/internal/ares"
@@ -103,6 +104,9 @@ type server struct {
 	auth *auth.Service
 
 	webhookClient *http.Client // SSRF-safe unless cfg.WebhooksAllowPrivate
+
+	webauthn    *webauthn.WebAuthn // security keys (SPEC §3.1); nil with webauthnErr on a bad PUBLIC_URL
+	webauthnErr error
 }
 
 // New builds the API router. db may be nil when only the OpenAPI document is needed.
@@ -139,6 +143,8 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 
 	registerHealth(public)
 	s.registerAuth(public, authed)
+	s.registerPasswordReset(public)
+	s.registerTwoFactor(public, authed)
 	s.registerTokens(authed)
 	s.registerAccounts(authed, account)
 	s.registerAres(authed)
@@ -212,8 +218,10 @@ func newServer(db *gorm.DB, cfg config.Config, deps Deps) *server {
 	if deps.Secrets == nil {
 		deps.Secrets = secret.NewRandom()
 	}
-	return &server{db: db, cfg: cfg, deps: deps, auth: auth.NewService(db, deps.Now, cfg.SecureCookies),
+	s := &server{db: db, cfg: cfg, deps: deps, auth: auth.NewService(db, deps.Now, cfg.SecureCookies),
 		webhookClient: webhooks.NewClient(cfg.WebhooksAllowPrivate)}
+	s.webauthn, s.webauthnErr = newWebAuthn(s.publicURL(), cfg.WebAuthnOrigins)
+	return s
 }
 
 func defaultMailer(cfg config.Config) mail.Mailer {

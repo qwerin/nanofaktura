@@ -71,7 +71,7 @@ Endpointy:
 | GET | `/api/health` | `{status:"ok"}` bez auth |
 | GET | `/api/auth/status` | `{signup_allowed: bool, has_users: bool}` bez auth |
 | POST | `/api/auth/register` | `{email,name,password,account_name}` → vytvoří user+account(owner)+session. Povoleno, pokud v DB není žádný uživatel, nebo `NANOFAKTURA_ALLOW_SIGNUP=true`. Jinak 403. Heslo min. 8 znaků. |
-| POST | `/api/auth/login` | `{email,password}` → set cookie, vrací `Me` |
+| POST | `/api/auth/login` | `{email,password}` → `LoginResult {me?, two_factor?}`; bez 2FA set cookie + `me`, jinak výzva k druhému faktoru (§3.1) |
 | POST | `/api/auth/logout` | smaže session |
 | GET | `/api/auth/me` | `Me = {user:{id,email,name}, accounts:[{slug,name,role}]}` |
 | PATCH | `/api/auth/me` | změna jména / hesla (`current_password` povinné při změně hesla) |
@@ -82,6 +82,54 @@ Endpointy:
 
 Všechny doménové zdroje žijí pod `/api/accounts/{slug}/…`. Middleware ověří membership a vloží account do contextu;
 nečlen → 404.
+
+### 3.1 Obnova hesla a dvoufázové ověření (2FA)
+
+Týká se uživatele (instance-wide), ne účtu; nic z toho není v záloze účtu (§7.16).
+
+**Zapomenuté heslo** (vše `public`):
+- `POST /api/auth/password-reset {email}` → vždy 204 (neprozradí, zda e-mail existuje). Existujícímu uživateli pošle
+  e-mail s odkazem `{PUBLIC_URL}/reset-password/{token}`, platnost 1 h. Nejvýš jeden e-mail za 5 min na uživatele
+  (další žádosti v té době se tiše ignorují). `PasswordReset`: user_id, token_hash (sha256), expires_at, used_at.
+- `GET /api/auth/password-reset/{token}` → `{email, two_factor}`; neznámý 404, použitý/expirovaný 410 `reset_expired`.
+- `POST /api/auth/password-reset/{token} {password}` → 204: nové heslo, smaže **všechny** sessions a všechny reset tokeny
+  uživatele. Nepřihlašuje a **nevypíná 2FA** (po resetu se přihlásí heslem + druhým faktorem). API tokeny zůstávají.
+
+**Druhý faktor**: TOTP (aplikace, RFC 6238: SHA-1, 6 číslic, 30 s, tolerance ±1 krok, znovupoužití stejného kroku odmítnuto)
+a bezpečnostní klíče WebAuthn (YubiKey, passkey v telefonu/počítači) — libovolně kombinovatelné. S prvním zapnutým
+faktorem vznikne 10 záložních kódů (`xxxxx-xxxxx`, jednorázové, uložen jen hash); po odebrání posledního faktoru se smažou.
+- User: `totp_secret_enc` (šifrováno `secret.Box`), `totp_pending_enc` (rozpracované nastavení), `totp_last_step`.
+  `RecoveryCode`: user_id, code_hash, used_at. `WebAuthnCredential`: user_id, name, credential_id (base64url, unique),
+  data (JSON credential knihovny `go-webauthn`, vč. sign counteru), last_used_at.
+  `AuthChallenge`: user_id, purpose `login|webauthn_register`, token_hash, webauthn_session (JSON), attempts, expires_at.
+- WebAuthn RP ID = hostname `NANOFAKTURA_PUBLIC_URL`, povolené origins = origin `PUBLIC_URL` + `NANOFAKTURA_WEBAUTHN_ORIGINS`.
+  Klíče jsou vázané na doménu — po změně domény je nutné je přidat znovu. Prohlížeč vyžaduje HTTPS (výjimka `localhost`).
+
+**Přihlášení**: `POST /api/auth/login` vrací `LoginResult = {me?, two_factor?}`. Bez 2FA `me` + session cookie (jako dřív).
+S 2FA jen `two_factor = {token, methods: [totp|webauthn|recovery], expires_at}` a **žádnou** cookie; token platí 10 min
+a snese 5 neúspěšných pokusů (pak 401 `two_factor_expired`). Dokončení (vrací `Me` + cookie):
+- `POST /api/auth/login/2fa {token, code}` — TOTP kód nebo záložní kód; špatný → 401 `invalid_code`.
+- `POST /api/auth/login/webauthn/options {token}` → `{options}` (`PublicKeyCredentialRequestOptions` jako JSON s base64url),
+  pak `POST /api/auth/login/webauthn {token, credential}` (JSON `PublicKeyCredential`); neověřený → 401 `webauthn_failed`.
+API tokeny 2FA neobcházejí ani nevyžadují (vytvořit je lze jen po plném přihlášení).
+
+**Správa** (`authed`; citlivé kroky vyžadují aktuální heslo, špatné → 422 `wrong_password` v `body.password`):
+- `GET /api/auth/2fa` → `{enabled, totp, webauthn: [{id, name, created_at, last_used_at}], recovery_codes_left}`.
+- `POST /api/auth/2fa/totp/setup {password}` → `{secret, otpauth_url}` (QR kreslí frontend); TOTP už zapnuté → 409 `totp_enabled`.
+  `POST /api/auth/2fa/totp/enable {code}` → `{recovery_codes}` (prázdné, pokud už kódy existují); bez setupu 409
+  `totp_not_pending`, špatný kód 422 `invalid_code`. `DELETE /api/auth/2fa/totp {password}` → 204.
+- `POST /api/auth/2fa/webauthn/options {password}` → `{token, options}` (`PublicKeyCredentialCreationOptions`, vyloučí už
+  registrované klíče), `POST /api/auth/2fa/webauthn {token, name, credential}` → 201 `{key, recovery_codes}`;
+  neověřený → 422 `webauthn_failed`. `DELETE /api/auth/2fa/webauthn/{id} {password}` → 204.
+- `POST /api/auth/2fa/recovery-codes {password}` → nové kódy (staré zneplatní); bez 2FA 409 `two_factor_disabled`.
+- Zapnutí faktoru (aplikace i klíče) odhlásí ostatní sessions (aktuální zůstává).
+- Ztracený telefon/klíč i záložní kódy: správce instance `nanofaktura user reset-2fa --email <e-mail>` (vypne 2FA).
+
+Úklid: job `auth-cleanup` (1× za hodinu) maže expirované sessions, výzvy a reset tokeny.
+
+Frontend: na `/login` odkaz „Zapomenuté heslo?“ → `/forgot-password`; `/reset-password/$token`; po hesle druhý krok na
+téže stránce (kód / „Použít bezpečnostní klíč“ / záložní kód). Nastavení → nová záložka „Zabezpečení“ (2FA: aplikace s QR,
+bezpečnostní klíče, záložní kódy ke stažení/zkopírování).
 
 ## 4. Doména
 
@@ -214,6 +262,7 @@ unpaid_total, unpaid_count, overdue_total, overdue_count, revenue_total }` (jen 
 `NANOFAKTURA_SECRET_KEY` (32 B base64/hex, šifruje uložená tajemství — Fio tokeny; nezadaný → vygeneruje se a uloží do `NANOFAKTURA_DATA_DIR/secret.key` s varováním v logu), `NANOFAKTURA_FIO_URL` (přepis Fio API, pro testy).
 `NANOFAKTURA_WEBHOOKS_ALLOW_PRIVATE` (`true` = webhooky smí volat privátní/loopback/link-local adresy; výchozí `false`, ochrana proti SSRF).
 `NANOFAKTURA_IMPORT_MAX_MB` (512 — limit nahrané zálohy i celkové rozbalené velikosti při importu, §7.16).
+`NANOFAKTURA_WEBAUTHN_ORIGINS` (další povolené origins pro bezpečnostní klíče, čárkou oddělené, např. `http://localhost:5173` při vývoji; §3.1).
 
 ## 6. Frontend
 Routy (TanStack Router, `web/src/routes/`): `/login`, `/register`, `/` → redirect na `/a/{slug}` (první účet), pod `/a/$slug/`:
@@ -377,6 +426,10 @@ EET (zrušeno), účetnictví (podvojné), mzdy, OCR účtenek (jen příprava: 
 - Výstup `Account` nemá `id` (identifikátor je `slug`) a obsahuje `role` aktuálního uživatele. `POST /api/accounts` přijímá jen `{name}`, profil se doplní přes PATCH. PATCH účtu členem (ne ownerem) → 403 (člen existenci účtu zná). Slug: max 50 znaků, prázdný → `ucet`, kolize → `-2`, `-3`…
 - Statusy: register 201, login 200, špatné přihlašovací údaje 401 (`invalid email or password`), bez přihlášení 401, logout 204 a nevyžaduje přihlášení (idempotentní; maže session z cookie). Změna hesla bez/špatné `current_password` → 422 (`body.current_password`). Změna hesla zatím nezneplatňuje ostatní sessions.
 - Session: expirace se posouvá nejvýš jednou za 24 h (při posunu server pošle obnovenou cookie). Bearer token má přednost před cookie.
+- 2FA (§3.1): odpověď loginu se změnila z `Me` na `LoginResult` (jediný konzument je SPA). Token výzvy chodí v těle, ne v cookie
+  (jednodušší pro API klienty; je krátkodobý a použitelný jen s druhým faktorem). WebAuthn slouží jen jako druhý faktor,
+  přihlášení bez hesla (discoverable passkeys) zatím není. Obnova hesla neposílá e-mail o změně hesla a není rate-limitovaná
+  jinak než 1 e-mail / 5 min na uživatele (zbytek na reverse proxy).
 - Texty chyb (`detail`) jsou anglicky, stejně jako validační chyby z huma; frontend si je případně přeloží.
 - OpenAPI na `/api/openapi.json`, dokumentace `/api/docs` (pod `/api`, aby nekolidovaly se SPA). Pole `$schema` se do odpovědí nepřidává.
 - SQLite běží s jedním připojením (`MaxOpenConns=1`) → zápisy (i přidělování čísel) jsou serializované; uvnitř transakce se smí používat jen `tx`.

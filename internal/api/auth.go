@@ -138,18 +138,6 @@ func (s *server) register(ctx context.Context, in *struct{ Body RegisterRequest 
 	return s.startSession(ctx, &user)
 }
 
-func (s *server) login(ctx context.Context, in *struct{ Body LoginRequest }) (*meWithCookie, error) {
-	var user model.User
-	err := s.db.WithContext(ctx).Where("email = ?", normalizeEmail(in.Body.Email)).First(&user).Error
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, dbErr(err, "user")
-	}
-	if !auth.CheckPassword(user.PasswordHash, in.Body.Password) {
-		return nil, huma.Error401Unauthorized("invalid email or password")
-	}
-	return s.startSession(ctx, &user)
-}
-
 func (s *server) startSession(ctx context.Context, user *model.User) (*meWithCookie, error) {
 	cookie, err := s.auth.CreateSession(ctx, user.ID)
 	if err != nil {

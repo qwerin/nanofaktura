@@ -1780,6 +1780,142 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/2fa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API auth2 fa */
+        get: operations["get-api-auth2-fa"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/2fa/recovery-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post API auth2 fa recovery codes */
+        post: operations["post-api-auth2-fa-recovery-codes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/2fa/totp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete API auth2 fa totp */
+        delete: operations["delete-api-auth2-fa-totp"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/2fa/totp/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post API auth2 fa totp enable */
+        post: operations["post-api-auth2-fa-totp-enable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/2fa/totp/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post API auth2 fa totp setup */
+        post: operations["post-api-auth2-fa-totp-setup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/2fa/webauthn": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post API auth2 fa webauthn */
+        post: operations["post-api-auth2-fa-webauthn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/2fa/webauthn/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post API auth2 fa webauthn options */
+        post: operations["post-api-auth2-fa-webauthn-options"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/2fa/webauthn/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete API auth2 fa webauthn by ID */
+        delete: operations["delete-api-auth2-fa-webauthn-by-id"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/login": {
         parameters: {
             query?: never;
@@ -1791,6 +1927,57 @@ export interface paths {
         put?: never;
         /** Post API auth login */
         post: operations["post-api-auth-login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/login/2fa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post API auth login2 fa */
+        post: operations["post-api-auth-login2-fa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/login/webauthn": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post API auth login webauthn */
+        post: operations["post-api-auth-login-webauthn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/login/webauthn/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post API auth login webauthn options */
+        post: operations["post-api-auth-login-webauthn-options"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1830,6 +2017,41 @@ export interface paths {
         head?: never;
         /** Patch API auth me */
         patch: operations["patch-api-auth-me"];
+        trace?: never;
+    };
+    "/api/auth/password-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post API auth password reset */
+        post: operations["post-api-auth-password-reset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/password-reset/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API auth password reset by token */
+        get: operations["get-api-auth-password-reset-by-token"];
+        put?: never;
+        /** Post API auth password reset by token */
+        post: operations["post-api-auth-password-reset-by-token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/auth/register": {
@@ -2444,6 +2666,9 @@ export interface components {
         CatalogEntry: {
             description: string;
             name: string;
+        };
+        ChallengeRequest: {
+            token: string;
         };
         ControlStatement: {
             a1: components["schemas"]["A1Row"][];
@@ -3670,9 +3895,19 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        LoginCodeRequest: {
+            /** @description 6-digit code from the authenticator app or a recovery code */
+            code: string;
+            token: string;
+        };
         LoginRequest: {
             email: string;
             password: string;
+        };
+        LoginResult: {
+            /** @description Logged-in user; missing when a second factor is required */
+            me?: components["schemas"]["Me"];
+            two_factor?: components["schemas"]["TwoFactorChallenge"];
         };
         MatchSuggestion: {
             /** Format: int64 */
@@ -3793,6 +4028,21 @@ export interface components {
             base: number;
             /** Format: int64 */
             vat: number;
+        };
+        PasswordConfirm: {
+            /** @description Current password */
+            password: string;
+        };
+        PasswordResetConfirm: {
+            password: string;
+        };
+        PasswordResetInfo: {
+            email: string;
+            /** @description The user has a second factor; it is still required after the reset */
+            two_factor: boolean;
+        };
+        PasswordResetRequest: {
+            email: string;
         };
         Payment: {
             /** Format: int64 */
@@ -3993,6 +4243,10 @@ export interface components {
             basic: components["schemas"]["Pair"];
             /** @description 12 % */
             reduced: components["schemas"]["Pair"];
+        };
+        RecoveryCodes: {
+            /** @description Shown only now; empty when the user already has codes */
+            recovery_codes: string[];
         };
         Recurring: {
             active: boolean;
@@ -4275,6 +4529,15 @@ export interface components {
             web?: string;
             zip?: string;
         };
+        TOTPEnableRequest: {
+            code: string;
+        };
+        TOTPSetup: {
+            /** @description otpauth:// URL for the QR code */
+            otpauth_url: string;
+            /** @description Base32 secret for manual entry */
+            secret: string;
+        };
         Template: {
             /** Format: int64 */
             bank_account_id?: number;
@@ -4479,6 +4742,20 @@ export interface components {
              */
             total: number;
         };
+        TwoFactorChallenge: {
+            /** Format: date-time */
+            expires_at: string;
+            methods: ("totp" | "webauthn" | "recovery")[];
+            /** @description Pass to /api/auth/login/2fa or /api/auth/login/webauthn* */
+            token: string;
+        };
+        TwoFactorStatus: {
+            enabled: boolean;
+            /** Format: int64 */
+            recovery_codes_left: number;
+            totp: boolean;
+            webauthn: components["schemas"]["WebAuthnKey"][];
+        };
         User: {
             email: string;
             /** Format: int64 */
@@ -4609,6 +4886,39 @@ export interface components {
             params?: {
                 [key: string]: string;
             };
+        };
+        WebAuthnKey: {
+            /** Format: date-time */
+            created_at: string;
+            /** Format: int64 */
+            id: number;
+            /** Format: date-time */
+            last_used_at?: string;
+            name: string;
+        };
+        WebAuthnKeyCreated: {
+            key: components["schemas"]["WebAuthnKey"];
+            recovery_codes: string[];
+        };
+        WebAuthnLoginRequest: {
+            /** @description PublicKeyCredential from navigator.credentials.get(), JSON-serialized (base64url) */
+            credential: unknown;
+            token: string;
+        };
+        WebAuthnOptions: {
+            /** @description PublicKeyCredentialRequestOptions (binary fields base64url) */
+            options: unknown;
+        };
+        WebAuthnRegisterRequest: {
+            /** @description PublicKeyCredential from navigator.credentials.create(), JSON-serialized (base64url) */
+            credential: unknown;
+            name: string;
+            token: string;
+        };
+        WebAuthnRegistrationOptions: {
+            /** @description PublicKeyCredentialCreationOptions (binary fields base64url) */
+            options: unknown;
+            token: string;
         };
         Webhook: {
             active: boolean;
@@ -9234,6 +9544,268 @@ export interface operations {
             };
         };
     };
+    "get-api-auth2-fa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TwoFactorStatus"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-auth2-fa-recovery-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordConfirm"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryCodes"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-api-auth2-fa-totp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordConfirm"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-auth2-fa-totp-enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nf_session?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TOTPEnableRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryCodes"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-auth2-fa-totp-setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordConfirm"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TOTPSetup"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-auth2-fa-webauthn": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                nf_session?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebAuthnRegisterRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebAuthnKeyCreated"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-auth2-fa-webauthn-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordConfirm"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebAuthnRegistrationOptions"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-api-auth2-fa-webauthn-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordConfirm"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "post-api-auth-login": {
         parameters: {
             query?: never;
@@ -9254,7 +9826,108 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": components["schemas"]["LoginResult"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-auth-login2-fa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-auth-login-webauthn": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebAuthnLoginRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-auth-login-webauthn-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChallengeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebAuthnOptions"];
                 };
             };
             /** @description Error */
@@ -9350,6 +10023,101 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Me"];
                 };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-auth-password-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-auth-password-reset-by-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasswordResetInfo"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-auth-password-reset-by-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetConfirm"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Error */
             default: {

@@ -61,6 +61,13 @@ const (
 	CodeUnsupportedBackupVersion = "unsupported_backup_version"
 	CodeCorruptBackup            = "corrupt_backup"
 	CodeBackupTooLarge           = "backup_too_large"
+	CodeResetExpired             = "reset_expired"
+	CodeInvalidCode              = "invalid_code"
+	CodeTwoFactorExpired         = "two_factor_expired"
+	CodeWebAuthnFailed           = "webauthn_failed"
+	CodeTOTPEnabled              = "totp_enabled"
+	CodeTOTPNotPending           = "totp_not_pending"
+	CodeTwoFactorDisabled        = "two_factor_disabled"
 )
 
 // statusCodes are the generic codes of errors created without apiError.

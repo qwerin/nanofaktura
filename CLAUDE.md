@@ -20,6 +20,7 @@ make gen-types      # regenerate web/src/api/schema.gen.ts from OpenAPI — run 
 go test ./internal/api/ -run TestAccount -v -count=1   # single test
 bin/nanofaktura backup export --account <slug> [--out f.zip]    # CLI backup (same env/DB as the server)
 bin/nanofaktura backup import --owner <email> [--name "…"] f.zip # restore as a NEW account
+bin/nanofaktura user reset-2fa --email <email>                   # turn off 2FA of a locked-out user
 ```
 
 Config is env only (`NANOFAKTURA_*`, see `internal/config` / SPEC §5). OpenAPI at `/api/openapi.json`, docs at `/api/docs`.
@@ -27,12 +28,12 @@ Config is env only (`NANOFAKTURA_*`, see `internal/config` / SPEC §5). OpenAPI 
 ## Layout
 
 ```
-cmd/server/       config → db.Open/Migrate → api.New → http.Server (+ SPA from NANOFAKTURA_STATIC_DIR); `backup` subcommand
+cmd/server/       config → db.Open/Migrate → api.New → http.Server (+ SPA from NANOFAKTURA_STATIC_DIR); `backup`, `user` subcommands
 cmd/gen-schema/   prints OpenAPI JSON (api.New with nil DB)
 internal/config/  env config
 internal/db/      Open(driver, dsn) (glebarez pure-Go SQLite or Postgres) + Migrate (AutoMigrate model.All())
 internal/model/   GORM structs + enum constants; no API concerns
-internal/auth/    bcrypt, sessions, API tokens, huma middlewares, auth.UserFrom/AccountFrom/RoleFrom, roles (auth.Allow/ForEditors/ForManagers/RequireRole)
+internal/auth/    bcrypt, sessions, API tokens, TOTP + recovery codes, huma middlewares, auth.UserFrom/AccountFrom/RoleFrom, roles (auth.Allow/ForEditors/ForManagers/RequireRole)
 internal/mail/    Mailer interface + SMTP / LogMailer (dev, no SMTP host) + mail.Render("{placeholder}" templates); tests: mail/mailtest.New()
 internal/scheduler/ periodic background jobs (Job{Name, Run(ctx, now), Every}), started from cmd/server — see "Scheduler"
 internal/storage/ Storage interface (Put/Get/Delete by key) + Local disk implementation (NANOFAKTURA_DATA_DIR/attachments)

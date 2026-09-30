@@ -436,6 +436,7 @@ func Jobs(db *gorm.DB, cfg config.Config, deps Deps) []scheduler.Job {
 		{Name: "reminders", Run: s.RunReminders, Every: time.Hour},
 		{Name: "bank-sync", Run: s.RunBankSync, Every: 2 * time.Hour},
 		{Name: "todos", Run: s.RunTodos, Every: time.Hour},
+		{Name: "auth-cleanup", Run: s.RunAuthCleanup, Every: time.Hour},
 		{Name: "webhooks", Run: s.RunWebhooks}, // every tick (cmd/server ticks every minute)
 	}
 }

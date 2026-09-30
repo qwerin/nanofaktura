@@ -91,6 +91,13 @@ export const codeMessages: Record<string, string> = {
   corrupt_backup: 'Soubor není platná záloha NanoFaktury nebo je poškozený.',
   backup_too_large: 'Záloha je větší, než tato instance dovoluje importovat (NANOFAKTURA_IMPORT_MAX_MB).',
   too_large: 'Soubor je příliš velký.',
+  reset_expired: 'Odkaz pro obnovu hesla už byl použit nebo vypršel. Požádejte o nový.',
+  invalid_code: 'Kód není správný. Zkontrolujte ho a zkuste to znovu.',
+  two_factor_expired: 'Přihlášení vypršelo nebo bylo příliš mnoho pokusů. Zadejte znovu e-mail a heslo.',
+  webauthn_failed: 'Bezpečnostní klíč se nepodařilo ověřit.',
+  totp_enabled: 'Ověřovací aplikace už je zapnutá.',
+  totp_not_pending: 'Nastavení ověřovací aplikace vypršelo. Začněte znovu.',
+  two_factor_disabled: 'Dvoufázové ověření není zapnuté.',
 }
 
 const statusMessages: Record<number, string> = {

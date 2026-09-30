@@ -1,5 +1,6 @@
 // Command server runs the NanoFaktura HTTP server (no arguments or "serve")
-// and the administration commands ("backup export|import", see backup.go).
+// and the administration commands ("backup export|import", see backup.go;
+// "user reset-2fa", see user.go).
 package main
 
 import (
@@ -29,8 +30,10 @@ func main() {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		err = runBackup(ctx, os.Args[2:], os.Stdout, os.Stderr)
 		stop()
+	case len(os.Args) > 1 && os.Args[1] == "user":
+		err = runUser(context.Background(), os.Args[2:], os.Stdout)
 	case len(os.Args) > 1 && os.Args[1] != "serve":
-		err = errors.New("unknown command " + os.Args[1] + " (serve | backup)")
+		err = errors.New("unknown command " + os.Args[1] + " (serve | backup | user)")
 	default:
 		err = run()
 	}

@@ -139,3 +139,32 @@ func notFoundAs(err, target error) error {
 	}
 	return err
 }
+
+// ResetSecondFactor turns off every second factor of userID (TOTP, security
+// keys, recovery codes, pending logins) using db (may be a transaction).
+// Used by the "nanofaktura user reset-2fa" command for a locked-out user.
+func ResetSecondFactor(db *gorm.DB, userID uint) error {
+	err := db.Model(&model.User{}).Where("id = ?", userID).
+		Updates(map[string]any{"totp_secret_enc": "", "totp_pending_enc": "", "totp_last_step": 0}).Error
+	if err != nil {
+		return err
+	}
+	for _, m := range []any{&model.WebAuthnCredential{}, &model.RecoveryCode{}, &model.AuthChallenge{}} {
+		if err := db.Where("user_id = ?", userID).Delete(m).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Cleanup deletes expired sessions, challenges and password reset links.
+func Cleanup(db *gorm.DB, now time.Time) error {
+	if err := db.Where("expires_at <= ?", now).Delete(&model.Session{}).Error; err != nil {
+		return err
+	}
+	if err := db.Where("expires_at <= ?", now).Delete(&model.AuthChallenge{}).Error; err != nil {
+		return err
+	}
+	// used links are kept a day so a second click still says "already used"
+	return db.Where("expires_at <= ?", now.Add(-24*time.Hour)).Delete(&model.PasswordReset{}).Error
+}

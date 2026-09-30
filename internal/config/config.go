@@ -39,6 +39,10 @@ type Config struct {
 	// WebhooksAllowPrivate (NANOFAKTURA_WEBHOOKS_ALLOW_PRIVATE) lets webhooks call private,
 	// loopback and link-local addresses (SSRF protection off; LAN setups, tests).
 	WebhooksAllowPrivate bool
+
+	// WebAuthnOrigins (NANOFAKTURA_WEBAUTHN_ORIGINS, comma-separated) are origins
+	// accepted for security keys besides the PublicURL origin (dev: the Vite server).
+	WebAuthnOrigins []string
 }
 
 // Load reads the configuration from the environment and applies defaults.
@@ -62,6 +66,11 @@ func Load() (Config, error) {
 		VatRegURL:    os.Getenv("NANOFAKTURA_VATREG_URL"),
 		FioURL:       os.Getenv("NANOFAKTURA_FIO_URL"),
 		SecretKey:    os.Getenv("NANOFAKTURA_SECRET_KEY"),
+	}
+	for _, o := range strings.Split(os.Getenv("NANOFAKTURA_WEBAUTHN_ORIGINS"), ",") {
+		if o = strings.TrimRight(strings.TrimSpace(o), "/"); o != "" {
+			cfg.WebAuthnOrigins = append(cfg.WebAuthnOrigins, o)
+		}
 	}
 	if cfg.DBDriver != "sqlite" && cfg.DBDriver != "postgres" {
 		return Config{}, fmt.Errorf("NANOFAKTURA_DB_DRIVER: unsupported driver %q (sqlite|postgres)", cfg.DBDriver)

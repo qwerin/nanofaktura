@@ -74,6 +74,7 @@ Konfigurace se načítá z env proměnných.
 | `NANOFAKTURA_ALLOW_SIGNUP`    | `false`          | Povolit registraci i po vytvoření prvního uživatele |
 | `NANOFAKTURA_SECURE_COOKIES`  | `false`          | Session cookie s příznakem `Secure` (za HTTPS)      |
 | `NANOFAKTURA_IMPORT_MAX_MB`   | `512`            | Limit velikosti zálohy při obnově účtu              |
+| `NANOFAKTURA_WEBAUTHN_ORIGINS`| –                | Další adresy pro bezpečnostní klíče (čárkou), vývoj |
 
 ### Záloha a přenos účtu
 
@@ -90,6 +91,18 @@ NANOFAKTURA_DB_DRIVER=postgres NANOFAKTURA_DB_DSN="host=…" \
 
 Bez argumentů (nebo `nanofaktura serve`) se spustí server. Po obnově jsou pravidelné faktury, upomínky
 a webhooky vypnuté a tokeny Fio je třeba zadat znovu.
+
+### Zapomenuté heslo a dvoufázové ověření
+
+Odkaz pro obnovu hesla chodí e-mailem, takže musí být nastavené SMTP a `NANOFAKTURA_PUBLIC_URL`. Uživatelé si
+v *Nastavení → Zabezpečení* zapnou druhý faktor: ověřovací aplikaci (TOTP) nebo bezpečnostní klíč / passkey
+(WebAuthn, např. YubiKey). Klíče jsou vázané na doménu z `NANOFAKTURA_PUBLIC_URL` a prohlížeč je dovolí jen přes
+HTTPS (výjimkou je `localhost`); po změně domény je třeba je přidat znovu. Kdo ztratí druhý faktor i záložní
+kódy, tomu ho správce instance vypne:
+
+```bash
+nanofaktura user reset-2fa --email jan@example.cz
+```
 
 ### PostgreSQL DSN
 

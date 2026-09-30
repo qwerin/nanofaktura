@@ -90,7 +90,11 @@ func TestLogin(t *testing.T) {
 	ts.signup("a@example.cz", "Firma A")
 
 	c := ts.anon()
-	me := doJSON[api.Me](c, http.StatusOK, "POST", "/api/auth/login", api.LoginRequest{Email: "A@Example.cz", Password: testPassword})
+	res := doJSON[api.LoginResult](c, http.StatusOK, "POST", "/api/auth/login", api.LoginRequest{Email: "A@Example.cz", Password: testPassword})
+	if res.Me == nil || res.TwoFactor != nil {
+		t.Fatalf("login: %+v", res)
+	}
+	me := *res.Me
 	if me.User.Email != "a@example.cz" || len(me.Accounts) != 1 {
 		t.Fatalf("me: %+v", me)
 	}
@@ -190,7 +194,7 @@ func TestPatchMe(t *testing.T) {
 	assertCode(t, res, body, http.StatusUnauthorized, "unauthorized")
 	res, body = ts.anon().do("POST", "/api/auth/login", api.LoginRequest{Email: "a@example.cz", Password: testPassword})
 	assertError(t, res, body, http.StatusUnauthorized, "invalid")
-	doJSON[api.Me](ts.anon(), http.StatusOK, "POST", "/api/auth/login", api.LoginRequest{Email: "a@example.cz", Password: "noveheslo123"})
+	doJSON[api.LoginResult](ts.anon(), http.StatusOK, "POST", "/api/auth/login", api.LoginRequest{Email: "a@example.cz", Password: "noveheslo123"})
 }
 
 func TestOpenAPIDocumentsSlugParam(t *testing.T) {
