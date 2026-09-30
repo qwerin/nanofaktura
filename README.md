@@ -73,6 +73,23 @@ Konfigurace se načítá z env proměnných.
 | `NANOFAKTURA_STATIC_DIR`      | *(prázdné)*      | Adresář s buildem frontendu (SPA)                   |
 | `NANOFAKTURA_ALLOW_SIGNUP`    | `false`          | Povolit registraci i po vytvoření prvního uživatele |
 | `NANOFAKTURA_SECURE_COOKIES`  | `false`          | Session cookie s příznakem `Secure` (za HTTPS)      |
+| `NANOFAKTURA_IMPORT_MAX_MB`   | `512`            | Limit velikosti zálohy při obnově účtu              |
+
+### Záloha a přenos účtu
+
+Zálohu účtu (ZIP se všemi daty a přílohami, bez tajných tokenů) stáhne vlastník/administrátor v
+*Nastavení → Záloha a přenos*; obnova v přepínači účtů *Nový účet → Obnovit ze zálohy* vždy založí nový účet.
+Správce instance může totéž z příkazové řádky (používá stejné `NANOFAKTURA_*` proměnné jako server, třeba
+pro přenos ze SQLite na PostgreSQL):
+
+```bash
+nanofaktura backup export --account moje-firma --out zaloha.zip
+NANOFAKTURA_DB_DRIVER=postgres NANOFAKTURA_DB_DSN="host=…" \
+  nanofaktura backup import --owner jan@example.cz [--name "Moje firma"] zaloha.zip
+```
+
+Bez argumentů (nebo `nanofaktura serve`) se spustí server. Po obnově jsou pravidelné faktury, upomínky
+a webhooky vypnuté a tokeny Fio je třeba zadat znovu.
 
 ### PostgreSQL DSN
 

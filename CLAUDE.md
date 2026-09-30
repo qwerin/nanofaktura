@@ -18,6 +18,8 @@ make test           # go vet + go test ./... + web tsc (if web/node_modules exis
 make test-api       # go test ./internal/api/... -v
 make gen-types      # regenerate web/src/api/schema.gen.ts from OpenAPI — run after any API change
 go test ./internal/api/ -run TestAccount -v -count=1   # single test
+bin/nanofaktura backup export --account <slug> [--out f.zip]    # CLI backup (same env/DB as the server)
+bin/nanofaktura backup import --owner <email> [--name "…"] f.zip # restore as a NEW account
 ```
 
 Config is env only (`NANOFAKTURA_*`, see `internal/config` / SPEC §5). OpenAPI at `/api/openapi.json`, docs at `/api/docs`.
@@ -25,7 +27,7 @@ Config is env only (`NANOFAKTURA_*`, see `internal/config` / SPEC §5). OpenAPI 
 ## Layout
 
 ```
-cmd/server/       config → db.Open/Migrate → api.New → http.Server (+ SPA from NANOFAKTURA_STATIC_DIR)
+cmd/server/       config → db.Open/Migrate → api.New → http.Server (+ SPA from NANOFAKTURA_STATIC_DIR); `backup` subcommand
 cmd/gen-schema/   prints OpenAPI JSON (api.New with nil DB)
 internal/config/  env config
 internal/db/      Open(driver, dsn) (glebarez pure-Go SQLite or Postgres) + Migrate (AutoMigrate model.All())
@@ -36,6 +38,8 @@ internal/scheduler/ periodic background jobs (Job{Name, Run(ctx, now), Every}), 
 internal/storage/ Storage interface (Put/Get/Delete by key) + Local disk implementation (NANOFAKTURA_DATA_DIR/attachments)
 internal/secret/  AES-256-GCM Box for secrets stored in the DB (Fio tokens) — see "Secrets"
 internal/bankimport/ bank statement parsers + Fio API client; internal/matching/ pure bank-transaction ↔ document matching
+internal/backup/  account backup ZIP (SPEC §7.16): Export / Import (new account, ID remapping) — see "Backup"
+internal/slug/    account slugs (Make, Unique)
 internal/events/  events.Record (activity log + webhook delivery queue, same tx) + event name catalogue
 internal/webhooks/ HMAC signing, SSRF-safe HTTP client, retry schedule; internal/search/ Fold (case/diacritics) for global search
 internal/api/     api.New + one file per resource (DTOs next to handlers) + *_test.go (package api_test)
@@ -212,3 +216,14 @@ event's subject (`syncTodos` in `todos.go`; add a case there for a new todo kind
 Payments go through `addPayment(ctx, …)` / `addExpensePayment(ctx, …)` which record `payment.created` (+ `*.paid`).
 Webhook deliveries are POSTed by the `webhooks` job (every tick); tests run it with `runJob(ts, "webhooks")`
 (test config has `WebhooksAllowPrivate` so httptest servers work; `ts.secrets` is shared by API and jobs).
+
+## Backup (SPEC §7.16)
+
+`internal/backup` exports an account as a versioned ZIP (own DTOs in `dto.go`, `Version = 1`, no secrets) and imports
+it as a **new** account in one transaction (`GET /api/accounts/{slug}/backup`, `POST /api/accounts/import`, CLI
+`nanofaktura backup export|import`). **A new model or model field must be added to the backup**: `TestEveryModelIsCovered`
+(every model in `model.All()` → backup file or exclusion with a reason) and `TestDTOsCoverModelFields` (every model field
+→ DTO field of the same Go name, or `fieldSkips`) fail otherwise. A new reference field also needs remapping in
+`import.go` (IDs of the backup only, never looked up in the DB) and in `dumpAccount` of `internal/api/backup_test.go`
+(roundtrip test comparing a canonical dump of the source and the imported account). Incompatible DTO change → bump `Version`.
+
