@@ -1,7 +1,7 @@
 import { FileTextIcon } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { errorMessage, isApiError } from '@/api/errors'
+import { errorMessage, hasErrorCode } from '@/api/errors'
 import { useDeleteSubject } from '@/api/queries/subjects'
 import type { Subject } from '@/api/types'
 import { ResponsiveDialog } from '@/components/responsive-dialog'
@@ -74,7 +74,7 @@ export function DeleteSubjectDialog({
                   onDeleted()
                 },
                 onError: (err) => {
-                  if (isApiError(err) && err.status === 409) setHasInvoices(true)
+                  if (hasErrorCode(err, 'has_invoices')) setHasInvoices(true)
                   else toast.error(errorMessage(err))
                 },
               })

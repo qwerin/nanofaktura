@@ -294,13 +294,10 @@ export type SyncError =
 /** Rozliší chybu `POST /bank-accounts/{id}/sync` (429 / 409 / 422 / 502). */
 export function classifySyncError(err: unknown, retryAfter?: number): SyncError {
   if (isApiError(err)) {
-    const detail = (err.problem.detail ?? '').toLowerCase()
     if (err.status === 429) return { kind: 'rate_limited', retryAfter: retryAfter ?? 30 }
-    if (err.status === 409) return { kind: 'not_configured' }
-    if (err.status === 422) {
-      if (detail.includes('too many')) return { kind: 'too_many' }
-      return { kind: 'bad_token' }
-    }
+    if (err.code === 'sync_not_configured') return { kind: 'not_configured' }
+    if (err.code === 'fio_too_many_transactions') return { kind: 'too_many' }
+    if (err.status === 422) return { kind: 'bad_token' }
     if (err.status === 502) return { kind: 'other', message: 'Fio API je teď nedostupné, zkuste to později.' }
   }
   return { kind: 'other', message: errorMessage(err) }

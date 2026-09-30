@@ -154,9 +154,9 @@ describe('sync errors', () => {
   })
   it('classifies statuses', () => {
     expect(classifySyncError(new ApiError(429, {}), 12)).toEqual({ kind: 'rate_limited', retryAfter: 12 })
-    expect(classifySyncError(new ApiError(409, { detail: 'automatic sync is not configured' }))).toEqual({ kind: 'not_configured' })
-    expect(classifySyncError(new ApiError(422, { detail: 'Fio rejected the API token' }))).toEqual({ kind: 'bad_token' })
-    expect(classifySyncError(new ApiError(422, { detail: 'too many transactions in the period' }))).toEqual({ kind: 'too_many' })
+    expect(classifySyncError(new ApiError(409, { code: 'sync_not_configured' }))).toEqual({ kind: 'not_configured' })
+    expect(classifySyncError(new ApiError(422, { code: 'fio_token_rejected' }))).toEqual({ kind: 'bad_token' })
+    expect(classifySyncError(new ApiError(422, { code: 'fio_too_many_transactions' }))).toEqual({ kind: 'too_many' })
     expect(classifySyncError(new ApiError(502, {})).kind).toBe('other')
   })
   it('countdown text', () => {
