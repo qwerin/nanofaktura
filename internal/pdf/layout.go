@@ -815,6 +815,7 @@ func (r *renderer) footer() core.Row {
 	if reg == "" && d.acc != nil && d.inv.YourName == "" {
 		reg = d.acc.RegisteredBy
 	}
+	reg = joinNonEmpty("  ·  ", reg, strings.TrimSpace(r.opt.Footer))
 	regT := txt{s: reg, size: 6.5, color: th.muted, lead: 0.5}
 	conT := txt{s: contact, size: 7, color: th.muted}
 	const w = contentW * 0.8

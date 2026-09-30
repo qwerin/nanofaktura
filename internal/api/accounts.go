@@ -16,35 +16,41 @@ import (
 
 // Account is the company profile and invoicing defaults (SPEC §4.1).
 type Account struct {
-	Slug                 string    `json:"slug"`
-	Role                 string    `json:"role" enum:"owner,admin,accountant,member" doc:"Current user's role"`
-	Name                 string    `json:"name"`
-	RegistrationNo       string    `json:"registration_no"`
-	VatNo                string    `json:"vat_no"`
-	Street               string    `json:"street"`
-	City                 string    `json:"city"`
-	Zip                  string    `json:"zip"`
-	Country              string    `json:"country"`
-	Email                string    `json:"email"`
-	Phone                string    `json:"phone"`
-	Web                  string    `json:"web"`
-	VatMode              string    `json:"vat_mode" enum:"non_vat_payer,vat_payer,identified_person"`
-	RegisteredBy         string    `json:"registered_by"`
-	DefaultCurrency      string    `json:"default_currency"`
-	DefaultDueDays       int       `json:"default_due_days"`
-	DefaultPaymentMethod string    `json:"default_payment_method" enum:"bank,cash,card,cod,paypal,custom"`
-	DefaultLanguage      string    `json:"default_language" enum:"cs,en"`
-	DefaultNote          string    `json:"default_note"`
-	DefaultFooterNote    string    `json:"default_footer_note"`
-	RoundTotal           bool      `json:"round_total"`
-	DefaultVatRateBps    int32     `json:"default_vat_rate_bps"`
-	LogoAttachmentID     *uint     `json:"logo_attachment_id,omitempty" doc:"Logo image attachment (PNG/JPEG)"`
-	StampAttachmentID    *uint     `json:"stamp_attachment_id,omitempty" doc:"Signature/stamp image attachment (PNG/JPEG)"`
-	VatPeriod            string    `json:"vat_period" enum:"month,quarter" doc:"VAT period of a VAT payer (reports)"`
-	TaxOffice            string    `json:"c_ufo" doc:"EPO code of the tax office (finanční úřad), e.g. 451"`
-	TaxOfficeBranch      string    `json:"c_pracufo" doc:"EPO code of the territorial workplace, e.g. 2001"`
-	CreatedAt            time.Time `json:"created_at"`
-	UpdatedAt            time.Time `json:"updated_at"`
+	Slug                 string       `json:"slug"`
+	Role                 string       `json:"role" enum:"owner,admin,accountant,member" doc:"Current user's role"`
+	Name                 string       `json:"name"`
+	RegistrationNo       string       `json:"registration_no"`
+	VatNo                string       `json:"vat_no"`
+	Street               string       `json:"street"`
+	City                 string       `json:"city"`
+	Zip                  string       `json:"zip"`
+	Country              string       `json:"country"`
+	Email                string       `json:"email"`
+	Phone                string       `json:"phone"`
+	Web                  string       `json:"web"`
+	VatMode              string       `json:"vat_mode" enum:"non_vat_payer,vat_payer,identified_person"`
+	RegisteredBy         string       `json:"registered_by"`
+	DefaultCurrency      string       `json:"default_currency"`
+	DefaultDueDays       int          `json:"default_due_days"`
+	DefaultPaymentMethod string       `json:"default_payment_method" enum:"bank,cash,card,cod,paypal,custom"`
+	DefaultLanguage      string       `json:"default_language" enum:"cs,en,sk,de"`
+	DefaultNote          string       `json:"default_note"`
+	DefaultFooterNote    string       `json:"default_footer_note"`
+	RoundTotal           bool         `json:"round_total"`
+	DefaultVatRateBps    int32        `json:"default_vat_rate_bps"`
+	LogoAttachmentID     *uint        `json:"logo_attachment_id,omitempty" doc:"Logo image attachment (PNG/JPEG)"`
+	StampAttachmentID    *uint        `json:"stamp_attachment_id,omitempty" doc:"Signature/stamp image attachment (PNG/JPEG)"`
+	VatPeriod            string       `json:"vat_period" enum:"month,quarter" doc:"VAT period of a VAT payer (reports)"`
+	TaxOffice            string       `json:"c_ufo" doc:"EPO code of the tax office (finanční úřad), e.g. 451"`
+	TaxOfficeBranch      string       `json:"c_pracufo" doc:"EPO code of the territorial workplace, e.g. 2001"`
+	PdfTemplate          string       `json:"pdf_template" enum:"classic,modern,minimal" doc:"Default PDF template"`
+	PdfAccent            string       `json:"pdf_accent" doc:"Accent colour #RRGGBB; empty = template default"`
+	PdfShowQR            bool         `json:"pdf_show_qr" doc:"QR Platba on PDFs"`
+	PdfFooter            string       `json:"pdf_footer" doc:"Extra footer text on every PDF page"`
+	OnboardedAt          *time.Time   `json:"onboarded_at,omitempty" doc:"When the onboarding was finished (null = show onboarding)"`
+	Capabilities         Capabilities `json:"capabilities" doc:"What the current user's role may do (derived from role)"`
+	CreatedAt            time.Time    `json:"created_at"`
+	UpdatedAt            time.Time    `json:"updated_at"`
 
 	AccountEmailSettings // emails.go
 }
@@ -70,7 +76,7 @@ type AccountPatch struct {
 	DefaultCurrency      *string `json:"default_currency,omitempty" pattern:"^[A-Z]{3}$" doc:"ISO 4217"`
 	DefaultDueDays       *int    `json:"default_due_days,omitempty" minimum:"0" maximum:"365"`
 	DefaultPaymentMethod *string `json:"default_payment_method,omitempty" enum:"bank,cash,card,cod,paypal,custom"`
-	DefaultLanguage      *string `json:"default_language,omitempty" enum:"cs,en"`
+	DefaultLanguage      *string `json:"default_language,omitempty" enum:"cs,en,sk,de"`
 	DefaultNote          *string `json:"default_note,omitempty" maxLength:"5000"`
 	DefaultFooterNote    *string `json:"default_footer_note,omitempty" maxLength:"5000"`
 	RoundTotal           *bool   `json:"round_total,omitempty"`
@@ -80,6 +86,11 @@ type AccountPatch struct {
 	VatPeriod            *string `json:"vat_period,omitempty" enum:"month,quarter"`
 	TaxOffice            *string `json:"c_ufo,omitempty" pattern:"^[0-9]{0,3}$" doc:"EPO c_ufo; empty clears"`
 	TaxOfficeBranch      *string `json:"c_pracufo,omitempty" pattern:"^[0-9]{0,4}$" doc:"EPO c_pracufo; empty clears"`
+	PdfTemplate          *string `json:"pdf_template,omitempty" enum:"classic,modern,minimal"`
+	PdfAccent            *string `json:"pdf_accent,omitempty" pattern:"^(#[0-9A-Fa-f]{6})?$" doc:"#RRGGBB; empty = template default"`
+	PdfShowQR            *bool   `json:"pdf_show_qr,omitempty"`
+	PdfFooter            *string `json:"pdf_footer,omitempty" maxLength:"500"`
+	Onboarded            *bool   `json:"onboarded,omitempty" doc:"true marks the onboarding as finished (sets onboarded_at), false shows it again"`
 
 	AccountEmailSettingsPatch // emails.go
 }
@@ -94,8 +105,29 @@ func toAccount(a *model.Account, role string) Account {
 		RoundTotal: a.RoundTotal, DefaultVatRateBps: a.DefaultVatRateBps,
 		LogoAttachmentID: a.LogoAttachmentID, StampAttachmentID: a.StampAttachmentID, CreatedAt: a.CreatedAt, UpdatedAt: a.UpdatedAt,
 		VatPeriod: defaultStr(a.VatPeriod, model.VatPeriodMonth), TaxOffice: a.TaxOffice, TaxOfficeBranch: a.TaxOfficeBranch,
+		PdfTemplate: defaultStr(a.PdfTemplate, "classic"), PdfAccent: a.PdfAccent, PdfShowQR: !a.PdfHideQR, PdfFooter: a.PdfFooter,
+		OnboardedAt: a.OnboardedAt, Capabilities: capabilitiesOf(role),
 		AccountEmailSettings: toAccountEmailSettings(a),
 	}
+}
+
+// Capabilities are the permissions of a role (SPEC §7.13) for the client UI;
+// the server enforces them per operation independently.
+type Capabilities struct {
+	Edit           bool `json:"edit" doc:"Create/modify documents, subjects, expenses, payments, attachments"`
+	ManageSettings bool `json:"manage_settings" doc:"Account settings, bank accounts, number formats, webhooks"`
+	ManageMembers  bool `json:"manage_members" doc:"Invite and manage members"`
+	ManageOwners   bool `json:"manage_owners" doc:"Add/remove owners and change their role"`
+	ViewReports    bool `json:"view_reports" doc:"Tax reports"`
+	Export         bool `json:"export" doc:"Exports (CSV, XLSX, PDF ZIP)"`
+}
+
+func capabilitiesOf(role string) Capabilities {
+	owner, admin := role == model.RoleOwner, role == model.RoleAdmin
+	editor := owner || admin || role == model.RoleMember
+	bookkeeper := owner || admin || role == model.RoleAccountant
+	return Capabilities{Edit: editor, ManageSettings: owner || admin, ManageMembers: owner || admin,
+		ManageOwners: owner, ViewReports: bookkeeper, Export: role != ""}
 }
 
 // defaultNumberFormats are created with every account (SPEC §4.3).
@@ -202,6 +234,21 @@ func (s *server) patchAccount(ctx context.Context, in *struct{ Body AccountPatch
 	apply(&acc.VatPeriod, p.VatPeriod)
 	apply(&acc.TaxOffice, p.TaxOffice)
 	apply(&acc.TaxOfficeBranch, p.TaxOfficeBranch)
+	apply(&acc.PdfTemplate, p.PdfTemplate)
+	apply(&acc.PdfAccent, p.PdfAccent)
+	apply(&acc.PdfFooter, p.PdfFooter)
+	if p.PdfShowQR != nil {
+		acc.PdfHideQR = !*p.PdfShowQR
+	}
+	if p.Onboarded != nil {
+		switch {
+		case !*p.Onboarded:
+			acc.OnboardedAt = nil
+		case acc.OnboardedAt == nil:
+			now := s.deps.Now()
+			acc.OnboardedAt = &now
+		}
+	}
 	if acc.Name == "" {
 		return nil, invalid("name", "name must not be empty")
 	}

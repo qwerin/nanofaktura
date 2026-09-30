@@ -64,14 +64,18 @@ func (s *server) getInvoicePDF(ctx context.Context, in *InvoicePDFInput) (*Invoi
 // current account with its logo, stamp, QR and related document number;
 // opt supplies template/language overrides.
 func (s *server) renderInvoicePDF(ctx context.Context, inv *model.Invoice, opt pdf.Options) ([]byte, error) {
-	opt.ShowQR = true
+	acc := auth.AccountFrom(ctx)
+	// account appearance settings (SPEC §7.14); explicit options win
+	opt.ShowQR = !acc.PdfHideQR
+	opt.Template = defaultStr(opt.Template, acc.PdfTemplate)
+	opt.Accent = defaultStr(opt.Accent, acc.PdfAccent)
+	opt.Footer = defaultStr(opt.Footer, acc.PdfFooter)
 	if inv.RelatedID != nil {
 		var rel model.Invoice
 		if err := s.scoped(ctx).Select("number").First(&rel, *inv.RelatedID).Error; err == nil {
 			opt.RelatedNumber = rel.Number
 		}
 	}
-	acc := auth.AccountFrom(ctx)
 	opt.Logo = s.attachmentBytes(ctx, acc.LogoAttachmentID)
 	opt.Stamp = s.attachmentBytes(ctx, acc.StampAttachmentID)
 	return pdf.Render(inv, acc, opt)

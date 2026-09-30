@@ -248,8 +248,22 @@ func (s *server) getPDFPreview(ctx context.Context, in *struct {
 	Template     string `query:"template" enum:"classic,modern,minimal" doc:"PDF template (default classic)"`
 	Lang         string `query:"lang" enum:"cs,en,sk,de" doc:"Language (default: account default language)"`
 	DocumentType string `query:"document_type" enum:"invoice,proforma,correction" doc:"Default invoice"`
+	Accent       string `query:"accent" pattern:"^(#[0-9A-Fa-f]{6})?$" doc:"Unsaved pdf_accent to preview"`
+	ShowQR       string `query:"show_qr" enum:"true,false" doc:"Unsaved pdf_show_qr to preview"`
+	Footer       string `query:"footer" maxLength:"500" doc:"Unsaved pdf_footer to preview"`
 }) (*FileOutput, error) {
 	acc := auth.AccountFrom(ctx)
+	if in.Accent != "" || in.ShowQR != "" || in.Footer != "" {
+		// preview unsaved appearance settings on a copy of the account
+		cp := *acc
+		cp.PdfAccent = defaultStr(in.Accent, cp.PdfAccent)
+		cp.PdfFooter = defaultStr(in.Footer, cp.PdfFooter)
+		if in.ShowQR != "" {
+			cp.PdfHideQR = in.ShowQR == "false"
+		}
+		ctx = auth.WithAccount(ctx, &cp, auth.RoleFrom(ctx))
+		acc = &cp
+	}
 	lang := defaultStr(in.Lang, acc.DefaultLanguage)
 	inv, _ := pdf.Sample(pdf.SampleSpec{DocumentType: in.DocumentType, VatPayer: acc.VatMode == model.VatModePayer, Language: lang})
 	snapshotYour(inv, acc)

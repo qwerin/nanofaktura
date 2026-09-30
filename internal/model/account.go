@@ -29,8 +29,13 @@ type Account struct {
 	VatPeriod            string
 	TaxOffice            string
 	TaxOfficeBranch      string
-	LogoAttachmentID     *uint // image Attachment of this account, used in PDFs
-	StampAttachmentID    *uint // signature/stamp image Attachment
+	LogoAttachmentID     *uint  // image Attachment of this account, used in PDFs
+	StampAttachmentID    *uint  // signature/stamp image Attachment
+	PdfTemplate          string // classic (default) | modern | minimal
+	PdfAccent            string // "#RRGGBB"; "" = template default
+	PdfHideQR            bool   // no QR Platba on PDFs (shown by default)
+	PdfFooter            string // extra footer text on every PDF page
+	OnboardedAt          *time.Time
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 

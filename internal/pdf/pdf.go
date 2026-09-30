@@ -55,6 +55,7 @@ type Options struct {
 	Logo     []byte // optional PNG/JPEG shown in the header
 	Stamp    []byte // optional PNG/JPEG stamp/signature shown under the totals
 	ShowQR   bool   // QR Platba (only CZK, Czech IBAN, bank transfer, amount due > 0)
+	Footer   string // extra footer text of the account (every page, after the registration note)
 
 	// RelatedNumber is the number of the document referenced by RelatedID
 	// (the corrected invoice for a correction, the proforma for a final invoice).
