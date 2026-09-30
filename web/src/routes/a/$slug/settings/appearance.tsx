@@ -55,10 +55,10 @@ function AppearancePage() {
             />
           </FormSection>
           <FormSection
-            title="Náhled faktury"
-            description="Jak vypadá PDF v jednotlivých šablonách, jazycích a typech dokladů — s vaším logem a podpisem."
+            title="Šablona a náhled"
+            description="Šablona, barva, QR platba a patička všech PDF dokladů. Náhled se mění hned, uloží se tlačítkem."
           >
-            <PdfPreview slug={slug} account={account.data} />
+            <PdfPreview slug={slug} account={account.data} canEdit={canManageSettings} />
           </FormSection>
         </div>
       )}

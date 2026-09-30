@@ -1,6 +1,6 @@
 // Čisté pomocníky stránky DPH: řádky přiznání s popisky v češtině a překlad varování backendu.
 
-import type { VatPair, VatReturn } from '@/api/types'
+import type { VatPair, VatReturn, VatWarning } from '@/api/types'
 
 export interface VatReturnRow {
   /** Číslo řádku v přiznání (DPHDP3). */
@@ -77,25 +77,18 @@ export function vatBalance(r: VatReturn): number {
   return r.r64 > 0 ? r.r64 : -r.r65
 }
 
-const WARNING_PATTERNS: [RegExp, (m: RegExpExecArray) => string][] = [
-  [
-    /^(.+): VAT rate ([\d.]+) % is not reported \(only 21 % and 12 %\)$/,
-    (m) => `${m[1]}: sazba ${m[2]!.replace(/\.?0+$/, '').replace('.', ',')} % se do přiznání nezahrnuje (jen 21 % a 12 %).`,
-  ],
-  [/^(.+): reverse charge without the customer's CZ DIČ$/, (m) => `${m[1]}: přenesená daňová povinnost, ale odběratel nemá české DIČ.`],
-  [/^(.+): EU reverse charge without the customer's VAT number$/, (m) => `${m[1]}: služba do EU bez DIČ odběratele.`],
-  [
-    /^(.+): amount without VAT \((-?\d+)\.(\d{2}) Kč\) is not reported$/,
-    (m) => `${m[1]}: částka s nulovou sazbou (${m[2]},${m[3]} Kč) se v přiznání neuvádí.`,
-  ],
-  [/^(.+): deduction skipped, the supplier has no CZ DIČ$/, (m) => `${m[1]}: odpočet vynechán — dodavatel nemá české DIČ (pořízení z EU / dovoz je potřeba doplnit ručně).`],
-]
+const WARNING_TEXTS: Record<VatWarning['code'], (p: Record<string, string>) => string> = {
+  unsupported_rate: (p) =>
+    `sazba ${(p.rate ?? '').replace(/\.?0+$/, '').replace('.', ',')} % se do přiznání nezahrnuje (jen 21 % a 12 %).`,
+  reverse_charge_no_dic: () => 'přenesená daňová povinnost, ale odběratel nemá české DIČ.',
+  eu_reverse_charge_no_vat: () => 'služba do EU bez DIČ odběratele.',
+  zero_rate_not_reported: (p) => `částka s nulovou sazbou (${(p.amount ?? '').replace('.', ',')} Kč) se v přiznání neuvádí.`,
+  supplier_no_dic: () => 'odpočet vynechán — dodavatel nemá české DIČ (pořízení z EU / dovoz je potřeba doplnit ručně).',
+  calculation_error: () => 'doklad nejde přepočítat, zkontrolujte částky a kurz.',
+}
 
-/** Varování backendu (anglicky) → česky; neznámý text vrátí beze změny. */
-export function translateVatWarning(w: string): string {
-  for (const [re, fmt] of WARNING_PATTERNS) {
-    const m = re.exec(w)
-    if (m) return fmt(m)
-  }
-  return w
+/** Varování VAT reportu (kód + parametry) → česky; neznámý kód = anglická zpráva backendu. */
+export function translateVatWarning(w: VatWarning): string {
+  const fmt = WARNING_TEXTS[w.code] as ((p: Record<string, string>) => string) | undefined
+  return fmt ? `${w.document}: ${fmt(w.params ?? {})}` : w.message
 }

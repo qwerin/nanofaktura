@@ -49,6 +49,7 @@ const (
 	CodeLastOwner          = "last_owner"
 	CodeOwnerOnly          = "owner_only"
 	CodeAlreadyMember      = "already_member"
+	CodeAlreadyJoined      = "already_joined"
 	CodeInvitationExpired  = "invitation_expired"
 	CodeInvitationEmail    = "invitation_email_mismatch"
 	CodeRecurringEnded     = "recurring_ended"

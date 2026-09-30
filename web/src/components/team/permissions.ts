@@ -2,7 +2,7 @@
 // Zdrojem pravdy je backend (403/409) — tady jen skrýváme/zakazujeme akce, které by selhaly,
 // a překládáme chyby do češtiny.
 
-import { isApiError } from '@/api/errors'
+import { codeMessages, isApiError } from '@/api/errors'
 import type { MemberRole } from '@/api/types'
 
 export const ROLES: readonly MemberRole[] = ['owner', 'admin', 'accountant', 'member']
@@ -75,20 +75,13 @@ export function canManageInvitation(role: MemberRole, actor: MemberRole | undefi
 /** Český text chyby z API týmu (detaily backendu jsou anglicky). */
 export function teamErrorMessage(err: unknown): string {
   if (!isApiError(err)) return 'Nastala neočekávaná chyba.'
-  const detail = (err.problem.detail ?? '').toLowerCase()
+  const byCode = codeMessages[err.code]
+  if (byCode) return byCode
   switch (err.status) {
     case 403:
-      if (detail.includes('only an owner')) return 'Vlastníky může spravovat jen jiný vlastník.'
-      if (detail.includes('different e-mail')) return 'Pozvánka byla poslána na jinou e-mailovou adresu.'
       return 'K této akci nemáte oprávnění.'
     case 404:
       return 'Člen nebo pozvánka už neexistuje. Obnovte stránku.'
-    case 409:
-      if (detail.includes('at least one owner')) return 'Účet musí mít alespoň jednoho vlastníka.'
-      if (detail.includes('already a member')) {
-        return detail.includes('you are') ? 'Už jste členem tohoto účtu.' : 'Tento uživatel už je členem účtu.'
-      }
-      return err.message
     case 410:
       return 'Pozvánka vypršela nebo už byla použita.'
     case 422: {

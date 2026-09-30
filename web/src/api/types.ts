@@ -180,6 +180,7 @@ export type FlatRate = IncomeTax['flat_rates'][number]
 export type VatReport = ResponseBody<'/api/accounts/{slug}/reports/vat', 'get'>
 export type VatReturn = VatReport['return']
 export type ControlStatement = VatReport['control']
+export type VatWarning = VatReport['warnings'][number]
 export type ControlDocumentRow = ControlStatement['a4'][number]
 export type VatPair = VatReturn['r1']
 

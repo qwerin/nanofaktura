@@ -3067,7 +3067,7 @@ export interface components {
             id: number;
             issued_on: string;
             /** @enum {string} */
-            language: "cs" | "en";
+            language: "cs" | "en" | "sk" | "de";
             lines: components["schemas"]["InvoiceLine"][];
             /** Format: date-time */
             locked_at?: string;
@@ -3185,7 +3185,7 @@ export interface components {
              */
             issued_on?: string;
             /** @enum {string} */
-            language?: "cs" | "en";
+            language?: "cs" | "en" | "sk" | "de";
             lines: components["schemas"]["InvoiceLineInput"][] | null;
             /** @description Default: account default_note */
             note?: string;
@@ -3297,7 +3297,7 @@ export interface components {
             /** Format: date */
             issued_on?: string;
             /** @enum {string} */
-            language?: "cs" | "en";
+            language?: "cs" | "en" | "sk" | "de";
             lines?: components["schemas"]["InvoiceLineInput"][] | null;
             note?: string;
             number?: string;
@@ -3380,7 +3380,7 @@ export interface components {
             id: number;
             issued_on: string;
             /** @enum {string} */
-            language: "cs" | "en";
+            language: "cs" | "en" | "sk" | "de";
             /** Format: date-time */
             locked_at?: string;
             note: string;
@@ -4238,7 +4238,7 @@ export interface components {
             footer_note?: string;
             /** Format: int64 */
             id: number;
-            /** @description cs|en; empty = account default */
+            /** @description cs|en|sk|de; empty = account default */
             language: string;
             lines: components["schemas"]["TemplateLine"][];
             name: string;
@@ -4282,7 +4282,7 @@ export interface components {
             exchange_rate?: string;
             footer_note?: string;
             /** @enum {string} */
-            language?: "cs" | "en";
+            language?: "cs" | "en" | "sk" | "de";
             lines: components["schemas"]["TemplateLineInput"][] | null;
             name: string;
             note?: string;
@@ -4355,7 +4355,7 @@ export interface components {
             exchange_rate?: string;
             footer_note?: string;
             /** @enum {string} */
-            language?: "cs" | "en" | "";
+            language?: "cs" | "en" | "sk" | "de" | "";
             lines?: components["schemas"]["TemplateLineInput"][] | null;
             name?: string;
             note?: string;

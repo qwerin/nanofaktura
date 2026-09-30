@@ -53,7 +53,7 @@ export const invoiceFormSchema = z
     due_days: z.string().trim().regex(/^\d{1,3}$/, 'Počet dní 0–999'),
     currency: z.string().min(3),
     exchange_rate: z.string().trim().regex(/^\d+([.,]\d+)?$/, 'Kurz, např. 24,355'),
-    language: z.enum(['cs', 'en']),
+    language: z.enum(['cs', 'en', 'sk', 'de']),
     payment_method: z.enum(['bank', 'cash', 'card', 'cod', 'paypal', 'custom']),
     custom_payment_method: z.string(),
     bank_account_id: z.string(),

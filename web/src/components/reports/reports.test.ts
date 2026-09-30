@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { IncomeTax, VatReturn } from '@/api/types'
+import type { IncomeTax, VatReturn, VatWarning } from '@/api/types'
 import { axisDomain, customerShare, niceCeil, taxOptions } from './logic'
 import { translateVatWarning, vatBalance, vatReturnSections } from './vat-rows'
 
@@ -92,16 +92,18 @@ describe('VAT return rows', () => {
 })
 
 describe('translateVatWarning', () => {
+  const w = (code: string, document: string, params?: Record<string, string>) =>
+    ({ code, document, message: `${document}: english`, params }) as VatWarning
   it.each([
-    ['2026-0001: VAT rate 15.00 % is not reported (only 21 % and 12 %)', '2026-0001: sazba 15 % se do přiznání nezahrnuje (jen 21 % a 12 %).'],
-    ['2026-0001: VAT rate 10.50 % is not reported (only 21 % and 12 %)', '2026-0001: sazba 10,5 % se do přiznání nezahrnuje (jen 21 % a 12 %).'],
-    ["F1: reverse charge without the customer's CZ DIČ", 'F1: přenesená daňová povinnost, ale odběratel nemá české DIČ.'],
-    ["F2: EU reverse charge without the customer's VAT number", 'F2: služba do EU bez DIČ odběratele.'],
-    ['F3: amount without VAT (1500.00 Kč) is not reported', 'F3: částka s nulovou sazbou (1500,00 Kč) se v přiznání neuvádí.'],
-  ])('%s', (input, expected) => {
+    [w('unsupported_rate', '2026-0001', { rate: '15.00' }), '2026-0001: sazba 15 % se do přiznání nezahrnuje (jen 21 % a 12 %).'],
+    [w('unsupported_rate', '2026-0001', { rate: '10.50' }), '2026-0001: sazba 10,5 % se do přiznání nezahrnuje (jen 21 % a 12 %).'],
+    [w('reverse_charge_no_dic', 'F1'), 'F1: přenesená daňová povinnost, ale odběratel nemá české DIČ.'],
+    [w('eu_reverse_charge_no_vat', 'F2'), 'F2: služba do EU bez DIČ odběratele.'],
+    [w('zero_rate_not_reported', 'F3', { amount: '1500.00' }), 'F3: částka s nulovou sazbou (1500,00 Kč) se v přiznání neuvádí.'],
+  ])('%o', (input, expected) => {
     expect(translateVatWarning(input)).toBe(expected)
   })
-  it('keeps unknown warnings', () => {
-    expect(translateVatWarning('something else')).toBe('something else')
+  it('falls back to the message for unknown codes', () => {
+    expect(translateVatWarning(w('something', 'A'))).toBe('A: english')
   })
 })

@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { FileCodeIcon, ReceiptTextIcon, SettingsIcon, TriangleAlertIcon } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { z } from 'zod'
-import { errorMessage, isApiError } from '@/api/errors'
+import { errorMessage } from '@/api/errors'
 import { accountQueries } from '@/api/queries/accounts'
 import { reportQueries, vatXmlUrl } from '@/api/queries/reports'
 import type { Account, VatReport } from '@/api/types'
@@ -315,11 +315,7 @@ function XmlDownloads({ slug, period, disabled }: { slug: string; period: string
     try {
       await downloadFile(vatXmlUrl(slug, form, period), `${form}-${period}.xml`)
     } catch (err) {
-      setError(
-        isApiError(err) && err.status === 409
-          ? 'Chybí kód finančního úřadu nebo české DIČ v nastavení firmy.'
-          : errorMessage(err),
-      )
+      setError(errorMessage(err))
     } finally {
       setBusy(null)
     }

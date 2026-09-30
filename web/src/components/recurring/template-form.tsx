@@ -51,6 +51,8 @@ const paymentOptions: SelectOption[] = (Object.keys(paymentMethodLabels) as (key
 const languageOptions: SelectOption[] = [
   { value: 'cs', label: 'Čeština' },
   { value: 'en', label: 'Angličtina' },
+  { value: 'sk', label: 'Slovenština' },
+  { value: 'de', label: 'Němčina' },
 ]
 const DUE_CHIPS = [7, 14, 30] as const
 
@@ -178,7 +180,7 @@ export function TemplateForm({ slug, account, template, subject, onSaved, readOn
         ['Text nad položkami', note],
         ['Patička', footerNote],
       ]}
-      lang={language}
+      lang={language === 'en' || language === 'de' ? 'en' : 'cs'}
       onInsert={placeholders.insert}
       activeName={placeholders.activeName}
       disabled={readOnly || pending}

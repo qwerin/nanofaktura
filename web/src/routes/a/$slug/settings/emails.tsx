@@ -235,7 +235,9 @@ function TemplateEditor({
   readOnly: boolean
 }) {
   const [kind, setKind] = useState<EmailKind>('invoice')
-  const [lang, setLang] = useState<EmailLang>(account.default_language)
+  const [lang, setLang] = useState<EmailLang>(
+    account.default_language === 'en' || account.default_language === 'de' ? 'en' : 'cs',
+  )
   const index = EMAIL_KINDS.indexOf(kind) * EMAIL_LANGS.length + EMAIL_LANGS.indexOf(lang)
   const { control } = form
   const templates = useWatch({ control, name: 'templates' })

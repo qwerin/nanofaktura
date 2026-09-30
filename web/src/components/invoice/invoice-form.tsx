@@ -50,6 +50,8 @@ const paymentOptions: SelectOption[] = (Object.keys(paymentMethodLabels) as (key
 const languageOptions: SelectOption[] = [
   { value: 'cs', label: 'Čeština' },
   { value: 'en', label: 'Angličtina' },
+  { value: 'sk', label: 'Slovenština' },
+  { value: 'de', label: 'Němčina' },
 ]
 const DUE_CHIPS = [7, 14, 30] as const
 

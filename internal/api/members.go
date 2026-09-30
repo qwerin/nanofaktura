@@ -398,7 +398,7 @@ func (s *server) pendingInvitation(tx *gorm.DB, token string) (*model.Invitation
 func (s *server) joinByInvitation(tx *gorm.DB, inv *model.Invitation, userID uint) error {
 	if err := tx.Create(&model.Membership{UserID: userID, AccountID: inv.AccountID, Role: inv.Role}).Error; err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return conflict(CodeAlreadyMember, "you are already a member of this account")
+			return conflict(CodeAlreadyJoined, "you are already a member of this account")
 		}
 		return dbErr(err, "membership")
 	}

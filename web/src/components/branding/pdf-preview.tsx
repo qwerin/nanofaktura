@@ -1,16 +1,22 @@
 import { useQuery } from '@tanstack/react-query'
-import { ExternalLinkIcon, InfoIcon } from 'lucide-react'
+import { ExternalLinkIcon, InfoIcon, SaveIcon } from 'lucide-react'
 import { useEffect, useId, useMemo, useState } from 'react'
 import { api, unwrap } from '@/api/client'
 import { errorMessage } from '@/api/errors'
+import { useUpdateAccount } from '@/api/queries/accounts'
 import { keys } from '@/api/queries/keys'
 import type { Account, PdfPreviewQuery } from '@/api/types'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import { toast } from 'sonner'
+import { useDebouncedValue } from '@/components/expense/use-debounced-value'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { cn } from '@/lib/utils'
 
@@ -38,25 +44,59 @@ const documentTypeOptions: { value: PdfDocumentType; label: string }[] = [
   { value: 'correction', label: 'Opravný daňový doklad' },
 ]
 
-function previewUrl(slug: string, q: Required<PreviewQuery>): string {
+const HEX = /^#[0-9A-Fa-f]{6}$/
+
+function previewUrl(slug: string, q: PreviewQuery): string {
   const base = import.meta.env.VITE_API_BASE_URL ?? ''
-  return `${base}/api/accounts/${encodeURIComponent(slug)}/pdf-preview?${new URLSearchParams(q).toString()}`
+  const params = new URLSearchParams(Object.entries(q).filter((e): e is [string, string] => Boolean(e[1])))
+  return `${base}/api/accounts/${encodeURIComponent(slug)}/pdf-preview?${params.toString()}`
 }
 
 /**
- * Náhled PDF s ukázkovými daty (`GET /pdf-preview`) — firemní údaje, logo a podpis jsou skutečné.
- * Šablonu zatím nejde na účtu uložit (Account nemá pole) → volba slouží jen k porovnání.
+ * Vzhled PDF (šablona, barva, QR, patička — ukládá se na účet a platí pro všechna PDF)
+ * a náhled s ukázkovými daty (`GET /pdf-preview`, neuložené hodnoty jdou v query).
  * Desktop: iframe, mobil: otevřít v nové záložce (SPEC §6 — PDF na mobilu ne v iframe).
  */
-export function PdfPreview({ slug, account }: { slug: string; account: Account }) {
+export function PdfPreview({ slug, account, canEdit = false }: { slug: string; account: Account; canEdit?: boolean }) {
   const isMobile = useIsMobile()
-  const [template, setTemplate] = useState<PdfTemplate>('classic')
+  const update = useUpdateAccount(slug)
+  const [template, setTemplate] = useState<PdfTemplate>(account.pdf_template)
+  const [accent, setAccent] = useState(account.pdf_accent)
+  const [showQr, setShowQr] = useState(account.pdf_show_qr)
+  const [footer, setFooter] = useState(account.pdf_footer)
   const [lang, setLang] = useState<PdfLanguage>(account.default_language)
   const [documentType, setDocumentType] = useState<PdfDocumentType>('invoice')
   const templateLabelId = useId()
   const langId = useId()
   const typeId = useId()
-  const query = { template, lang, document_type: documentType }
+  const accentId = useId()
+  const qrId = useId()
+  const footerId = useId()
+  const accentValid = accent === '' || HEX.test(accent)
+  // text inputs re-render the PDF only after typing pauses
+  const previewAccent = useDebouncedValue(accentValid ? accent : '', 400)
+  const previewFooter = useDebouncedValue(footer, 600)
+  const query: PreviewQuery = {
+    template,
+    lang,
+    document_type: documentType,
+    accent: previewAccent,
+    show_qr: showQr ? 'true' : 'false',
+    footer: previewFooter,
+  }
+  const dirty =
+    template !== account.pdf_template ||
+    accent !== account.pdf_accent ||
+    showQr !== account.pdf_show_qr ||
+    footer !== account.pdf_footer
+  const save = () =>
+    update.mutate(
+      { pdf_template: template, pdf_accent: accent, pdf_show_qr: showQr, pdf_footer: footer },
+      {
+        onSuccess: () => toast.success('Vzhled dokladů uložen'),
+        onError: (err) => toast.error(errorMessage(err)),
+      },
+    )
 
   return (
     <div className="flex flex-col gap-5">
@@ -72,10 +112,11 @@ export function PdfPreview({ slug, account }: { slug: string; account: Account }
         >
           {templateOptions.map((o) => (
             <label
+              data-disabled={!canEdit || undefined}
               key={o.value}
               className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50 has-[[data-checked]]:border-primary has-[[data-checked]]:bg-primary/5"
             >
-              <RadioGroupItem value={o.value} className="mt-0.5" />
+              <RadioGroupItem value={o.value} className="mt-0.5" disabled={!canEdit} />
               <span className="flex min-w-0 flex-col gap-0.5">
                 <span className="text-sm font-medium">{o.label}</span>
                 <span className="text-xs text-muted-foreground">{o.description}</span>
@@ -84,6 +125,66 @@ export function PdfPreview({ slug, account }: { slug: string; account: Account }
           ))}
         </RadioGroup>
       </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor={accentId}>Barva akcentu</Label>
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              aria-label="Vybrat barvu"
+              value={accentValid && accent ? accent : '#1f6feb'}
+              onChange={(e) => setAccent(e.target.value)}
+              disabled={!canEdit}
+              className="size-11 shrink-0 cursor-pointer rounded-md border bg-transparent p-1 disabled:cursor-not-allowed"
+            />
+            <Input
+              id={accentId}
+              value={accent}
+              placeholder="Výchozí barva šablony"
+              onChange={(e) => setAccent(e.target.value.trim())}
+              aria-invalid={!accentValid || undefined}
+              disabled={!canEdit}
+              className="h-11"
+            />
+            {accent && canEdit && (
+              <Button variant="ghost" size="sm" onClick={() => setAccent('')}>
+                Výchozí
+              </Button>
+            )}
+          </div>
+          {!accentValid && <p className="text-sm text-destructive">Zadejte barvu ve tvaru #RRGGBB.</p>}
+        </div>
+        <div className="flex min-h-11 items-center justify-between gap-3 rounded-lg border p-3 sm:self-end">
+          <Label htmlFor={qrId} className="flex flex-col items-start gap-0.5">
+            <span>QR platba</span>
+            <span className="text-xs font-normal text-muted-foreground">Na fakturách v Kč s českým účtem</span>
+          </Label>
+          <Switch id={qrId} checked={showQr} onCheckedChange={setShowQr} disabled={!canEdit} />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor={footerId}>Vlastní patička</Label>
+        <Textarea
+          id={footerId}
+          value={footer}
+          maxLength={500}
+          rows={2}
+          placeholder="Např. Jsme zapsáni v obchodním rejstříku… / Děkujeme za spolupráci"
+          onChange={(e) => setFooter(e.target.value)}
+          disabled={!canEdit}
+        />
+      </div>
+
+      {canEdit && (
+        <div className="flex justify-end">
+          <Button onClick={save} disabled={!dirty || !accentValid || update.isPending} className="w-full sm:w-auto">
+            <SaveIcon data-icon="inline-start" />
+            Uložit vzhled
+          </Button>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <PreviewSelect id={langId} label="Jazyk" value={lang} options={languageOptions} onChange={setLang} />
@@ -99,8 +200,8 @@ export function PdfPreview({ slug, account }: { slug: string; account: Account }
       <Alert>
         <InfoIcon />
         <AlertDescription>
-          Náhled používá ukázkové položky a odběratele, údaje vaší firmy, logo a podpis jsou skutečné. Volba šablony se
-          zatím neukládá — slouží jen k porovnání vzhledu.
+          Náhled používá ukázkové položky a odběratele, údaje vaší firmy, logo a podpis jsou skutečné. Jazyk a typ
+          dokladu slouží jen k náhledu; šablona, barva, QR a patička se po uložení použijí na všech PDF.
         </AlertDescription>
       </Alert>
 
@@ -163,7 +264,7 @@ function PdfFrame({
   version,
 }: {
   slug: string
-  query: Required<PreviewQuery>
+  query: PreviewQuery
   /** Mění se se změnou firemních údajů, loga či podpisu → nové vykreslení. */
   version: string
 }) {

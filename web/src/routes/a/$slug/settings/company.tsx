@@ -51,6 +51,8 @@ const paymentMethodOptions: SelectOption[] = [
 const languageOptions: SelectOption<Account['default_language']>[] = [
   { value: 'cs', label: 'Čeština' },
   { value: 'en', label: 'Angličtina' },
+  { value: 'sk', label: 'Slovenština' },
+  { value: 'de', label: 'Němčina' },
 ]
 const vatRateOptions: SelectOption[] = [
   { value: '2100', label: '21 %' },
@@ -85,7 +87,7 @@ const schema = z.object({
   default_currency: z.string().min(1),
   default_due_days: z.string().trim().regex(/^\d{1,3}$/, 'Počet dní 0\u2013999'),
   default_payment_method: z.enum(['bank', 'cash', 'card', 'cod', 'paypal', 'custom']),
-  default_language: z.enum(['cs', 'en']),
+  default_language: z.enum(['cs', 'en', 'sk', 'de']),
   default_vat_rate_bps: z.string(),
   round_total: z.boolean(),
   default_note: z.string(),

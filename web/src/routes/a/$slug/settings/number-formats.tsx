@@ -3,7 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { CircleAlertIcon, LockIcon, PencilIcon, PlusIcon, StarIcon, Trash2Icon } from 'lucide-react'
 import { useId, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { errorMessage, isApiError } from '@/api/errors'
+import { errorMessage, hasErrorCode, isApiError } from '@/api/errors'
 import {
   numberFormatQueries,
   useCreateNumberFormat,
@@ -221,7 +221,7 @@ const placeholders = [
 
 /** Česká hláška pro chyby serveru u formátu. */
 function formatServerError(err: unknown): string {
-  if (isApiError(err) && err.status === 409) return 'Tato řada už pro daný typ dokladu existuje.'
+  if (hasErrorCode(err, 'already_exists')) return 'Tato řada už pro daný typ dokladu existuje.'
   if (isApiError(err) && err.status === 422) return 'Neplatný formát čísla.'
   return errorMessage(err)
 }
@@ -438,11 +438,7 @@ function DeleteFormatDialog({ slug, format, onClose }: { slug: string; format: N
                   onClose()
                 },
                 onError: (err) => {
-                  toast.error(
-                    isApiError(err) && err.status === 409
-                      ? 'Výchozí ani poslední řadu dokladu nelze smazat. Nejdřív nastavte výchozí jinou řadu.'
-                      : errorMessage(err),
-                  )
+                  toast.error(errorMessage(err))
                 },
               })
             }

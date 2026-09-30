@@ -70,16 +70,16 @@ describe('canManageInvitation', () => {
 
 describe('teamErrorMessage', () => {
   it('translates backend problems', () => {
-    expect(teamErrorMessage(new ApiError(403, { detail: 'only an owner can manage owners' }))).toBe(
+    expect(teamErrorMessage(new ApiError(403, { code: 'owner_only' }))).toBe(
       'Vlastníky může spravovat jen jiný vlastník.',
     )
-    expect(teamErrorMessage(new ApiError(409, { detail: 'the account must keep at least one owner' }))).toBe(
+    expect(teamErrorMessage(new ApiError(409, { code: 'last_owner' }))).toBe(
       'Účet musí mít alespoň jednoho vlastníka.',
     )
-    expect(teamErrorMessage(new ApiError(409, { detail: 'this user is already a member of the account' }))).toBe(
+    expect(teamErrorMessage(new ApiError(409, { code: 'already_member' }))).toBe(
       'Tento uživatel už je členem účtu.',
     )
-    expect(teamErrorMessage(new ApiError(409, { detail: 'you are already a member of this account' }))).toBe(
+    expect(teamErrorMessage(new ApiError(409, { code: 'already_joined' }))).toBe(
       'Už jste členem tohoto účtu.',
     )
     expect(teamErrorMessage(new ApiError(410, {}))).toMatch(/vypršela/)
