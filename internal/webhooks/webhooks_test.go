@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"strings"
 	"testing"
 	"time"
@@ -54,6 +55,36 @@ func TestCheckURL(t *testing.T) {
 	}
 	if err := CheckURL(ctx, "https://93.184.215.14/hook", false); err != nil {
 		t.Errorf("public IP: %v", err)
+	}
+}
+
+func TestForbiddenSpecialPurpose(t *testing.T) {
+	for _, s := range []string{
+		"64:ff9b::a00:1",      // NAT64 → 10.0.0.1
+		"64:ff9b::7f00:1",     // NAT64 → 127.0.0.1
+		"64:ff9b:1::1",        // local-use NAT64
+		"2002:a00:1::1",       // 6to4 → 10.0.0.1
+		"2002:7f00:1::",       // 6to4 → 127.0.0.1
+		"2001:0:4136:e378::1", // Teredo
+		"198.18.0.1", "192.0.0.8", "240.0.0.1", "0.1.2.3", "255.255.255.255", "192.0.2.1", "203.0.113.9",
+		"2001:db8::1", "fec0::1", "100::1", "::ffff:10.0.0.1",
+	} {
+		if !forbidden(netip.MustParseAddr(s)) {
+			t.Errorf("%s allowed", s)
+		}
+	}
+	for _, s := range []string{"93.184.215.14", "64:ff9b::5db8:d70e", "2002:5db8:d70e::1", "2a00:1450:4001:80b::200e"} {
+		if forbidden(netip.MustParseAddr(s)) {
+			t.Errorf("%s forbidden", s)
+		}
+	}
+	for u, ok := range map[string]bool{
+		"https://93.184.215.14:22/": false, "https://93.184.215.14:25/": false, "https://93.184.215.14:8443/": true,
+		"http://93.184.215.14:80/": true, "https://93.184.215.14/": true,
+	} {
+		if err := CheckURL(context.Background(), u, false); (err == nil) != ok {
+			t.Errorf("%s: %v", u, err)
+		}
 	}
 }
 

@@ -157,7 +157,14 @@ func (s *server) confirmPasswordReset(ctx context.Context, in *struct {
 }
 
 // RunAuthCleanup is the "auth-cleanup" job: removes expired sessions, login
-// challenges and password reset links.
+// challenges, password reset links, expired API tokens and stale invitations.
 func (s *server) RunAuthCleanup(ctx context.Context, now time.Time) error {
-	return auth.Cleanup(s.db.WithContext(ctx), now)
+	db := s.db.WithContext(ctx)
+	if err := auth.Cleanup(db, now); err != nil { // sessions, 2FA challenges, password reset links
+		return err
+	}
+	if err := auth.DeleteExpired(db, now); err != nil { // expiring API tokens
+		return err
+	}
+	return db.Where("accepted_at IS NULL AND expires_at <= ?", now.Add(-InvitationTTL)).Delete(&model.Invitation{}).Error
 }

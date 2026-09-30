@@ -75,18 +75,76 @@ func Verify(secret string, body []byte, signature string) bool {
 	return hmac.Equal([]byte(Sign(secret, body)), []byte(signature))
 }
 
+// Host returns scheme://host[:port] of a webhook URL (no path, query or
+// credentials), for logs and events; "" when unparsable.
+func Host(raw string) string {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	return u.Scheme + "://" + u.Host
+}
+
 // ErrForbiddenAddress: the target resolves to a private/loopback/link-local address.
 var ErrForbiddenAddress = errors.New("webhook target resolves to a private, loopback or link-local address")
 
-// forbidden reports whether ip must not be called (SSRF protection).
+// forbidden reports whether ip must not be called (SSRF protection): every
+// IANA special-purpose range (loopback, private, CGNAT, link-local,
+// documentation, benchmarking, multicast, reserved …); for IPv6 transition
+// addresses (NAT64 64:ff9b::/96, 6to4 2002::/16) the embedded IPv4 decides.
 func forbidden(ip netip.Addr) bool {
 	ip = ip.Unmap()
-	return !ip.IsValid() || ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
-		ip.IsLinkLocalMulticast() || ip.IsInterfaceLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() ||
-		cgnat.Contains(ip)
+	if !ip.IsValid() || ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
+		ip.IsLinkLocalMulticast() || ip.IsInterfaceLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
+		return true
+	}
+	if ip.Is6() {
+		b := ip.As16()
+		switch {
+		case nat64.Contains(ip):
+			return forbidden(netip.AddrFrom4([4]byte{b[12], b[13], b[14], b[15]}))
+		case sixToFour.Contains(ip):
+			return forbidden(netip.AddrFrom4([4]byte{b[2], b[3], b[4], b[5]}))
+		}
+	}
+	for _, p := range specialPurpose {
+		if p.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
-var cgnat = netip.MustParsePrefix("100.64.0.0/10")
+var (
+	nat64     = netip.MustParsePrefix("64:ff9b::/96")
+	sixToFour = netip.MustParsePrefix("2002::/16")
+
+	// specialPurpose: IANA IPv4/IPv6 special-purpose address registries
+	// (not globally reachable or not meant for general traffic).
+	specialPurpose = func() []netip.Prefix {
+		var out []netip.Prefix
+		for _, s := range []string{
+			"0.0.0.0/8", "10.0.0.0/8", "100.64.0.0/10", "127.0.0.0/8", "169.254.0.0/16", "172.16.0.0/12",
+			"192.0.0.0/24", "192.0.2.0/24", "192.31.196.0/24", "192.52.193.0/24", "192.88.99.0/24", "192.168.0.0/16",
+			"192.175.48.0/24", "198.18.0.0/15", "198.51.100.0/24", "203.0.113.0/24", "224.0.0.0/4", "240.0.0.0/4",
+			"::/128", "::1/128", "::ffff:0:0/96", "64:ff9b:1::/48", "100::/64", "2001::/23", "2001:db8::/32",
+			"3fff::/20", "5f00::/16", "fc00::/7", "fe80::/10", "fec0::/10", "ff00::/8",
+		} {
+			out = append(out, netip.MustParsePrefix(s))
+		}
+		return out
+	}()
+)
+
+// allowedPort: webhooks go to 80, 443 or unprivileged ports (not to
+// SSH, SMTP, databases … on port numbers below 1024).
+func allowedPort(port string) bool {
+	if port == "" {
+		return true
+	}
+	n, err := strconv.Atoi(port)
+	return err == nil && (n == 80 || n == 443 || (n >= 1024 && n <= 65535))
+}
 
 // CheckURL validates a webhook URL: absolute http(s) without credentials
 // and, unless allowPrivate, not resolving to a forbidden address (resolution
@@ -102,6 +160,9 @@ func CheckURL(ctx context.Context, raw string, allowPrivate bool) error {
 	}
 	if allowPrivate {
 		return nil
+	}
+	if !allowedPort(u.Port()) {
+		return errors.New("port must be 80, 443 or 1024–65535")
 	}
 	host := u.Hostname()
 	if ip, err := netip.ParseAddr(host); err == nil {
@@ -132,7 +193,7 @@ func NewClient(allowPrivate bool) *http.Client {
 	if !allowPrivate {
 		d.Control = func(_, address string, _ syscall.RawConn) error {
 			ap, err := netip.ParseAddrPort(address)
-			if err != nil || forbidden(ap.Addr()) {
+			if err != nil || forbidden(ap.Addr()) || !allowedPort(strconv.Itoa(int(ap.Port()))) {
 				return ErrForbiddenAddress
 			}
 			return nil
@@ -172,6 +233,10 @@ func Post(ctx context.Context, client *http.Client, target, secret, event string
 	res, err := client.Do(req)
 	if err != nil {
 		msg := err.Error()
+		var ue *url.Error
+		if errors.As(err, &ue) {
+			msg = ue.Err.Error() // without the URL (it may carry a secret)
+		}
 		if errors.Is(err, ErrForbiddenAddress) {
 			msg = ErrForbiddenAddress.Error()
 		}

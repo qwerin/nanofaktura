@@ -80,6 +80,7 @@ export const codeMessages: Record<string, string> = {
   already_joined: 'Už jste členem tohoto účtu.',
   invitation_expired: 'Pozvánka vypršela nebo už byla použita.',
   invitation_email_mismatch: 'Pozvánka byla poslána na jinou e-mailovou adresu.',
+  invitation_revoked: 'Pozvánka už neplatí — kdo ji poslal, už nemá oprávnění tuto roli udělit. Požádejte o novou.',
   recurring_ended: 'Pravidelná faktura už skončila. Nejdřív změňte datum konce.',
   template_missing: 'Šablona pravidelné faktury už neexistuje.',
   wrong_password: 'Současné heslo není správné.',
@@ -98,6 +99,11 @@ export const codeMessages: Record<string, string> = {
   totp_enabled: 'Ověřovací aplikace už je zapnutá.',
   totp_not_pending: 'Nastavení ověřovací aplikace vypršelo. Začněte znovu.',
   two_factor_disabled: 'Dvoufázové ověření není zapnuté.',
+  rate_limited: 'Příliš mnoho pokusů v krátké době. Chvíli počkejte a zkuste to znovu.',
+  export_in_progress: 'Jiný export tohoto účtu právě běží. Počkejte, až doběhne, a zkuste to znovu.',
+  setup_token_invalid: 'Pro první registraci je potřeba správný instalační token.',
+  password_too_long: 'Heslo je příliš dlouhé (nejvýše 72 bajtů — znaky s diakritikou se počítají dvakrát).',
+  cross_origin_request: 'Požadavek byl odmítnut z bezpečnostních důvodů. Obnovte stránku a zkuste to znovu.',
 }
 
 const statusMessages: Record<number, string> = {

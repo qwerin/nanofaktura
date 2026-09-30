@@ -122,6 +122,9 @@ func Render(inv *model.Invoice, acc *model.Account, opt Options) ([]byte, error)
 		th = th.withAccent(c)
 	}
 
+	// images are validated (dimensions) and re-encoded before the PDF library
+	// parses them; invalid or oversized ones are left out
+	opt.Logo, opt.Stamp = normalizeImage(opt.Logo), normalizeImage(opt.Stamp)
 	d := newDoc(inv, acc, opt)
 
 	fs, err := loadFonts()

@@ -33,7 +33,7 @@ const texts: Record<BrandingKind, { noun: string; upload: string; done: string; 
 function uploadError(err: unknown): string {
   if (isApiError(err)) {
     if (err.status === 413) return 'Obrázek je příliš velký.'
-    if (err.status === 415 || err.status === 422) return 'Tento obrázek nejde použít. Nahrajte PNG nebo JPEG.'
+    if (err.status === 415 || err.status === 422) return 'Tento obrázek nejde použít. Nahrajte PNG nebo JPEG do 2 MB a nejvýše 4000 × 4000 px.'
     if (err.status === 403) return 'Vzhled dokladů může měnit jen vlastník nebo administrátor.'
   }
   return errorMessage(err)

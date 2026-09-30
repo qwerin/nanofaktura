@@ -94,7 +94,7 @@ function PasswordForm() {
 
   return (
     <form onSubmit={onSubmit} noValidate>
-      <FormSection title="Změna hesla" description={`Nové heslo musí mít alespoň ${MIN_PASSWORD_LENGTH} znaků.`}>
+      <FormSection title="Změna hesla" description={`Nové heslo musí mít alespoň ${MIN_PASSWORD_LENGTH} znaků. Změna odhlásí ostatní zařízení a zneplatní vaše API tokeny.`}>
         <TextField
           control={form.control}
           name="current_password"

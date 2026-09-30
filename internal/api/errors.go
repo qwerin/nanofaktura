@@ -1,7 +1,10 @@
 package api
 
 import (
+	"errors"
+	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 )
@@ -52,6 +55,12 @@ const (
 	CodeAlreadyJoined            = "already_joined"
 	CodeInvitationExpired        = "invitation_expired"
 	CodeInvitationEmail          = "invitation_email_mismatch"
+	CodeInvitationRevoked        = "invitation_revoked"
+	CodeRateLimited              = "rate_limited"
+	CodeExportBusy               = "export_in_progress"
+	CodeSetupToken               = "setup_token_invalid"
+	CodePasswordTooLong          = "password_too_long"
+	CodeCrossOrigin              = "cross_origin_request"
 	CodeRecurringEnded           = "recurring_ended"
 	CodeTemplateMissing          = "template_missing"
 	CodeWrongPassword            = "wrong_password"
@@ -81,7 +90,7 @@ var statusCodes = map[int]string{
 	http.StatusRequestEntityTooLarge: "too_large",
 	http.StatusUnsupportedMediaType:  "unsupported_media_type",
 	http.StatusUnprocessableEntity:   CodeValidation,
-	http.StatusTooManyRequests:       "rate_limited",
+	http.StatusTooManyRequests:       CodeRateLimited,
 	http.StatusInternalServerError:   "internal",
 	http.StatusBadGateway:            "upstream_unavailable",
 	http.StatusGatewayTimeout:        "upstream_timeout",
@@ -97,11 +106,27 @@ func init() {
 func newErrorModel(status int, code, msg string, errs ...error) *ErrorModel {
 	e := &ErrorModel{ErrorModel: huma.ErrorModel{Status: status, Title: http.StatusText(status), Detail: msg}, Code: code}
 	for _, err := range errs {
-		if err != nil {
-			e.Add(err)
+		if err == nil {
+			continue
 		}
+		var d *huma.ErrorDetail
+		if !errors.As(err, &d) && status >= 500 {
+			// internal causes (SQL, file system, SMTP …) are logged, never sent
+			slog.Error("request failed", "status", status, "msg", msg, "err", err)
+			continue
+		}
+		if d != nil && isSecretField(d.Location) {
+			d.Value = nil // never echo passwords/tokens back (logs, proxies)
+		}
+		e.Add(err)
 	}
 	return e
+}
+
+// isSecretField: validation errors of these inputs omit the submitted value.
+func isSecretField(location string) bool {
+	l := strings.ToLower(location)
+	return strings.Contains(l, "password") || strings.Contains(l, "token") || strings.Contains(l, "secret")
 }
 
 // apiError is an error with a specific machine-readable code, e.g.

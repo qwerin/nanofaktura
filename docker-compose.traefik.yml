@@ -6,6 +6,10 @@
 #   DOMAIN          = nanofaktura.cz
 #   CERT_RESOLVER   = letsencrypt
 #   TRAEFIK_NETWORK = proxy
+#
+# Aplikace pak NENÍ publikovaná na portu hostitele (jen přes Traefik s HTTPS).
+# Ověření: docker compose -f docker-compose.yml -f docker-compose.traefik.yml config
+# nesmí u služby app vypsat "ports" (vyžaduje Docker Compose ≥ 2.24 kvůli !reset).
 
 services:
   db:
@@ -13,7 +17,14 @@ services:
       - internal
 
   app:
-    ports: []
+    # !reset zruší porty ze základního souboru (prosté "ports: []" se při slučování jen připojí)
+    ports: !reset []
+    environment:
+      NANOFAKTURA_PUBLIC_URL: https://${DOMAIN}
+      NANOFAKTURA_SECURE_COOKIES: "true"
+      # Traefik je jediný, kdo se k aplikaci dostane (port není publikovaný), proto se
+      # jeho X-Forwarded-For/-Proto z privátních sítí Dockeru věří. Zúžit lze na podsíť sítě Traefiku.
+      NANOFAKTURA_TRUSTED_PROXIES: ${TRUSTED_PROXIES:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
     networks:
       - internal
       - traefik

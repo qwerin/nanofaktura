@@ -4,9 +4,16 @@ import { z } from 'zod'
 
 export const MIN_PASSWORD_LENGTH = 8
 
+/** Bcrypt zpracuje nejvýš 72 bajtů (znak s diakritikou = 2 bajty). */
+export const MAX_PASSWORD_BYTES = 72
+
 export const passwordSchema = z
   .string()
   .min(MIN_PASSWORD_LENGTH, `Heslo musí mít aspoň ${MIN_PASSWORD_LENGTH} znaků`)
+  .refine(
+    (v) => new TextEncoder().encode(v).length <= MAX_PASSWORD_BYTES,
+    'Heslo je příliš dlouhé (nejvýše 72 bajtů — znaky s diakritikou se počítají dvakrát)',
+  )
 
 /** IČO: 8 číslic s kontrolním součtem (mod 11). Kratší IČO se doplní nulami zleva. */
 export function isValidIco(value: string): boolean {

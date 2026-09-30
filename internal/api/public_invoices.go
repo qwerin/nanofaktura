@@ -126,6 +126,9 @@ func (s *server) registerPublicInvoices(public, account huma.API) {
 // returns a context whose current account is the invoice's account. The
 // first view is recorded. Unknown tokens → 404.
 func (s *server) publicInvoice(ctx context.Context, token string) (context.Context, *model.Invoice, error) {
+	if err := s.rateLimit(s.limits.public, clientIP(ctx)); err != nil {
+		return nil, nil, err
+	}
 	if len(token) < minPublicTokenLen || len(token) > 64 {
 		return nil, nil, notFound("invoice")
 	}

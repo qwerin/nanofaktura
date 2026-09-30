@@ -90,5 +90,6 @@ type APIToken struct {
 	TokenHash  string `gorm:"not null;uniqueIndex"` // hex sha256 of the plaintext token
 	Prefix     string `gorm:"not null"`             // first 8 chars, for display
 	LastUsedAt *time.Time
+	ExpiresAt  *time.Time `gorm:"index"` // nil = never expires
 	CreatedAt  time.Time
 }

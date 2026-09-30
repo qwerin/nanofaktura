@@ -41,7 +41,7 @@ type Invitation struct {
 	Role          string    `json:"role" enum:"owner,admin,accountant,member"`
 	InvitedBy     uint      `json:"invited_by" doc:"User ID of the inviter"`
 	InvitedByName string    `json:"invited_by_name" doc:"Name of the inviter (empty when the user no longer exists)"`
-	InviteURL     string    `json:"invite_url" doc:"The invitation link (for copying); empty for invitations created before links were stored"`
+	InviteURL     string    `json:"invite_url" doc:"The invitation link (for copying); empty for invitations created before links were stored and for roles the caller cannot grant (owner invitations for admins)"`
 	ExpiresAt     time.Time `json:"expires_at"`
 	CreatedAt     time.Time `json:"created_at"`
 }
@@ -59,7 +59,9 @@ func toInvitation(i *model.Invitation) Invitation {
 	return Invitation{ID: i.ID, Email: i.Email, Role: i.Role, InvitedBy: i.InvitedBy, ExpiresAt: i.ExpiresAt, CreatedAt: i.CreatedAt}
 }
 
-// invitationOut adds the inviter's name and the link (decrypted token).
+// invitationOut adds the inviter's name and the link (decrypted token). The
+// link is a credential granting the invitation's role, so it is only shown to
+// callers who may grant that role themselves (admins never see owner links).
 func (s *server) invitationOut(ctx context.Context, rows []model.Invitation) ([]Invitation, error) {
 	ids := make([]uint, 0, len(rows))
 	for _, r := range rows {
@@ -79,6 +81,9 @@ func (s *server) invitationOut(ctx context.Context, rows []model.Invitation) ([]
 	for i := range rows {
 		out[i] = toInvitation(&rows[i])
 		out[i].InvitedByName = names[rows[i].InvitedBy]
+		if canManageRole(ctx, rows[i].Role) != nil {
+			continue
+		}
 		if plain, err := s.invitationToken(&rows[i]); err == nil && plain != "" {
 			out[i].InviteURL = s.inviteLink(plain)
 		}
@@ -120,6 +125,9 @@ func (s *server) resendInvitation(ctx context.Context, in *struct {
 		return nil, dbErr(err, "invitation")
 	}
 	if err := canManageRole(ctx, inv.Role); err != nil {
+		return nil, err
+	}
+	if err := s.rateLimit(s.limits.mail, accountKey(ctx)); err != nil {
 		return nil, err
 	}
 	plain, err := s.invitationToken(&inv)
@@ -307,6 +315,9 @@ func (s *server) inviteMember(ctx context.Context, in *struct{ Body InvitationCr
 	if err := canManageRole(ctx, in.Body.Role); err != nil {
 		return nil, err
 	}
+	if err := s.rateLimit(s.limits.mail, accountKey(ctx)); err != nil {
+		return nil, err
+	}
 	acc, user := auth.AccountFrom(ctx), auth.UserFrom(ctx)
 	email := normalizeEmail(in.Body.Email)
 	plain, hash := auth.NewSecret()
@@ -382,7 +393,8 @@ func (s *server) deleteInvitation(ctx context.Context, in *struct {
 }
 
 // pendingInvitation finds the invitation of a link token: unknown → 404,
-// accepted or expired → 410.
+// accepted or expired → 410, inviter no longer allowed to grant the role →
+// 410 invitation_revoked.
 func (s *server) pendingInvitation(tx *gorm.DB, token string) (*model.Invitation, error) {
 	var inv model.Invitation
 	if err := tx.Where("token_hash = ?", auth.HashSecret(token)).First(&inv).Error; err != nil {
@@ -391,7 +403,27 @@ func (s *server) pendingInvitation(tx *gorm.DB, token string) (*model.Invitation
 	if inv.AcceptedAt != nil || !inv.ExpiresAt.After(s.deps.Now()) {
 		return nil, apiError(http.StatusGone, CodeInvitationExpired, "invitation has expired or was already used")
 	}
+	if err := inviterMayGrant(tx, &inv); err != nil {
+		return nil, err
+	}
 	return &inv, nil
+}
+
+// inviterMayGrant re-checks at accept time that the inviter is still a member
+// of the account allowed to grant the invited role (owner → only an owner;
+// other roles → owner or admin). The invitation of a demoted or removed
+// inviter is void (410 invitation_revoked).
+func inviterMayGrant(tx *gorm.DB, inv *model.Invitation) error {
+	var m model.Membership
+	err := tx.Where("account_id = ? AND user_id = ?", inv.AccountID, inv.InvitedBy).First(&m).Error
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return dbErr(err, "invitation")
+	}
+	ok := err == nil && (m.Role == model.RoleOwner || (m.Role == model.RoleAdmin && inv.Role != model.RoleOwner))
+	if !ok {
+		return apiError(http.StatusGone, CodeInvitationRevoked, "invitation is no longer valid (the inviter can no longer grant this role)")
+	}
+	return nil
 }
 
 // joinByInvitation creates the membership and marks inv accepted (inside tx).
@@ -410,6 +442,9 @@ func (s *server) joinByInvitation(tx *gorm.DB, inv *model.Invitation, userID uin
 func (s *server) getInvitationInfo(ctx context.Context, in *struct {
 	Token string `path:"token"`
 }) (*Out[InvitationInfo], error) {
+	if err := s.rateLimit(s.limits.invitation, clientIP(ctx)); err != nil {
+		return nil, err
+	}
 	db := s.db.WithContext(ctx)
 	inv, err := s.pendingInvitation(db, in.Token)
 	if err != nil {
@@ -431,6 +466,9 @@ func (s *server) getInvitationInfo(ctx context.Context, in *struct {
 func (s *server) acceptInvitation(ctx context.Context, in *struct {
 	Token string `path:"token"`
 }) (*Out[MeAccount], error) {
+	if err := s.rateLimit(s.limits.invitation, clientIP(ctx)); err != nil {
+		return nil, err
+	}
 	user := auth.UserFrom(ctx)
 	var out MeAccount
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {

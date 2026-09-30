@@ -11,7 +11,7 @@ import { authQueries, useCreateToken, useRevokeToken } from '@/api/queries/auth'
 import type { ApiToken, ApiTokenCreated } from '@/api/types'
 import { CopyButton } from '@/components/copy-button'
 import { EmptyState } from '@/components/empty-state'
-import { TextField } from '@/components/form/fields'
+import { SelectField, TextField } from '@/components/form/fields'
 import { PageError } from '@/components/page-states'
 import { ResponsiveDialog } from '@/components/responsive-dialog'
 import { ResponsiveList } from '@/components/responsive-list'
@@ -83,6 +83,11 @@ function TokensPage() {
             { id: 'prefix', header: 'Token', cell: (t) => <TokenPrefix prefix={t.prefix} /> },
             { id: 'created', header: 'Vytvořen', cell: (t) => formatDateTime(t.created_at) },
             {
+              id: 'expires',
+              header: 'Platí do',
+              cell: (t) => (t.expires_at ? formatDateTime(t.expires_at) : <span className="text-muted-foreground">Bez omezení</span>),
+            },
+            {
               id: 'used',
               header: 'Naposledy použit',
               cell: (t) => (t.last_used_at ? formatDateTime(t.last_used_at) : <span className="text-muted-foreground">Nikdy</span>),
@@ -107,6 +112,7 @@ function TokensPage() {
                   Vytvořen {formatDateTime(t.created_at)}
                   {' · '}
                   {t.last_used_at ? `použit ${formatDateTime(t.last_used_at)}` : 'nikdy nepoužit'}
+                  {t.expires_at && ` · platí do ${formatDateTime(t.expires_at)}`}
                 </span>
               </div>
               <Button
@@ -133,13 +139,23 @@ function TokenPrefix({ prefix }: { prefix: string }) {
   return <code className="font-mono text-xs text-muted-foreground">{prefix}…</code>
 }
 
-const createSchema = z.object({ name: z.string().trim().min(1, 'Pojmenujte token').max(100, 'Nejvýše 100 znaků') })
+const createSchema = z.object({
+  name: z.string().trim().min(1, 'Pojmenujte token').max(100, 'Nejvýše 100 znaků'),
+  expires: z.enum(['30', '90', '365', 'never']),
+})
+
+const expiryOptions = [
+  { value: '30', label: '30 dní' },
+  { value: '90', label: '90 dní' },
+  { value: '365', label: '1 rok' },
+  { value: 'never', label: 'Bez omezení' },
+] as const
 type CreateValues = z.infer<typeof createSchema>
 
 function CreateTokenDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const create = useCreateToken()
   const [created, setCreated] = useState<ApiTokenCreated | null>(null)
-  const form = useForm<CreateValues>({ resolver: zodResolver(createSchema), defaultValues: { name: '' } })
+  const form = useForm<CreateValues>({ resolver: zodResolver(createSchema), defaultValues: { name: '', expires: '90' } })
 
   const handleOpenChange = (next: boolean) => {
     onOpenChange(next)
@@ -154,7 +170,8 @@ function CreateTokenDialog({ open, onOpenChange }: { open: boolean; onOpenChange
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
-      setCreated(await create.mutateAsync(values))
+      const days = values.expires === 'never' ? undefined : Number(values.expires)
+      setCreated(await create.mutateAsync({ name: values.name, ...(days ? { expires_in_days: days } : {}) }))
     } catch (err) {
       if (!applyProblemToForm(err, form.setError)) toast.error(errorMessage(err))
     }
@@ -205,7 +222,7 @@ function CreateTokenDialog({ open, onOpenChange }: { open: boolean; onOpenChange
         </>
       }
     >
-      <form id="create-token-form" onSubmit={onSubmit} noValidate>
+      <form id="create-token-form" onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
         <TextField
           control={form.control}
           name="name"
@@ -213,6 +230,13 @@ function CreateTokenDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           placeholder="např. Export do účetnictví"
           autoComplete="off"
           enterKeyHint="done"
+        />
+        <SelectField
+          control={form.control}
+          name="expires"
+          label="Platnost"
+          options={expiryOptions}
+          description="Po uplynutí token přestane fungovat. Všechny tokeny zneplatní i změna hesla."
         />
       </form>
     </ResponsiveDialog>

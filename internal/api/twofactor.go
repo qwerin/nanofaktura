@@ -277,15 +277,24 @@ func afterFactorRemoved(tx *gorm.DB, user *model.User) error {
 // ---- login ----
 
 func (s *server) login(ctx context.Context, in *struct{ Body LoginRequest }) (*loginOutput, error) {
+	email := normalizeEmail(in.Body.Email)
+	if err := s.rateLimit(s.limits.loginIP, clientIP(ctx)); err != nil {
+		return nil, err
+	}
+	if err := s.rateBlocked(s.limits.loginEmail, email); err != nil {
+		return nil, err
+	}
 	db := s.db.WithContext(ctx)
 	var user model.User
-	err := db.Where("email = ?", normalizeEmail(in.Body.Email)).First(&user).Error
+	err := db.Where("email = ?", email).First(&user).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, dbErr(err, "user")
 	}
 	if !auth.CheckPassword(user.PasswordHash, in.Body.Password) {
+		s.rateFail(s.limits.loginEmail, email)
 		return nil, huma.Error401Unauthorized("invalid email or password")
 	}
+	s.limits.loginEmail.Reset(email)
 	methods, err := loginMethods(db, &user)
 	if err != nil {
 		return nil, err

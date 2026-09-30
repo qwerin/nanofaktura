@@ -154,8 +154,18 @@ func csvValue(kind colKind, v any) string {
 		}
 		return fmt.Sprint(v)
 	default:
-		return fmt.Sprint(v)
+		return csvText(fmt.Sprint(v))
 	}
+}
+
+// csvText neutralizes spreadsheet formulas in text cells (CSV injection):
+// a value starting with = + - @ tab or CR gets a leading apostrophe, so
+// Excel/LibreOffice show it as text instead of evaluating it.
+func csvText(s string) string {
+	if s != "" && strings.ContainsRune("=+-@\t\r", rune(s[0])) {
+		return "'" + s
+	}
+	return s
 }
 
 // decimalComma formats minor units as "-1234,50".
@@ -422,7 +432,12 @@ func (s *server) exportPDFZip(ctx context.Context, in *struct {
 	if in.Since != "" || in.Until != "" {
 		name += "-" + strings.Trim(in.Since+"_"+in.Until, "_")
 	}
+	release, err := s.acquireExport(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return &huma.StreamResponse{Body: func(hc huma.Context) {
+		defer release()
 		hc.SetHeader("Content-Type", "application/zip")
 		hc.SetHeader("Content-Disposition", `attachment; filename="`+docFilenameSafe(name)+`.zip"`)
 		zw := zip.NewWriter(hc.BodyWriter())
@@ -440,6 +455,7 @@ func (s *server) exportPDFZip(ctx context.Context, in *struct {
 			} else {
 				used[base] = 1
 			}
+			extendWriteDeadline(hc, 2*time.Minute)
 			b, err := s.renderInvoicePDF(ctx, inv, pdf.Options{})
 			if err != nil || zipFile(zw, base+".pdf", inv.UpdatedAt, b) != nil {
 				return

@@ -78,6 +78,13 @@ func (s *server) renderInvoicePDF(ctx context.Context, inv *model.Invoice, opt p
 	}
 	opt.Logo = s.attachmentBytes(ctx, acc.LogoAttachmentID)
 	opt.Stamp = s.attachmentBytes(ctx, acc.StampAttachmentID)
+	// bounded parallelism: public links and exports cannot pile up renders
+	select {
+	case s.pdfSlots <- struct{}{}:
+		defer func() { <-s.pdfSlots }()
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 	return pdf.Render(inv, acc, opt)
 }
 

@@ -441,6 +441,7 @@ func Jobs(db *gorm.DB, cfg config.Config, deps Deps) []scheduler.Job {
 	}
 }
 
+
 // logJobErr logs a background failure that has no caller to report to.
 func logJobErr(msg string, args ...any) {
 	slog.Warn(msg, args...)

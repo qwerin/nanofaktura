@@ -16,6 +16,7 @@ type APIToken struct {
 	Name       string     `json:"name"`
 	Prefix     string     `json:"prefix" doc:"First 8 characters of the token, for identification"`
 	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
+	ExpiresAt  *time.Time `json:"expires_at,omitempty" doc:"Omitted = never expires"`
 	CreatedAt  time.Time  `json:"created_at"`
 }
 
@@ -26,10 +27,13 @@ type CreatedAPIToken struct {
 
 type APITokenCreate struct {
 	Name string `json:"name" minLength:"1" maxLength:"100"`
+	// ExpiresInDays limits the token's lifetime; 0/omitted = no expiry.
+	// Tokens are also revoked when the user changes the password.
+	ExpiresInDays int `json:"expires_in_days,omitempty" minimum:"0" maximum:"3650" doc:"Lifetime in days; omitted = no expiry"`
 }
 
 func toAPIToken(t *model.APIToken) APIToken {
-	return APIToken{ID: t.ID, Name: t.Name, Prefix: t.Prefix, LastUsedAt: t.LastUsedAt, CreatedAt: t.CreatedAt}
+	return APIToken{ID: t.ID, Name: t.Name, Prefix: t.Prefix, LastUsedAt: t.LastUsedAt, ExpiresAt: t.ExpiresAt, CreatedAt: t.CreatedAt}
 }
 
 func (s *server) registerTokens(authed huma.API) {
@@ -44,7 +48,12 @@ func (s *server) listTokens(ctx context.Context, in *struct{ PageParams }) (*Out
 }
 
 func (s *server) createToken(ctx context.Context, in *struct{ Body APITokenCreate }) (*Out[CreatedAPIToken], error) {
-	plain, tok, err := s.auth.CreateAPIToken(ctx, auth.UserFrom(ctx).ID, in.Body.Name)
+	var exp *time.Time
+	if d := in.Body.ExpiresInDays; d > 0 {
+		t := s.deps.Now().Add(time.Duration(d) * 24 * time.Hour)
+		exp = &t
+	}
+	plain, tok, err := s.auth.CreateAPIToken(ctx, auth.UserFrom(ctx).ID, in.Body.Name, exp)
 	if err != nil {
 		return nil, dbErr(err, "token")
 	}
