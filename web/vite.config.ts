@@ -51,7 +51,26 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['src/**/*.test.ts'],
-    environment: 'node',
+    projects: [
+      {
+        // čistá logika (lib/, výpočty) — rychlé, bez DOM
+        extends: true,
+        test: { name: 'unit', include: ['src/**/*.test.ts'], environment: 'node' },
+      },
+      {
+        // komponentové testy: jsdom + Testing Library + msw (src/test/setup.ts)
+        extends: true,
+        test: {
+          name: 'component',
+          include: ['src/**/*.test.tsx'],
+          environment: 'jsdom',
+          environmentOptions: { jsdom: { url: 'http://localhost:3000/' } },
+          // openapi-fetch v Node potřebuje absolutní URL; msw handlery míří na stejný origin (src/test/server.ts)
+          env: { VITE_API_BASE_URL: 'http://localhost:3000' },
+          setupFiles: ['src/test/setup.ts'],
+          testTimeout: 15_000,
+        },
+      },
+    ],
   },
 })

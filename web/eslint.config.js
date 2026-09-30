@@ -29,8 +29,8 @@ export default defineConfig([
     },
   },
   {
-    // shadcn komponenty (generované CLI) a route soubory (exportují `Route`) — HMR pravidlo zde neplatí.
-    files: ['src/components/ui/**', 'src/routes/**'],
+    // shadcn komponenty (generované CLI), route soubory (exportují `Route`) a testy — HMR pravidlo zde neplatí.
+    files: ['src/components/ui/**', 'src/routes/**', 'src/test/**', 'src/**/*.test.tsx'],
     rules: { 'react-refresh/only-export-components': 'off' },
   },
 ])
