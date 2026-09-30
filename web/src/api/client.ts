@@ -18,7 +18,16 @@ export const api = createClient<paths>({
 })
 
 /** Endpointy, kde je 401 očekávaný stav a nemá vést k přesměrování. */
-const SILENT_401 = ['/api/auth/me', '/api/auth/login', '/api/auth/status', '/api/auth/register']
+const SILENT_401 = [
+  '/api/auth/me',
+  '/api/auth/login',
+  '/api/auth/status',
+  '/api/auth/register',
+  // druhý krok přihlášení: 401 = špatný kód / vypršelá výzva, ne vypršelá session
+  '/api/auth/login/2fa',
+  '/api/auth/login/webauthn/options',
+  '/api/auth/login/webauthn',
+]
 
 let onUnauthorized: (() => void) | null = null
 

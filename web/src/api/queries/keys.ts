@@ -17,6 +17,8 @@ export const keys = {
   authStatus: () => [...keys.auth, 'status'] as const,
   me: () => [...keys.auth, 'me'] as const,
   tokens: () => [...keys.auth, 'tokens'] as const,
+  twoFactor: () => [...keys.auth, '2fa'] as const,
+  passwordReset: (token: string) => [...keys.auth, 'password-reset', token] as const,
 
   accounts: () => ['accounts'] as const,
   /** Prefix všech dat účtu. */

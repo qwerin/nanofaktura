@@ -9,7 +9,11 @@ Pravidla (viz CLAUDE.md → „Novinky“):
 - Podporováno: odstavce, `###`, odrážky, **tučně**, *zvýraznění* (např. cesta v menu), `kód`, [odkazy](https://…). Nic dalšího.
 -->
 
-## 2026-09-30 · Záloha a přenos účtu, Novinky
+## 2026-09-30 · Záloha účtu, dvoufázové ověření a Novinky
+
+- **Zapomenuté heslo** — na přihlašovací stránce klikněte na „Zapomenuté heslo?“ a do e-mailu vám přijde odkaz, přes který si nastavíte nové heslo. Odkaz platí hodinu a po změně hesla se odhlásí všechna ostatní zařízení.
+- **Dvoufázové ověření** — v *Nastavení → Zabezpečení* si k heslu zapnete druhý krok: kód z ověřovací aplikace v telefonu, nebo bezpečnostní klíč jako YubiKey či passkey. I když někdo zjistí vaše heslo, bez telefonu nebo klíče se nepřihlásí.
+- **Záložní kódy** — při zapnutí dvoufázového ověření dostanete 10 jednorázových kódů. Uschovejte si je; pomohou, když ztratíte telefon nebo klíč.
 
 - **Záloha celého účtu** — v *Nastavení → Záloha a přenos* stáhnete jedním tlačítkem ZIP se vším: kontakty, faktury, náklady, ceník, sklad, bankovní pohyby, šablony, historii i přílohy. Hesla a přístupové tokeny se do zálohy nikdy neukládají.
 - **Obnova ze zálohy** — při zakládání nového účtu zvolte „Obnovit ze zálohy“ a účet se přenese i na jinou instanci NanoFaktury. Číslování dokladů plynule navazuje; pravidelné faktury, webhooky a automatické upomínky zůstanou po obnově vypnuté, aby nic neodešlo dvakrát.

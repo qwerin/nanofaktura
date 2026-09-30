@@ -10,11 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ASlugRouteRouteImport } from './routes/a/$slug/route'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as PTokenRouteImport } from './routes/p.$token'
+import { Route as ResetPasswordTokenRouteImport } from './routes/reset-password.$token'
 import { Route as ASlugIndexRouteImport } from './routes/a/$slug/index'
 import { Route as ASlugDashboardRouteImport } from './routes/a/$slug/dashboard'
 import { Route as ASlugOnboardingRouteImport } from './routes/a/$slug/onboarding'
@@ -42,6 +44,7 @@ import { Route as ASlugSettingsEmailsRouteImport } from './routes/a/$slug/settin
 import { Route as ASlugSettingsMembersRouteImport } from './routes/a/$slug/settings/members'
 import { Route as ASlugSettingsNumberFormatsRouteImport } from './routes/a/$slug/settings/number-formats'
 import { Route as ASlugSettingsProfileRouteImport } from './routes/a/$slug/settings/profile'
+import { Route as ASlugSettingsSecurityRouteImport } from './routes/a/$slug/settings/security'
 import { Route as ASlugSettingsTokensRouteImport } from './routes/a/$slug/settings/tokens'
 import { Route as ASlugSettingsWebhooksRouteImport } from './routes/a/$slug/settings/webhooks'
 import { Route as ASlugSubjectsIndexRouteImport } from './routes/a/$slug/subjects/index'
@@ -64,6 +67,11 @@ import { Route as ASlugSubjectsSubjectIdEditRouteImport } from './routes/a/$slug
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -89,6 +97,11 @@ const InviteTokenRoute = InviteTokenRouteImport.update({
 const PTokenRoute = PTokenRouteImport.update({
   id: '/p/$token',
   path: '/p/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordTokenRoute = ResetPasswordTokenRouteImport.update({
+  id: '/reset-password/$token',
+  path: '/reset-password/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ASlugIndexRoute = ASlugIndexRouteImport.update({
@@ -228,6 +241,11 @@ const ASlugSettingsProfileRoute = ASlugSettingsProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => ASlugSettingsRouteRoute,
 } as any)
+const ASlugSettingsSecurityRoute = ASlugSettingsSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => ASlugSettingsRouteRoute,
+} as any)
 const ASlugSettingsTokensRoute = ASlugSettingsTokensRouteImport.update({
   id: '/tokens',
   path: '/tokens',
@@ -332,11 +350,13 @@ const ASlugSubjectsSubjectIdEditRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/a/$slug': typeof ASlugRouteRouteWithChildren
   '/invite/$token': typeof InviteTokenRoute
   '/p/$token': typeof PTokenRoute
+  '/reset-password/$token': typeof ResetPasswordTokenRoute
   '/a/$slug/reports': typeof ASlugReportsRouteRouteWithChildren
   '/a/$slug/settings': typeof ASlugSettingsRouteRouteWithChildren
   '/a/$slug/dashboard': typeof ASlugDashboardRoute
@@ -355,6 +375,7 @@ export interface FileRoutesByFullPath {
   '/a/$slug/settings/members': typeof ASlugSettingsMembersRoute
   '/a/$slug/settings/number-formats': typeof ASlugSettingsNumberFormatsRoute
   '/a/$slug/settings/profile': typeof ASlugSettingsProfileRoute
+  '/a/$slug/settings/security': typeof ASlugSettingsSecurityRoute
   '/a/$slug/settings/tokens': typeof ASlugSettingsTokensRoute
   '/a/$slug/settings/webhooks': typeof ASlugSettingsWebhooksRoute
   '/a/$slug/subjects/new': typeof ASlugSubjectsNewRoute
@@ -385,10 +406,12 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/invite/$token': typeof InviteTokenRoute
   '/p/$token': typeof PTokenRoute
+  '/reset-password/$token': typeof ResetPasswordTokenRoute
   '/a/$slug/dashboard': typeof ASlugDashboardRoute
   '/a/$slug/onboarding': typeof ASlugOnboardingRoute
   '/a/$slug': typeof ASlugIndexRoute
@@ -405,6 +428,7 @@ export interface FileRoutesByTo {
   '/a/$slug/settings/members': typeof ASlugSettingsMembersRoute
   '/a/$slug/settings/number-formats': typeof ASlugSettingsNumberFormatsRoute
   '/a/$slug/settings/profile': typeof ASlugSettingsProfileRoute
+  '/a/$slug/settings/security': typeof ASlugSettingsSecurityRoute
   '/a/$slug/settings/tokens': typeof ASlugSettingsTokensRoute
   '/a/$slug/settings/webhooks': typeof ASlugSettingsWebhooksRoute
   '/a/$slug/subjects/new': typeof ASlugSubjectsNewRoute
@@ -436,11 +460,13 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/a/$slug': typeof ASlugRouteRouteWithChildren
   '/invite/$token': typeof InviteTokenRoute
   '/p/$token': typeof PTokenRoute
+  '/reset-password/$token': typeof ResetPasswordTokenRoute
   '/a/$slug/reports': typeof ASlugReportsRouteRouteWithChildren
   '/a/$slug/settings': typeof ASlugSettingsRouteRouteWithChildren
   '/a/$slug/dashboard': typeof ASlugDashboardRoute
@@ -459,6 +485,7 @@ export interface FileRoutesById {
   '/a/$slug/settings/members': typeof ASlugSettingsMembersRoute
   '/a/$slug/settings/number-formats': typeof ASlugSettingsNumberFormatsRoute
   '/a/$slug/settings/profile': typeof ASlugSettingsProfileRoute
+  '/a/$slug/settings/security': typeof ASlugSettingsSecurityRoute
   '/a/$slug/settings/tokens': typeof ASlugSettingsTokensRoute
   '/a/$slug/settings/webhooks': typeof ASlugSettingsWebhooksRoute
   '/a/$slug/subjects/new': typeof ASlugSubjectsNewRoute
@@ -491,11 +518,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/forgot-password'
     | '/login'
     | '/register'
     | '/a/$slug'
     | '/invite/$token'
     | '/p/$token'
+    | '/reset-password/$token'
     | '/a/$slug/reports'
     | '/a/$slug/settings'
     | '/a/$slug/dashboard'
@@ -514,6 +543,7 @@ export interface FileRouteTypes {
     | '/a/$slug/settings/members'
     | '/a/$slug/settings/number-formats'
     | '/a/$slug/settings/profile'
+    | '/a/$slug/settings/security'
     | '/a/$slug/settings/tokens'
     | '/a/$slug/settings/webhooks'
     | '/a/$slug/subjects/new'
@@ -544,10 +574,12 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/forgot-password'
     | '/login'
     | '/register'
     | '/invite/$token'
     | '/p/$token'
+    | '/reset-password/$token'
     | '/a/$slug/dashboard'
     | '/a/$slug/onboarding'
     | '/a/$slug'
@@ -564,6 +596,7 @@ export interface FileRouteTypes {
     | '/a/$slug/settings/members'
     | '/a/$slug/settings/number-formats'
     | '/a/$slug/settings/profile'
+    | '/a/$slug/settings/security'
     | '/a/$slug/settings/tokens'
     | '/a/$slug/settings/webhooks'
     | '/a/$slug/subjects/new'
@@ -594,11 +627,13 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/forgot-password'
     | '/login'
     | '/register'
     | '/a/$slug'
     | '/invite/$token'
     | '/p/$token'
+    | '/reset-password/$token'
     | '/a/$slug/reports'
     | '/a/$slug/settings'
     | '/a/$slug/dashboard'
@@ -617,6 +652,7 @@ export interface FileRouteTypes {
     | '/a/$slug/settings/members'
     | '/a/$slug/settings/number-formats'
     | '/a/$slug/settings/profile'
+    | '/a/$slug/settings/security'
     | '/a/$slug/settings/tokens'
     | '/a/$slug/settings/webhooks'
     | '/a/$slug/subjects/new'
@@ -648,11 +684,13 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
   ASlugRouteRoute: typeof ASlugRouteRouteWithChildren
   InviteTokenRoute: typeof InviteTokenRoute
   PTokenRoute: typeof PTokenRoute
+  ResetPasswordTokenRoute: typeof ResetPasswordTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -662,6 +700,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -697,6 +742,13 @@ declare module '@tanstack/react-router' {
       path: '/p/$token'
       fullPath: '/p/$token'
       preLoaderRoute: typeof PTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password/$token': {
+      id: '/reset-password/$token'
+      path: '/reset-password/$token'
+      fullPath: '/reset-password/$token'
+      preLoaderRoute: typeof ResetPasswordTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/a/$slug/': {
@@ -888,6 +940,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ASlugSettingsProfileRouteImport
       parentRoute: typeof ASlugSettingsRouteRoute
     }
+    '/a/$slug/settings/security': {
+      id: '/a/$slug/settings/security'
+      path: '/security'
+      fullPath: '/a/$slug/settings/security'
+      preLoaderRoute: typeof ASlugSettingsSecurityRouteImport
+      parentRoute: typeof ASlugSettingsRouteRoute
+    }
     '/a/$slug/settings/tokens': {
       id: '/a/$slug/settings/tokens'
       path: '/tokens'
@@ -1039,6 +1098,7 @@ interface ASlugSettingsRouteRouteChildren {
   ASlugSettingsMembersRoute: typeof ASlugSettingsMembersRoute
   ASlugSettingsNumberFormatsRoute: typeof ASlugSettingsNumberFormatsRoute
   ASlugSettingsProfileRoute: typeof ASlugSettingsProfileRoute
+  ASlugSettingsSecurityRoute: typeof ASlugSettingsSecurityRoute
   ASlugSettingsTokensRoute: typeof ASlugSettingsTokensRoute
   ASlugSettingsWebhooksRoute: typeof ASlugSettingsWebhooksRoute
   ASlugSettingsIndexRoute: typeof ASlugSettingsIndexRoute
@@ -1053,6 +1113,7 @@ const ASlugSettingsRouteRouteChildren: ASlugSettingsRouteRouteChildren = {
   ASlugSettingsMembersRoute: ASlugSettingsMembersRoute,
   ASlugSettingsNumberFormatsRoute: ASlugSettingsNumberFormatsRoute,
   ASlugSettingsProfileRoute: ASlugSettingsProfileRoute,
+  ASlugSettingsSecurityRoute: ASlugSettingsSecurityRoute,
   ASlugSettingsTokensRoute: ASlugSettingsTokensRoute,
   ASlugSettingsWebhooksRoute: ASlugSettingsWebhooksRoute,
   ASlugSettingsIndexRoute: ASlugSettingsIndexRoute,
@@ -1137,11 +1198,13 @@ const ASlugRouteRouteWithChildren = ASlugRouteRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
   ASlugRouteRoute: ASlugRouteRouteWithChildren,
   InviteTokenRoute: InviteTokenRoute,
   PTokenRoute: PTokenRoute,
+  ResetPasswordTokenRoute: ResetPasswordTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

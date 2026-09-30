@@ -37,6 +37,13 @@ export type UpdateMeInput = RequestBody<'/api/auth/me', 'patch'>
 export type ApiToken = ListItem<ResponseBody<'/api/auth/tokens', 'get'>>
 export type ApiTokenCreated = ResponseBody<'/api/auth/tokens', 'post'>
 export type CreateTokenInput = RequestBody<'/api/auth/tokens', 'post'>
+export type LoginResult = ResponseBody<'/api/auth/login', 'post'>
+export type TwoFactorChallenge = NonNullable<LoginResult['two_factor']>
+export type TwoFactorMethod = TwoFactorChallenge['methods'][number]
+export type TwoFactorStatus = ResponseBody<'/api/auth/2fa', 'get'>
+export type WebAuthnKey = TwoFactorStatus['webauthn'][number]
+export type TOTPSetup = ResponseBody<'/api/auth/2fa/totp/setup', 'post'>
+export type PasswordResetInfo = ResponseBody<'/api/auth/password-reset/{token}', 'get'>
 
 // --- Accounts ---
 export type Account = ResponseBody<'/api/accounts/{slug}', 'get'>

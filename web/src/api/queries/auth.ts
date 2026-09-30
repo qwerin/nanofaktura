@@ -1,5 +1,6 @@
 import { queryOptions, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../client'
+import { createCredential, getCredential } from '@/lib/webauthn'
 import { isApiError } from '../errors'
 import type { CreateTokenInput, LoginInput, Me, RegisterInput, UpdateMeInput } from '../types'
 import { keys } from './keys'
@@ -30,6 +31,21 @@ export const authQueries = {
       meta: { silent: true },
     }),
 
+  twoFactor: () =>
+    queryOptions({
+      queryKey: keys.twoFactor(),
+      queryFn: () => unwrap(api.GET('/api/auth/2fa')),
+    }),
+
+  passwordReset: (token: string) =>
+    queryOptions({
+      queryKey: keys.passwordReset(token),
+      queryFn: () => unwrap(api.GET('/api/auth/password-reset/{token}', { params: { path: { token } } })),
+      staleTime: Infinity,
+      retry: false,
+      meta: { silent: true },
+    }),
+
   tokens: () =>
     queryOptions({
       queryKey: keys.tokens(),
@@ -43,7 +59,116 @@ export function useLogin() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: LoginInput) => unwrap(api.POST('/api/auth/login', { body })),
+    // S 2FA přijde jen `two_factor` (bez session) — přihlášení dokončí druhý krok.
+    onSuccess: (result) => {
+      if (result.me) qc.setQueryData(keys.me(), result.me)
+    },
+    meta: { silent: true },
+  })
+}
+
+/** Druhý krok přihlášení kódem z aplikace nebo záložním kódem. */
+export function useLoginCode() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { token: string; code: string }) => unwrap(api.POST('/api/auth/login/2fa', { body })),
     onSuccess: (me) => qc.setQueryData(keys.me(), me),
+    meta: { silent: true },
+  })
+}
+
+/** Druhý krok přihlášení bezpečnostním klíčem (volby → prohlížeč → ověření). */
+export function useLoginWebAuthn() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (token: string) => {
+      const { options } = await unwrap(api.POST('/api/auth/login/webauthn/options', { body: { token } }))
+      const credential = await getCredential(options)
+      return unwrap(api.POST('/api/auth/login/webauthn', { body: { token, credential } }))
+    },
+    onSuccess: (me) => qc.setQueryData(keys.me(), me),
+    meta: { silent: true },
+  })
+}
+
+// --- Obnova hesla (veřejné) ---
+
+export function useRequestPasswordReset() {
+  return useMutation({
+    mutationFn: (email: string) => unwrap(api.POST('/api/auth/password-reset', { body: { email } })),
+    meta: { silent: true },
+  })
+}
+
+export function useConfirmPasswordReset(token: string) {
+  return useMutation({
+    mutationFn: (password: string) =>
+      unwrap(api.POST('/api/auth/password-reset/{token}', { params: { path: { token } }, body: { password } })),
+    meta: { silent: true },
+  })
+}
+
+// --- Dvoufázové ověření (nastavení) ---
+
+function useInvalidateTwoFactor() {
+  const qc = useQueryClient()
+  return () => qc.invalidateQueries({ queryKey: keys.twoFactor() })
+}
+
+export function useTotpSetup() {
+  return useMutation({
+    mutationFn: (password: string) => unwrap(api.POST('/api/auth/2fa/totp/setup', { body: { password } })),
+    meta: { silent: true },
+  })
+}
+
+export function useTotpEnable() {
+  const invalidate = useInvalidateTwoFactor()
+  return useMutation({
+    mutationFn: (code: string) => unwrap(api.POST('/api/auth/2fa/totp/enable', { body: { code } })),
+    onSuccess: invalidate,
+    meta: { silent: true },
+  })
+}
+
+export function useTotpDisable() {
+  const invalidate = useInvalidateTwoFactor()
+  return useMutation({
+    mutationFn: (password: string) => unwrap(api.DELETE('/api/auth/2fa/totp', { body: { password } })),
+    onSuccess: invalidate,
+    meta: { silent: true },
+  })
+}
+
+/** Přidání bezpečnostního klíče: heslo → volby → dialog prohlížeče → uložení. */
+export function useAddWebAuthnKey() {
+  const invalidate = useInvalidateTwoFactor()
+  return useMutation({
+    mutationFn: async ({ name, password }: { name: string; password: string }) => {
+      const { token, options } = await unwrap(api.POST('/api/auth/2fa/webauthn/options', { body: { password } }))
+      const credential = await createCredential(options)
+      return unwrap(api.POST('/api/auth/2fa/webauthn', { body: { token, name, credential } }))
+    },
+    onSuccess: invalidate,
+    meta: { silent: true },
+  })
+}
+
+export function useDeleteWebAuthnKey() {
+  const invalidate = useInvalidateTwoFactor()
+  return useMutation({
+    mutationFn: ({ id, password }: { id: number; password: string }) =>
+      unwrap(api.DELETE('/api/auth/2fa/webauthn/{id}', { params: { path: { id } }, body: { password } })),
+    onSuccess: invalidate,
+    meta: { silent: true },
+  })
+}
+
+export function useRegenerateRecoveryCodes() {
+  const invalidate = useInvalidateTwoFactor()
+  return useMutation({
+    mutationFn: (password: string) => unwrap(api.POST('/api/auth/2fa/recovery-codes', { body: { password } })),
+    onSuccess: invalidate,
     meta: { silent: true },
   })
 }

@@ -9,6 +9,7 @@ import { KeyboardInsetsWatcher } from '@/components/keyboard-insets'
 import { ThemeProvider } from '@/components/theme'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { PUBLIC_AUTH_PAGES } from '@/lib/safe-redirect'
 import { createAppRouter } from './router'
 import './index.css'
 
@@ -18,7 +19,7 @@ const router = createAppRouter(queryClient)
 // Vypršelá session kdekoli v aplikaci → zahodit data a na přihlášení (s návratem zpět).
 setUnauthorizedHandler(() => {
   const { pathname, href } = router.state.location
-  if (pathname === '/login' || pathname === '/register') return
+  if (PUBLIC_AUTH_PAGES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return
   queryClient.clear()
   queryClient.setQueryData(keys.me(), null)
   void router.navigate({ to: '/login', search: { redirect: href }, replace: true })

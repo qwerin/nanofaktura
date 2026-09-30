@@ -1,14 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, redirect, useRouter } from '@tanstack/react-router'
-import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useEffect, useState } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { errorMessage, isApiError } from '@/api/errors'
 import { authQueries, useLogin } from '@/api/queries/auth'
 import { invitationQueries } from '@/api/queries/invitations'
+import type { TwoFactorChallenge } from '@/api/types'
 import { AuthLayout } from '@/components/auth-layout'
 import { TextField } from '@/components/form/fields'
+import { TwoFactorLogin } from '@/components/security/two-factor-login'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { FieldGroup } from '@/components/ui/field'
@@ -17,6 +19,8 @@ import { safeRedirect } from '@/lib/safe-redirect'
 
 const searchSchema = z.object({
   redirect: z.string().optional().catch(undefined),
+  /** Předvyplněný e-mail (např. po obnově hesla). */
+  email: z.string().optional().catch(undefined),
 })
 
 /** Token pozvánky z `redirect=/invite/<token>` (přihlášení z odkazu v pozvánce). */
@@ -49,8 +53,12 @@ function LoginPage() {
   const status = useQuery({ ...authQueries.status(), meta: { silent: true } })
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { email: search.email ?? '', password: '' },
   })
+  // Po hesle u uživatele s 2FA: druhý krok na téže stránce.
+  const [challenge, setChallenge] = useState<TwoFactorChallenge | null>(null)
+  const typedEmail = useWatch({ control: form.control, name: 'email' })
+  const finish = () => router.history.push(safeRedirect(search.redirect))
   // Přihlášení z pozvánky: e-mail předvyplníme z pozvánky (ne z URL) a po přihlášení se vrátíme na /invite/$token.
   const inviteToken = inviteTokenFrom(search.redirect)
   const invitation = useQuery({ ...invitationQueries.info(inviteToken ?? ''), enabled: Boolean(inviteToken) })
@@ -63,8 +71,12 @@ function LoginPage() {
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
-      await login.mutateAsync({ ...values, email: values.email.trim().toLowerCase() })
-      router.history.push(safeRedirect(search.redirect))
+      const result = await login.mutateAsync({ ...values, email: values.email.trim().toLowerCase() })
+      if (result.two_factor) {
+        setChallenge(result.two_factor)
+        return
+      }
+      finish()
     } catch (err) {
       form.setError('root', {
         message:
@@ -78,6 +90,26 @@ function LoginPage() {
   const rootError = form.formState.errors.root?.message
   // Na čisté instanci bez uživatelů rovnou nabídneme registraci.
   const firstRun = status.data && !status.data.has_users
+
+  if (challenge) {
+    return (
+      <AuthLayout title="Ověření přihlášení" description="Váš účet chrání dvoufázové ověření. Potvrďte, že jste to vy.">
+        <TwoFactorLogin
+          challenge={challenge}
+          onSuccess={finish}
+          onBack={() => {
+            setChallenge(null)
+            form.resetField('password')
+          }}
+          onExpired={(message) => {
+            setChallenge(null)
+            form.resetField('password')
+            form.setError('root', { message })
+          }}
+        />
+      </AuthLayout>
+    )
+  }
 
   return (
     <AuthLayout
@@ -123,14 +155,23 @@ function LoginPage() {
             enterKeyHint="next"
             autoFocus
           />
-          <TextField
-            control={form.control}
-            name="password"
-            label="Heslo"
-            type="password"
-            autoComplete="current-password"
-            enterKeyHint="go"
-          />
+          <div className="flex flex-col gap-1">
+            <TextField
+              control={form.control}
+              name="password"
+              label="Heslo"
+              type="password"
+              autoComplete="current-password"
+              enterKeyHint="go"
+            />
+            <Link
+              to="/forgot-password"
+              search={{ email: typedEmail.trim() || undefined }}
+              className="-mb-2 inline-flex min-h-11 items-center self-end text-sm font-medium text-primary underline-offset-4 hover:underline md:min-h-8"
+            >
+              Zapomenuté heslo?
+            </Link>
+          </div>
         </FieldGroup>
         {rootError && (
           <p role="alert" className="text-sm text-destructive">
