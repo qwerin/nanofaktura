@@ -34,6 +34,9 @@ Položky nalezené během implementace, určené k vyřešení v úklidové vln�
 - [ ] Varování VAT reportu anglicky → `code` + česky; DIČ v KH A.4/B.2 zobrazovat s prefixem CZ v JSON (XML dle schématu bez).
 - [ ] Faktura v měně bez bankovního účtu v té měně → žádné platební údaje; zvážit fallback (výchozí účet s IBAN) nebo varování při vystavení.
 - [ ] `Me`/account výstup: capability flagy (`can_view_reports`, `can_manage_settings` …) místo odvozování rolí na frontendu.
+- [ ] Webhook test ping neaktualizuje `last_status`/`last_delivered_at`.
+- [ ] Hledání: `search_text` faktury neobsahuje typ dokladu („faktura“, „zálohová“…).
+- [ ] Filtr událostí: víc prefixů najednou (`expense.*,expense_payment.*`); úkoly bez vazby (`related_type=none`).
 - [ ] Per-account SMTP nastavení; text pozvánky jen česky.
 
 ## Dev
