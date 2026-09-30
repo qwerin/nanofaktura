@@ -20,6 +20,11 @@ export const keys = {
   twoFactor: () => [...keys.auth, '2fa'] as const,
   passwordReset: (token: string) => [...keys.auth, 'password-reset', token] as const,
 
+  /** Správa instance (jen správci instance). */
+  admin: ['admin'] as const,
+  adminStatus: () => [...keys.admin, 'status'] as const,
+  adminUsers: (query: string) => [...keys.admin, 'users', query] as const,
+
   accounts: () => ['accounts'] as const,
   /** Prefix všech dat účtu. */
   account: (slug: string) => ['a', slug] as const,

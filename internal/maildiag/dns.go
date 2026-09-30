@@ -57,6 +57,13 @@ func checkMX(ctx context.Context, r Resolver, domain string) DiagCheck {
 		c.Hint = "Adresa v NANOFAKTURA_MAIL_FROM by měla být na doméně, která poštu i přijímá."
 		return c
 	}
+	if len(mxs) == 1 && strings.Trim(mxs[0].Host, ".") == "" { // null MX (RFC 7505)
+		c.Status = Warning
+		c.Message = "Doména " + domain + " má „null MX“ — výslovně nepřijímá žádnou poštu, odpovědi na vaše e-maily se nedoručí a některé servery takového odesílatele odmítají."
+		c.Hint = "Adresa v NANOFAKTURA_MAIL_FROM by měla být na doméně, která poštu i přijímá."
+		c.Details = []string{"0 ."}
+		return c
+	}
 	sort.Slice(mxs, func(i, j int) bool { return mxs[i].Pref < mxs[j].Pref })
 	for _, m := range mxs {
 		c.Details = append(c.Details, fmt.Sprintf("%d %s", m.Pref, strings.TrimSuffix(m.Host, ".")))

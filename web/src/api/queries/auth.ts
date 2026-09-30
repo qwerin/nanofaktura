@@ -108,6 +108,25 @@ export function useConfirmPasswordReset(token: string) {
   })
 }
 
+// --- Ověření e-mailu (SPEC §3.2) ---
+
+/** Pošle přihlášenému uživateli odkaz pro ověření e-mailu. */
+export function useRequestEmailVerification() {
+  return useMutation({
+    mutationFn: () => unwrap(api.POST('/api/auth/me/verify-email')),
+  })
+}
+
+/** Potvrdí ověření e-mailu tokenem z odkazu. */
+export function useConfirmEmailVerification() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (token: string) => unwrap(api.POST('/api/auth/verify-email', { body: { token } })),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.me() }),
+    meta: { silent: true },
+  })
+}
+
 // --- Dvoufázové ověření (nastavení) ---
 
 function useInvalidateTwoFactor() {

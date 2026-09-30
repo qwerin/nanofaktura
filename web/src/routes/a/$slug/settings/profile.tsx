@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { EmailVerifyHint } from '@/components/security/email-verify-hint'
 import { createFileRoute } from '@tanstack/react-router'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -23,6 +24,7 @@ function ProfilePage() {
   return (
     <SettingsPage title="Můj profil" description="Údaje vašeho uživatelského účtu. Platí pro všechny firmy, ke kterým máte přístup.">
       <div className="max-w-4xl">
+        <EmailVerifyHint />
         <NameForm key={user.name} name={user.name} email={user.email} />
         <PasswordForm />
       </div>

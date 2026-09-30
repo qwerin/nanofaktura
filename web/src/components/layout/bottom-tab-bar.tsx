@@ -20,7 +20,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/u
 import { useCurrentAccount } from '@/hooks/use-current-account'
 import { cn } from '@/lib/utils'
 import { AccountAvatar } from './app-sidebar'
-import { moreNav, settingsNav } from './nav'
+import { adminNav, moreNav, settingsNav } from './nav'
 import { useLogoutAction } from './use-logout-action'
 
 const tabClass =
@@ -106,7 +106,7 @@ function Tab({
 
 /** Menu „Více“: přepínač účtů, nastavení, motiv, odhlášení. */
 function MoreDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const { slug, accounts, user } = useCurrentAccount()
+  const { slug, accounts, user, me } = useCurrentAccount()
   const navigate = useNavigate()
   const logout = useLogoutAction()
   const [createOpen, setCreateOpen] = useState(false)
@@ -183,6 +183,18 @@ function MoreDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (open
                   {item.label}
                 </Row>
               ))}
+              {me?.instance_admin && (
+                <Row
+                  onClick={() => {
+                    close()
+                    void navigate({ to: adminNav.to, params: { slug } })
+                  }}
+                  leading={<adminNav.icon className="size-5 text-muted-foreground" />}
+                  trailing={<ChevronRightIcon className="size-4 text-muted-foreground" />}
+                >
+                  {adminNav.label}
+                </Row>
+              )}
             </Section>
 
             <Section title="Motiv">

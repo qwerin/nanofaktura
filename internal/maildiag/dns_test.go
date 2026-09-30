@@ -164,3 +164,13 @@ func TestDKIMRecordCheck(t *testing.T) {
 		t.Fatal("ValidSelector")
 	}
 }
+
+func TestNullMX(t *testing.T) {
+	r := &smtptest.Resolver{MX: map[string][]*net.MX{"example.com": {{Host: ".", Pref: 0}}}}
+	c := maildiag.Run(context.Background(), maildiag.Options{SMTP: mail.SMTPConfig{From: "a@example.com"}, To: "b@example.cz", Resolver: r})
+	for _, d := range c.DNS {
+		if d.ID == "mx" && (d.Status != maildiag.Warning || !strings.Contains(d.Message, "null MX")) {
+			t.Fatalf("mx: %+v", d)
+		}
+	}
+}

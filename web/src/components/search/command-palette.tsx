@@ -24,7 +24,7 @@ import type { ExpenseStatus, InvoiceStatus, SearchHit } from '@/api/types'
 import { ExpenseStatusBadge } from '@/components/expense/expense-status-badge'
 import { useDebouncedValue } from '@/components/invoice/use-debounced'
 import { StatusBadge } from '@/components/invoice/status-badge'
-import { mainNav, settingsNav } from '@/components/layout/nav'
+import { adminNav, mainNav, settingsNav } from '@/components/layout/nav'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CommandEmpty, CommandGroup, CommandList, CommandSeparator } from '@/components/ui/command'
@@ -105,7 +105,7 @@ function PaletteBody({
   close: () => void
   onShowHelp: () => void
 }) {
-  const { slug, canEdit } = useCurrentAccount()
+  const { slug, canEdit, me } = useCurrentAccount()
   const navigate = useNavigate()
   const [query, setQuery] = useState(initialQuery)
   const [selected, setSelected] = useState('')
@@ -145,6 +145,26 @@ function PaletteBody({
         icon: UserPlusIcon,
         keywords: ['klient', 'odběratel', 'dodavatel', 'firma'],
         run: () => go(`/a/${slug}/subjects/new`),
+      },
+    )
+  }
+  if (me?.instance_admin) {
+    actions.push({
+      id: 'admin',
+      label: adminNav.label,
+      icon: adminNav.icon,
+      keywords: ['server', 'instance', 'administrace', 'uživatelé'],
+      run: () => go(`/a/${slug}/admin`),
+    })
+  }
+  if (me?.instance_admin && hasQuery) {
+    actions.push(
+      {
+        id: 'admin-email-test',
+        label: 'Test e-mailu',
+        icon: adminNav.icon,
+        keywords: ['smtp', 'dkim', 'spf', 'dmarc', 'pošta', 'správa instance'],
+        run: () => go(`/a/${slug}/admin?tab=email`),
       },
     )
   }

@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
@@ -17,7 +18,9 @@ import { Route as ASlugRouteRouteImport } from './routes/a/$slug/route'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as PTokenRouteImport } from './routes/p.$token'
 import { Route as ResetPasswordTokenRouteImport } from './routes/reset-password.$token'
+import { Route as VerifyEmailTokenRouteImport } from './routes/verify-email.$token'
 import { Route as ASlugIndexRouteImport } from './routes/a/$slug/index'
+import { Route as ASlugAdminRouteImport } from './routes/a/$slug/admin'
 import { Route as ASlugDashboardRouteImport } from './routes/a/$slug/dashboard'
 import { Route as ASlugOnboardingRouteImport } from './routes/a/$slug/onboarding'
 import { Route as ASlugReportsRouteRouteImport } from './routes/a/$slug/reports/route'
@@ -69,6 +72,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
@@ -104,9 +112,19 @@ const ResetPasswordTokenRoute = ResetPasswordTokenRouteImport.update({
   path: '/reset-password/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VerifyEmailTokenRoute = VerifyEmailTokenRouteImport.update({
+  id: '/verify-email/$token',
+  path: '/verify-email/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ASlugIndexRoute = ASlugIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => ASlugRouteRoute,
+} as any)
+const ASlugAdminRoute = ASlugAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => ASlugRouteRoute,
 } as any)
 const ASlugDashboardRoute = ASlugDashboardRouteImport.update({
@@ -350,6 +368,7 @@ const ASlugSubjectsSubjectIdEditRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
@@ -357,8 +376,10 @@ export interface FileRoutesByFullPath {
   '/invite/$token': typeof InviteTokenRoute
   '/p/$token': typeof PTokenRoute
   '/reset-password/$token': typeof ResetPasswordTokenRoute
+  '/verify-email/$token': typeof VerifyEmailTokenRoute
   '/a/$slug/reports': typeof ASlugReportsRouteRouteWithChildren
   '/a/$slug/settings': typeof ASlugSettingsRouteRouteWithChildren
+  '/a/$slug/admin': typeof ASlugAdminRoute
   '/a/$slug/dashboard': typeof ASlugDashboardRoute
   '/a/$slug/onboarding': typeof ASlugOnboardingRoute
   '/a/$slug/': typeof ASlugIndexRoute
@@ -406,12 +427,15 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/invite/$token': typeof InviteTokenRoute
   '/p/$token': typeof PTokenRoute
   '/reset-password/$token': typeof ResetPasswordTokenRoute
+  '/verify-email/$token': typeof VerifyEmailTokenRoute
+  '/a/$slug/admin': typeof ASlugAdminRoute
   '/a/$slug/dashboard': typeof ASlugDashboardRoute
   '/a/$slug/onboarding': typeof ASlugOnboardingRoute
   '/a/$slug': typeof ASlugIndexRoute
@@ -460,6 +484,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
@@ -467,8 +492,10 @@ export interface FileRoutesById {
   '/invite/$token': typeof InviteTokenRoute
   '/p/$token': typeof PTokenRoute
   '/reset-password/$token': typeof ResetPasswordTokenRoute
+  '/verify-email/$token': typeof VerifyEmailTokenRoute
   '/a/$slug/reports': typeof ASlugReportsRouteRouteWithChildren
   '/a/$slug/settings': typeof ASlugSettingsRouteRouteWithChildren
+  '/a/$slug/admin': typeof ASlugAdminRoute
   '/a/$slug/dashboard': typeof ASlugDashboardRoute
   '/a/$slug/onboarding': typeof ASlugOnboardingRoute
   '/a/$slug/': typeof ASlugIndexRoute
@@ -518,6 +545,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/forgot-password'
     | '/login'
     | '/register'
@@ -525,8 +553,10 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/p/$token'
     | '/reset-password/$token'
+    | '/verify-email/$token'
     | '/a/$slug/reports'
     | '/a/$slug/settings'
+    | '/a/$slug/admin'
     | '/a/$slug/dashboard'
     | '/a/$slug/onboarding'
     | '/a/$slug/'
@@ -574,12 +604,15 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/forgot-password'
     | '/login'
     | '/register'
     | '/invite/$token'
     | '/p/$token'
     | '/reset-password/$token'
+    | '/verify-email/$token'
+    | '/a/$slug/admin'
     | '/a/$slug/dashboard'
     | '/a/$slug/onboarding'
     | '/a/$slug'
@@ -627,6 +660,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/forgot-password'
     | '/login'
     | '/register'
@@ -634,8 +668,10 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/p/$token'
     | '/reset-password/$token'
+    | '/verify-email/$token'
     | '/a/$slug/reports'
     | '/a/$slug/settings'
+    | '/a/$slug/admin'
     | '/a/$slug/dashboard'
     | '/a/$slug/onboarding'
     | '/a/$slug/'
@@ -684,6 +720,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
@@ -691,6 +728,7 @@ export interface RootRouteChildren {
   InviteTokenRoute: typeof InviteTokenRoute
   PTokenRoute: typeof PTokenRoute
   ResetPasswordTokenRoute: typeof ResetPasswordTokenRoute
+  VerifyEmailTokenRoute: typeof VerifyEmailTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -700,6 +738,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -751,11 +796,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/verify-email/$token': {
+      id: '/verify-email/$token'
+      path: '/verify-email/$token'
+      fullPath: '/verify-email/$token'
+      preLoaderRoute: typeof VerifyEmailTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/a/$slug/': {
       id: '/a/$slug/'
       path: '/'
       fullPath: '/a/$slug/'
       preLoaderRoute: typeof ASlugIndexRouteImport
+      parentRoute: typeof ASlugRouteRoute
+    }
+    '/a/$slug/admin': {
+      id: '/a/$slug/admin'
+      path: '/admin'
+      fullPath: '/a/$slug/admin'
+      preLoaderRoute: typeof ASlugAdminRouteImport
       parentRoute: typeof ASlugRouteRoute
     }
     '/a/$slug/dashboard': {
@@ -1125,6 +1184,7 @@ const ASlugSettingsRouteRouteWithChildren =
 interface ASlugRouteRouteChildren {
   ASlugReportsRouteRoute: typeof ASlugReportsRouteRouteWithChildren
   ASlugSettingsRouteRoute: typeof ASlugSettingsRouteRouteWithChildren
+  ASlugAdminRoute: typeof ASlugAdminRoute
   ASlugDashboardRoute: typeof ASlugDashboardRoute
   ASlugOnboardingRoute: typeof ASlugOnboardingRoute
   ASlugIndexRoute: typeof ASlugIndexRoute
@@ -1160,6 +1220,7 @@ interface ASlugRouteRouteChildren {
 const ASlugRouteRouteChildren: ASlugRouteRouteChildren = {
   ASlugReportsRouteRoute: ASlugReportsRouteRouteWithChildren,
   ASlugSettingsRouteRoute: ASlugSettingsRouteRouteWithChildren,
+  ASlugAdminRoute: ASlugAdminRoute,
   ASlugDashboardRoute: ASlugDashboardRoute,
   ASlugOnboardingRoute: ASlugOnboardingRoute,
   ASlugIndexRoute: ASlugIndexRoute,
@@ -1198,6 +1259,7 @@ const ASlugRouteRouteWithChildren = ASlugRouteRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
@@ -1205,6 +1267,7 @@ const rootRouteChildren: RootRouteChildren = {
   InviteTokenRoute: InviteTokenRoute,
   PTokenRoute: PTokenRoute,
   ResetPasswordTokenRoute: ResetPasswordTokenRoute,
+  VerifyEmailTokenRoute: VerifyEmailTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -21,6 +21,7 @@ import {
 } from '@/api/queries/auth'
 import type { TwoFactorStatus, WebAuthnKey } from '@/api/types'
 import { PageError } from '@/components/page-states'
+import { EmailVerifyHint } from '@/components/security/email-verify-hint'
 import { AddKeyDialog } from '@/components/security/add-key-dialog'
 import { PasswordConfirmDialog } from '@/components/security/password-confirm-dialog'
 import { RecoveryCodesDialog } from '@/components/security/recovery-codes-dialog'
@@ -47,6 +48,7 @@ function SecurityPage() {
       description="Dvoufázové ověření chrání váš účet, i když někdo zjistí vaše heslo: při přihlášení navíc potvrdíte, že jste to vy — kódem z telefonu nebo bezpečnostním klíčem. Platí pro všechny firmy, ke kterým máte přístup."
     >
       <div className="max-w-4xl">
+        <EmailVerifyHint />
         {status.isPending ? (
           <FormSkeleton fields={4} />
         ) : status.isError ? (

@@ -40,7 +40,7 @@ import { NewsBadge } from '@/components/news/news-badge'
 import { TodoCountBadge } from '@/components/todos/todo-count-badge'
 import { useCurrentAccount } from '@/hooks/use-current-account'
 import { roleLabel } from '@/lib/roles'
-import { initials, mainNav } from './nav'
+import { adminNav, initials, mainNav } from './nav'
 import { useLogoutAction } from './use-logout-action'
 
 /** Desktopová navigace (≥ md). Na mobilu ji nahrazuje BottomTabBar. */
@@ -180,7 +180,7 @@ function AccountSwitcher() {
 }
 
 function UserMenu() {
-  const { user, slug } = useCurrentAccount()
+  const { user, slug, me } = useCurrentAccount()
   const navigate = useNavigate()
   const logout = useLogoutAction()
   const { theme, setTheme } = useThemeChoice()
@@ -212,6 +212,12 @@ function UserMenu() {
                 <KeyRoundIcon />
                 API tokeny
               </DropdownMenuItem>
+              {me?.instance_admin && (
+                <DropdownMenuItem onClick={() => void navigate({ to: adminNav.to, params: { slug } })}>
+                  <adminNav.icon />
+                  {adminNav.label}
+                </DropdownMenuItem>
+              )}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>

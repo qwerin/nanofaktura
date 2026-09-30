@@ -15,6 +15,7 @@ import {
   ReceiptIcon,
   ShieldCheckIcon,
   PaletteIcon,
+  ServerCogIcon,
   WebhookIcon,
   UserCogIcon,
   UserIcon,
@@ -61,6 +62,9 @@ export const settingsNav = [
   { label: 'Můj profil', to: '/a/$slug/settings/profile', icon: UserIcon, description: 'Jméno a heslo', group: 'me' },
   { label: 'Zabezpečení', to: '/a/$slug/settings/security', icon: ShieldCheckIcon, description: 'Dvoufázové ověření a bezpečnostní klíče', group: 'me' },
 ] as const
+
+/** Správa instance — jen pro správce instance (`me.instance_admin`). */
+export const adminNav = { label: 'Správa instance', to: '/a/$slug/admin', icon: ServerCogIcon } as const
 
 /** Iniciály pro avatar účtu/uživatele: „Jan Novák“ → „JN“. */
 export function initials(name: string): string {

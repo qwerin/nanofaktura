@@ -38,6 +38,14 @@ export type ApiToken = ListItem<ResponseBody<'/api/auth/tokens', 'get'>>
 export type ApiTokenCreated = ResponseBody<'/api/auth/tokens', 'post'>
 export type CreateTokenInput = RequestBody<'/api/auth/tokens', 'post'>
 export type LoginResult = ResponseBody<'/api/auth/login', 'post'>
+export type EmailVerificationInfo = ResponseBody<'/api/auth/verify-email', 'post'>
+
+// --- Správa instance ---
+export type InstanceStatus = ResponseBody<'/api/admin/status', 'get'>
+export type EmailTestInput = RequestBody<'/api/admin/email-test', 'post'>
+export type EmailTestReport = ResponseBody<'/api/admin/email-test', 'post'>
+export type EmailTestCheck = NonNullable<EmailTestReport['smtp']>[number]
+export type AdminUser = ListItem<ResponseBody<'/api/admin/users', 'get'>>
 export type TwoFactorChallenge = NonNullable<LoginResult['two_factor']>
 export type TwoFactorMethod = TwoFactorChallenge['methods'][number]
 export type TwoFactorStatus = ResponseBody<'/api/auth/2fa', 'get'>
