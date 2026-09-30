@@ -28,6 +28,14 @@ services:
         dbname=nanofaktura
         sslmode=disable
       NANOFAKTURA_STATIC_DIR: /app/dist
+      NANOFAKTURA_PUBLIC_URL: ${PUBLIC_URL:-}
+      # E-mail (prázdný SMTP_HOST = e-maily se jen vypisují do logu)
+      NANOFAKTURA_SMTP_HOST: ${SMTP_HOST:-}
+      NANOFAKTURA_SMTP_PORT: ${SMTP_PORT:-587}
+      NANOFAKTURA_SMTP_TLS: ${SMTP_TLS:-starttls}
+      NANOFAKTURA_SMTP_USER: ${SMTP_USER:-}
+      NANOFAKTURA_SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      NANOFAKTURA_MAIL_FROM: ${MAIL_FROM:-}
       # Volitelné přepisy:
       # NANOFAKTURA_ALLOW_SIGNUP: "true"
       # NANOFAKTURA_SECURE_COOKIES: "true"
