@@ -47,8 +47,11 @@ internal/api/     api.New + one file per resource (DTOs next to handlers) + *_te
 - GORM models are never huma input/output. DTO naming in `internal/api`: `Subject` (output),
   `SubjectCreate` (create body, optional fields `omitempty`), `SubjectPatch` (pointers, nil = unchanged),
   `toSubject(*model.Subject) Subject` (converter). Output slices get `nullable:"false"` and must never be nil.
-- Errors: `notFound("subject")` (404, also for other accounts' records), `conflict(msg)` (409),
-  `invalid(field, msg)` (422), `dbErr(err, "subject")` maps GORM errors (not found → 404, duplicate key → 409, else 500).
+- Errors: `notFound("subject")` (404, also for other accounts' records), `conflict(CodeX, msg)` (409),
+  `invalid(field, msg)` (422), `apiError(status, CodeX, msg)` for other domain errors,
+  `dbErr(err, "subject")` maps GORM errors (not found → 404, duplicate key → 409, else 500).
+  Every problem+json has a machine-readable `code` (`Code*` constants in `internal/api/errors.go`, generic per status
+  otherwise); a new code also needs a Czech text in `codeMessages` (`web/src/api/errors.ts`). Tests: `assertCode(t, res, body, status, code)`.
   DB is opened with `TranslateError`, so unique violations are `gorm.ErrDuplicatedKey`.
 - SQLite uses a single connection: inside `Transaction(func(tx) …)` use only `tx`, never `s.db` (would deadlock).
 - AutoMigrate never drops columns; delete the local DB after incompatible model changes.
@@ -150,7 +153,8 @@ fails for any account-scoped POST/PUT/PATCH/DELETE without a declaration — add
   Links in e-mails: `s.publicURL()` (`NANOFAKTURA_PUBLIC_URL`).
 - Files go through `s.deps.Storage` (keys `"{account_id}/{random}"`); metadata in `model.Attachment`
   (owner_type invoice|expense|subject|account). Small files into memory: `s.attachmentBytes(ctx, id)`.
-  When deleting an owner record, its attachments are not removed automatically yet.
+  Deleting an owner record: `files, err = deleteOwnerAttachments(ctx, tx, ownerType, id)` in the tx, then
+  `s.removeFiles(ctx, files)` after commit. Detail outputs list them via `ownerAttachments(ctx, db, ownerType, id)`.
 - Invoice e-mails (send, recurring, reminders, paid thanks) all go through `s.sendInvoiceEmail(ctx, inv, emailRequest{…})`
   (renders the account template, attaches the PDF via `s.renderInvoicePDF`, writes `EmailLog`, marks as sent).
   Code creating payments outside `POST /payments` (bank matching) calls `s.sendPaidThanks(ctx, invoiceID)` after commit.
