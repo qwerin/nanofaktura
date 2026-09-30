@@ -127,6 +127,9 @@ func (s *server) resendInvitation(ctx context.Context, in *struct {
 	if err := canManageRole(ctx, inv.Role); err != nil {
 		return nil, err
 	}
+	if err := s.rateLimit(s.limits.mail, accountKey(ctx)); err != nil {
+		return nil, err
+	}
 	plain, err := s.invitationToken(&inv)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("cannot read the invitation link", err)
@@ -312,6 +315,9 @@ func (s *server) inviteMember(ctx context.Context, in *struct{ Body InvitationCr
 	if err := canManageRole(ctx, in.Body.Role); err != nil {
 		return nil, err
 	}
+	if err := s.rateLimit(s.limits.mail, accountKey(ctx)); err != nil {
+		return nil, err
+	}
 	acc, user := auth.AccountFrom(ctx), auth.UserFrom(ctx)
 	email := normalizeEmail(in.Body.Email)
 	plain, hash := auth.NewSecret()
@@ -436,6 +442,9 @@ func (s *server) joinByInvitation(tx *gorm.DB, inv *model.Invitation, userID uin
 func (s *server) getInvitationInfo(ctx context.Context, in *struct {
 	Token string `path:"token"`
 }) (*Out[InvitationInfo], error) {
+	if err := s.rateLimit(s.limits.invitation, clientIP(ctx)); err != nil {
+		return nil, err
+	}
 	db := s.db.WithContext(ctx)
 	inv, err := s.pendingInvitation(db, in.Token)
 	if err != nil {
@@ -457,6 +466,9 @@ func (s *server) getInvitationInfo(ctx context.Context, in *struct {
 func (s *server) acceptInvitation(ctx context.Context, in *struct {
 	Token string `path:"token"`
 }) (*Out[MeAccount], error) {
+	if err := s.rateLimit(s.limits.invitation, clientIP(ctx)); err != nil {
+		return nil, err
+	}
 	user := auth.UserFrom(ctx)
 	var out MeAccount
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {

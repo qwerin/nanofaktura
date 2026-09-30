@@ -18,15 +18,8 @@
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />
     <title>NanoFaktura</title>
-    <script>
-      // Motiv ještě před prvním vykreslením (bez probliknutí). Viz src/components/theme.tsx.
-      try {
-        var t = localStorage.getItem('nf-theme')
-        var dark = t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
-        if (dark) document.documentElement.classList.add('dark')
-        document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
-      } catch (e) {}
-    </script>
+    <!-- Motiv před prvním vykreslením; soubor, ne inline skript (CSP script-src 'self'). -->
+    <script src="/theme-init.js"></script>
   </head>
   <body>
     <div id="root"></div>

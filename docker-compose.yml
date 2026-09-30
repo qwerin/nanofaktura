@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:17-alpine
+    image: postgres:17.11-alpine3.24@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
     restart: unless-stopped
     environment:
       POSTGRES_DB: nanofaktura
@@ -18,7 +18,9 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "${APP_PORT:-8080}:8080"
+      # Výchozí jen na localhost (před aplikaci patří reverzní proxy s HTTPS).
+      # APP_BIND=0.0.0.0 ji zpřístupní v síti — jen v důvěryhodné LAN.
+      - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8080}:8080"
     environment:
       NANOFAKTURA_DB_DRIVER: postgres
       NANOFAKTURA_DB_DSN: >-
@@ -28,12 +30,21 @@ services:
         dbname=nanofaktura
         sslmode=disable
       NANOFAKTURA_STATIC_DIR: /app/dist
+      NANOFAKTURA_DATA_DIR: /data
+      # Adresa, na které uživatelé aplikaci otevírají (odkazy v e-mailech; https:// zapne Secure cookie a HSTS)
+      NANOFAKTURA_PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
+      # Klíč šifrující uložená tajemství; prázdný = vygeneruje se do /data/secret.key (zálohujte volume)
+      NANOFAKTURA_SECRET_KEY: ${SECRET_KEY:-}
+      # Token pro první registraci (doporučeno, dokud se nezaregistrujete)
+      NANOFAKTURA_SETUP_TOKEN: ${SETUP_TOKEN:-}
       # Volitelné přepisy:
       # NANOFAKTURA_ALLOW_SIGNUP: "true"
-      # NANOFAKTURA_SECURE_COOKIES: "true"
+    volumes:
+      - appdata:/data
     depends_on:
       db:
         condition: service_healthy
 
 volumes:
   pgdata:
+  appdata:

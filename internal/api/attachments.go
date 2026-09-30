@@ -61,9 +61,8 @@ var ownerTables = map[string]string{
 }
 
 func (s *server) registerAttachments(g huma.API) {
-	huma.Post(g, "/attachments", s.uploadAttachment, status(http.StatusCreated), auth.ForEditors, func(o *huma.Operation) {
+	huma.Post(g, "/attachments", s.uploadAttachment, status(http.StatusCreated), auth.ForEditors, slowUpload(5*time.Minute), func(o *huma.Operation) {
 		o.MaxBodyBytes = MaxAttachmentSize + uploadOverhead
-		o.BodyReadTimeout = 5 * time.Minute
 		o.Middlewares = append(o.Middlewares, limitBody(g, MaxAttachmentSize+uploadOverhead))
 	})
 	huma.Get(g, "/attachments", s.listAttachments)

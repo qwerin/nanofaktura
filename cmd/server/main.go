@@ -14,10 +14,14 @@ import (
 	"syscall"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/qwerin/nanofaktura/internal/api"
 	"github.com/qwerin/nanofaktura/internal/bankimport"
 	"github.com/qwerin/nanofaktura/internal/config"
 	"github.com/qwerin/nanofaktura/internal/db"
+	"github.com/qwerin/nanofaktura/internal/httpsec"
+	"github.com/qwerin/nanofaktura/internal/model"
 	"github.com/qwerin/nanofaktura/internal/scheduler"
 	"github.com/qwerin/nanofaktura/internal/secret"
 )
@@ -70,9 +74,18 @@ func run() error {
 	deps := api.Deps{Secrets: secrets, Fio: bankimport.NewFioClient(cfg.FioURL)}
 	handler, _ := api.New(gdb, cfg, deps)
 	if cfg.StaticDir != "" {
-		handler = withSPA(handler, cfg.StaticDir)
+		// security headers (CSP …) for the SPA too; the API sets its own
+		handler = httpsec.Middleware(httpsec.Options{TrustedProxies: cfg.TrustedProxies, PublicHTTPS: cfg.PublicHTTPS()})(
+			withSPA(handler, cfg.StaticDir))
 	}
-	srv := &http.Server{Addr: cfg.ListenAddr, Handler: handler, ReadHeaderTimeout: 10 * time.Second}
+	warnInsecureSetup(gdb, cfg)
+	// Uploads and imports extend their read deadline per operation (huma
+	// BodyReadTimeout), streamed exports their write deadline.
+	srv := &http.Server{
+		Addr: cfg.ListenAddr, Handler: handler,
+		ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 2 * time.Minute,
+		WriteTimeout: 5 * time.Minute, IdleTimeout: 2 * time.Minute,
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -103,6 +116,21 @@ func run() error {
 		return err
 	}
 	return nil
+}
+
+// warnInsecureSetup logs configuration that is fine for development but
+// risky in production.
+func warnInsecureSetup(gdb *gorm.DB, cfg config.Config) {
+	if cfg.SMTPHost == "" {
+		slog.Warn("NANOFAKTURA_SMTP_HOST is not set: e-mails (including invitation links) are only written to the log")
+	}
+	if !cfg.PublicHTTPS() {
+		slog.Warn("NANOFAKTURA_PUBLIC_URL is not https: fine locally, but in production serve the app over HTTPS", "public_url", cfg.PublicURL)
+	}
+	var n int64
+	if err := gdb.Model(&model.User{}).Count(&n).Error; err == nil && n == 0 && cfg.SetupToken == "" {
+		slog.Warn("no user registered yet and NANOFAKTURA_SETUP_TOKEN is not set: anyone reaching the server can register first")
+	}
 }
 
 // withSPA serves /api/* from the API and everything else from dir, falling

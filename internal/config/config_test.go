@@ -9,9 +9,30 @@ func TestLoad(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.ListenAddr != ":8080" || cfg.DBDriver != "sqlite" || cfg.DBDSN != "nanofaktura.db" || !cfg.AllowSignup || cfg.SecureCookies ||
+	if cfg.ListenAddr != ":8080" || cfg.DBDriver != "sqlite" || cfg.DBDSN != "nanofaktura.db" || !cfg.AllowSignup || cfg.SecureCookies != nil ||
 		cfg.SMTPPort != 587 || cfg.SMTPTLS != "starttls" || cfg.DataDir != "./data" || cfg.PublicURL != "http://localhost:8080" {
 		t.Fatalf("unexpected config: %+v", cfg)
+	}
+}
+
+func TestLoadSecurity(t *testing.T) {
+	t.Setenv("NANOFAKTURA_DB_DRIVER", "")
+	t.Setenv("NANOFAKTURA_SECURE_COOKIES", "false")
+	t.Setenv("NANOFAKTURA_TRUSTED_PROXIES", "10.0.0.0/8, 192.168.1.1")
+	t.Setenv("NANOFAKTURA_SETUP_TOKEN", " abc ")
+	t.Setenv("NANOFAKTURA_PUBLIC_URL", "https://f.example.cz")
+	cfg, err := Load()
+	if err != nil || cfg.SecureCookies == nil || *cfg.SecureCookies || len(cfg.TrustedProxies) != 2 ||
+		cfg.SetupToken != "abc" || !cfg.PublicHTTPS() || cfg.DisableRateLimit {
+		t.Fatalf("%+v %v", cfg, err)
+	}
+	t.Setenv("NANOFAKTURA_SECURE_COOKIES", "auto")
+	if cfg, err := Load(); err != nil || cfg.SecureCookies != nil {
+		t.Fatalf("auto: %+v %v", cfg, err)
+	}
+	t.Setenv("NANOFAKTURA_TRUSTED_PROXIES", "proxy.local")
+	if _, err := Load(); err == nil {
+		t.Fatal("invalid proxy accepted")
 	}
 }
 

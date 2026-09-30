@@ -52,7 +52,8 @@ func newTestServer(t *testing.T, opts ...func(*config.Config)) *testServer {
 			_ = sqlDB.Close()
 		}
 	})
-	cfg := config.Config{AllowSignup: true, WebhooksAllowPrivate: true} // webhook tests call httptest servers on 127.0.0.1
+	// webhook tests call httptest servers on 127.0.0.1; rate limits are tested explicitly (withRateLimit)
+	cfg := config.Config{AllowSignup: true, WebhooksAllowPrivate: true, DisableRateLimit: true}
 	for _, o := range opts {
 		o(&cfg)
 	}

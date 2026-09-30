@@ -2,8 +2,10 @@ package api
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -16,6 +18,9 @@ import (
 type AuthStatus struct {
 	SignupAllowed bool `json:"signup_allowed"`
 	HasUsers      bool `json:"has_users"`
+	// SetupTokenRequired: the first registration must present setup_token
+	// (NANOFAKTURA_SETUP_TOKEN is set and there is no user yet).
+	SetupTokenRequired bool `json:"setup_token_required"`
 }
 
 type User struct {
@@ -38,11 +43,14 @@ type Me struct {
 type RegisterRequest struct {
 	Email       string `json:"email" format:"email" maxLength:"254"`
 	Name        string `json:"name" minLength:"1" maxLength:"200"`
-	Password    string `json:"password" minLength:"8" maxLength:"72"`
+	Password    string `json:"password" minLength:"8" maxLength:"72" doc:"8–72 characters, at most 72 bytes in UTF-8"`
 	AccountName string `json:"account_name,omitempty" maxLength:"200" doc:"Name of the new account; required unless invitation_token is given"`
 	// InvitationToken joins the invited account instead of creating one
 	// (allowed even when signup is disabled; email must match the invitation).
 	InvitationToken string `json:"invitation_token,omitempty" maxLength:"100"`
+	// SetupToken is required for the first registration of an empty instance
+	// when NANOFAKTURA_SETUP_TOKEN is set (see AuthStatus.setup_token_required).
+	SetupToken string `json:"setup_token,omitempty" maxLength:"200"`
 }
 
 type LoginRequest struct {
@@ -52,8 +60,8 @@ type LoginRequest struct {
 
 type MePatch struct {
 	Name            *string `json:"name,omitempty" minLength:"1" maxLength:"200"`
-	Password        *string `json:"password,omitempty" minLength:"8" maxLength:"72"`
-	CurrentPassword *string `json:"current_password,omitempty" doc:"Required when changing password"`
+	Password        *string `json:"password,omitempty" minLength:"8" maxLength:"72" doc:"New password (at most 72 bytes); also revokes the user's API tokens and other sessions"`
+	CurrentPassword *string `json:"current_password,omitempty" maxLength:"200" doc:"Required when changing password"`
 }
 
 // meWithCookie is the output of register/login: Me plus the session cookie.
@@ -86,10 +94,27 @@ func (s *server) authStatus(ctx context.Context, _ *struct{}) (*Out[AuthStatus],
 	if err != nil {
 		return nil, dbErr(err, "users")
 	}
-	return &Out[AuthStatus]{Body: AuthStatus{SignupAllowed: !has || s.cfg.AllowSignup, HasUsers: has}}, nil
+	return &Out[AuthStatus]{Body: AuthStatus{SignupAllowed: !has || s.cfg.AllowSignup, HasUsers: has,
+		SetupTokenRequired: !has && s.cfg.SetupToken != ""}}, nil
+}
+
+// checkPasswordBytes: bcrypt uses at most 72 bytes; longer passwords (e.g.
+// with diacritics) are rejected rather than silently truncated.
+func checkPasswordBytes(field, password string) error {
+	if len(password) > auth.MaxPasswordBytes {
+		return apiError(http.StatusUnprocessableEntity, CodePasswordTooLong, "validation failed",
+			&huma.ErrorDetail{Location: "body." + field, Message: "password must be at most 72 bytes (fewer characters with diacritics)"})
+	}
+	return nil
 }
 
 func (s *server) register(ctx context.Context, in *struct{ Body RegisterRequest }) (*meWithCookie, error) {
+	if err := s.rateLimit(s.limits.register, clientIP(ctx)); err != nil {
+		return nil, err
+	}
+	if err := checkPasswordBytes("password", in.Body.Password); err != nil {
+		return nil, err
+	}
 	hash, err := auth.HashPassword(in.Body.Password)
 	if err != nil {
 		return nil, err
@@ -119,6 +144,10 @@ func (s *server) register(ctx context.Context, in *struct{ Body RegisterRequest 
 			if has && !s.cfg.AllowSignup {
 				return apiError(http.StatusForbidden, CodeSignupDisabled, "signup is disabled")
 			}
+			if !has && s.cfg.SetupToken != "" &&
+				subtle.ConstantTimeCompare([]byte(in.Body.SetupToken), []byte(s.cfg.SetupToken)) != 1 {
+				return apiError(http.StatusForbidden, CodeSetupToken, "the first registration requires the setup token (NANOFAKTURA_SETUP_TOKEN)")
+			}
 		}
 		if err := tx.Create(&user).Error; err != nil {
 			if errors.Is(err, gorm.ErrDuplicatedKey) {
@@ -139,14 +168,23 @@ func (s *server) register(ctx context.Context, in *struct{ Body RegisterRequest 
 }
 
 func (s *server) login(ctx context.Context, in *struct{ Body LoginRequest }) (*meWithCookie, error) {
+	email := normalizeEmail(in.Body.Email)
+	if err := s.rateLimit(s.limits.loginIP, clientIP(ctx)); err != nil {
+		return nil, err
+	}
+	if err := s.rateBlocked(s.limits.loginEmail, email); err != nil {
+		return nil, err
+	}
 	var user model.User
-	err := s.db.WithContext(ctx).Where("email = ?", normalizeEmail(in.Body.Email)).First(&user).Error
+	err := s.db.WithContext(ctx).Where("email = ?", email).First(&user).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, dbErr(err, "user")
 	}
 	if !auth.CheckPassword(user.PasswordHash, in.Body.Password) {
+		s.rateFail(s.limits.loginEmail, email)
 		return nil, huma.Error401Unauthorized("invalid email or password")
 	}
+	s.limits.loginEmail.Reset(email)
 	return s.startSession(ctx, &user)
 }
 
@@ -174,7 +212,7 @@ func (s *server) logout(ctx context.Context, in *struct {
 			return nil, dbErr(err, "session")
 		}
 	}
-	return &logoutOutput{SetCookie: s.auth.ClearCookie().String()}, nil
+	return &logoutOutput{SetCookie: s.auth.ClearCookie(ctx).String()}, nil
 }
 
 func (s *server) me(ctx context.Context, user *model.User) (*Me, error) {
@@ -211,7 +249,15 @@ func (s *server) patchMe(ctx context.Context, in *struct {
 		user.Name = strings.TrimSpace(*in.Body.Name)
 	}
 	if in.Body.Password != nil {
+		if err := checkPasswordBytes("password", *in.Body.Password); err != nil {
+			return nil, err
+		}
+		key := strconv.FormatUint(uint64(user.ID), 10)
+		if err := s.rateBlocked(s.limits.password, key); err != nil {
+			return nil, err
+		}
 		if in.Body.CurrentPassword == nil || !auth.CheckPassword(user.PasswordHash, *in.Body.CurrentPassword) {
+			s.rateFail(s.limits.password, key)
 			return nil, apiError(http.StatusUnprocessableEntity, CodeWrongPassword, "validation failed",
 				&huma.ErrorDetail{Location: "body.current_password", Message: "current password is incorrect"})
 		}
@@ -228,9 +274,13 @@ func (s *server) patchMe(ctx context.Context, in *struct {
 		if in.Body.Password == nil {
 			return nil
 		}
-		// a new password logs out every other browser; the current session stays
+		// a new password logs out every other browser (the current session
+		// stays) and revokes the user's API tokens
 		if err := auth.DeleteOtherSessions(tx, user.ID, in.Session); err != nil {
 			return dbErr(err, "sessions")
+		}
+		if err := tx.Where("user_id = ?", user.ID).Delete(&model.APIToken{}).Error; err != nil {
+			return dbErr(err, "tokens")
 		}
 		return nil
 	})

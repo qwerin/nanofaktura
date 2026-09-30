@@ -319,8 +319,8 @@ func toEmailLog(m *model.EmailLog) EmailLog {
 
 // InvoiceSend is the body of POST /invoices/{id}/send.
 type InvoiceSend struct {
-	To        []string `json:"to,omitempty" maxItems:"20" doc:"Default: client_email of the invoice (+ the subject's email_copy as cc)"`
-	Cc        []string `json:"cc,omitempty" maxItems:"20"`
+	To        []string `json:"to,omitempty" maxItems:"10" doc:"Default: client_email of the invoice (+ the subject's email_copy as cc); at most 10 recipients in to + cc"`
+	Cc        []string `json:"cc,omitempty" maxItems:"10"`
 	Subject   *string  `json:"subject,omitempty" maxLength:"500" doc:"Default: the account template of kind in the invoice language"`
 	Body      *string  `json:"body,omitempty" maxLength:"20000" doc:"Default: the template + signature; placeholders are rendered here too"`
 	AttachPDF *bool    `json:"attach_pdf,omitempty" doc:"Default true"`
@@ -393,6 +393,12 @@ func (s *server) sendInvoice(ctx context.Context, in *struct {
 	}
 	if len(to) == 0 {
 		return nil, invalid("to", "no recipient: the invoice has no client e-mail; set to")
+	}
+	if len(to)+len(cc) > maxRecipients {
+		return nil, invalid("to", fmt.Sprintf("at most %d recipients (to + cc)", maxRecipients))
+	}
+	if err := s.rateLimit(s.limits.mail, accountKey(ctx)); err != nil {
+		return nil, err
 	}
 	attach := true
 	apply(&attach, b.AttachPDF)
@@ -515,6 +521,15 @@ func (s *server) defaultRecipients(ctx context.Context, db *gorm.DB, inv *model.
 		}
 	}
 	return to, cc
+}
+
+// maxRecipients bounds to + cc of one user-sent e-mail (the server must not
+// become a bulk mailer); user-sent e-mails are also rate limited per account.
+const maxRecipients = 10
+
+// accountKey is the rate limit key of the current account.
+func accountKey(ctx context.Context) string {
+	return "a" + strconv.FormatUint(uint64(auth.AccountFrom(ctx).ID), 10)
 }
 
 // normalizeAddresses validates e-mail addresses → 422 on field[i].
@@ -669,7 +684,7 @@ func (s *server) RunReminders(ctx context.Context, now time.Time) error {
 	var errs []error
 	for i := range accs {
 		acc := &accs[i]
-		actx := auth.WithAccount(ctx, acc, "system")
+		actx := withClock(auth.WithAccount(ctx, acc, "system"), func() time.Time { return now }) // events/todos use the job clock
 		steps := reminderSteps(acc)
 		var invs []model.Invoice
 		err := s.scoped(actx).Select("id", "due_on").

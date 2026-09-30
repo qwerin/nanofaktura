@@ -92,6 +92,11 @@ export const codeMessages: Record<string, string> = {
   corrupt_backup: 'Soubor není platná záloha NanoFaktury nebo je poškozený.',
   backup_too_large: 'Záloha je větší, než tato instance dovoluje importovat (NANOFAKTURA_IMPORT_MAX_MB).',
   too_large: 'Soubor je příliš velký.',
+  rate_limited: 'Příliš mnoho pokusů v krátké době. Chvíli počkejte a zkuste to znovu.',
+  export_in_progress: 'Jiný export tohoto účtu právě běží. Počkejte, až doběhne, a zkuste to znovu.',
+  setup_token_invalid: 'Pro první registraci je potřeba správný instalační token.',
+  password_too_long: 'Heslo je příliš dlouhé (nejvýše 72 bajtů — znaky s diakritikou se počítají dvakrát).',
+  cross_origin_request: 'Požadavek byl odmítnut z bezpečnostních důvodů. Obnovte stránku a zkuste to znovu.',
 }
 
 const statusMessages: Record<number, string> = {

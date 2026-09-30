@@ -56,11 +56,10 @@ func (s *server) registerBackup(authed, account huma.API) {
 	huma.Register(account, op, s.exportBackup)
 
 	max := s.importMaxBytes() + uploadOverhead
-	huma.Post(authed, "/api/accounts/import", s.importBackup, status(http.StatusCreated), func(o *huma.Operation) {
+	huma.Post(authed, "/api/accounts/import", s.importBackup, status(http.StatusCreated), slowUpload(30*time.Minute), func(o *huma.Operation) {
 		o.Summary = "Create a new account from a backup ZIP"
 		o.Tags = []string{"Accounts"}
 		o.MaxBodyBytes = max
-		o.BodyReadTimeout = 30 * time.Minute
 		o.Middlewares = append(o.Middlewares, limitBody(authed, max))
 	})
 }
@@ -69,7 +68,13 @@ func (s *server) exportBackup(ctx context.Context, _ *struct{}) (*huma.StreamRes
 	acc := auth.AccountFrom(ctx)
 	user := auth.UserFrom(ctx)
 	name := backup.Filename(acc.Slug, s.deps.Now())
+	release, err := s.acquireExport(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return &huma.StreamResponse{Body: func(hc huma.Context) {
+		defer release()
+		extendWriteDeadline(hc, time.Hour) // attachments may be large
 		hc.SetHeader("Content-Type", "application/zip")
 		hc.SetHeader("Content-Disposition", `attachment; filename="`+name+`"`)
 		man, err := backup.Export(ctx, s.db, s.deps.Storage, acc.ID, hc.BodyWriter())

@@ -3,19 +3,24 @@ package config
 
 import (
 	"fmt"
+	"net/netip"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/qwerin/nanofaktura/internal/httpsec"
 )
 
 // Config holds all runtime settings.
 type Config struct {
-	ListenAddr    string // NANOFAKTURA_LISTEN_ADDR
-	DBDriver      string // NANOFAKTURA_DB_DRIVER: sqlite | postgres
-	DBDSN         string // NANOFAKTURA_DB_DSN
-	StaticDir     string // NANOFAKTURA_STATIC_DIR: SPA build directory, empty = API only
-	AllowSignup   bool   // NANOFAKTURA_ALLOW_SIGNUP: allow registration when users already exist
-	SecureCookies bool   // NANOFAKTURA_SECURE_COOKIES
+	ListenAddr  string // NANOFAKTURA_LISTEN_ADDR
+	DBDriver    string // NANOFAKTURA_DB_DRIVER: sqlite | postgres
+	DBDSN       string // NANOFAKTURA_DB_DSN
+	StaticDir   string // NANOFAKTURA_STATIC_DIR: SPA build directory, empty = API only
+	AllowSignup bool   // NANOFAKTURA_ALLOW_SIGNUP: allow registration when users already exist
+	// SecureCookies (NANOFAKTURA_SECURE_COOKIES): nil = auto (Secure when
+	// PublicURL is https or the request arrived over HTTPS); true/false force it.
+	SecureCookies *bool
 	AresURL       string // NANOFAKTURA_ARES_URL: ARES base URL override (tests)
 	PublicURL     string // NANOFAKTURA_PUBLIC_URL: external base URL for links in e-mails (no trailing slash)
 	DataDir       string // NANOFAKTURA_DATA_DIR: attachments etc. (default ./data)
@@ -39,6 +44,28 @@ type Config struct {
 	// WebhooksAllowPrivate (NANOFAKTURA_WEBHOOKS_ALLOW_PRIVATE) lets webhooks call private,
 	// loopback and link-local addresses (SSRF protection off; LAN setups, tests).
 	WebhooksAllowPrivate bool
+
+	// TrustedProxies (NANOFAKTURA_TRUSTED_PROXIES): comma separated IPs/CIDRs of
+	// reverse proxies whose X-Forwarded-For / X-Forwarded-Proto are believed
+	// (client IP for rate limits, HTTPS detection). Default none.
+	TrustedProxies []netip.Prefix
+
+	// SetupToken (NANOFAKTURA_SETUP_TOKEN): when set, the first registration of
+	// an empty instance must present it (protects a fresh deployment).
+	SetupToken string
+
+	// DisableRateLimit (NANOFAKTURA_DISABLE_RATE_LIMIT) turns the in-process
+	// rate limits off (load tests, trusted single-user setups).
+	DisableRateLimit bool
+
+	// DisableAPIDocs (NANOFAKTURA_DISABLE_API_DOCS) hides /api/docs,
+	// /api/openapi.json and /api/schemas (public by default).
+	DisableAPIDocs bool
+}
+
+// PublicHTTPS reports whether PublicURL is an https URL.
+func (c Config) PublicHTTPS() bool {
+	return strings.HasPrefix(strings.ToLower(c.PublicURL), "https://")
 }
 
 // Load reads the configuration from the environment and applies defaults.
@@ -86,7 +113,21 @@ func Load() (Config, error) {
 	if cfg.AllowSignup, err = envBool("NANOFAKTURA_ALLOW_SIGNUP"); err != nil {
 		return Config{}, err
 	}
-	if cfg.SecureCookies, err = envBool("NANOFAKTURA_SECURE_COOKIES"); err != nil {
+	if v := os.Getenv("NANOFAKTURA_SECURE_COOKIES"); v != "" && v != "auto" {
+		b, err := strconv.ParseBool(v)
+		if err != nil {
+			return Config{}, fmt.Errorf("NANOFAKTURA_SECURE_COOKIES: invalid value %q (auto|true|false)", v)
+		}
+		cfg.SecureCookies = &b
+	}
+	if cfg.TrustedProxies, err = httpsec.ParseProxies(os.Getenv("NANOFAKTURA_TRUSTED_PROXIES")); err != nil {
+		return Config{}, fmt.Errorf("NANOFAKTURA_TRUSTED_PROXIES: %w", err)
+	}
+	cfg.SetupToken = strings.TrimSpace(os.Getenv("NANOFAKTURA_SETUP_TOKEN"))
+	if cfg.DisableRateLimit, err = envBool("NANOFAKTURA_DISABLE_RATE_LIMIT"); err != nil {
+		return Config{}, err
+	}
+	if cfg.DisableAPIDocs, err = envBool("NANOFAKTURA_DISABLE_API_DOCS"); err != nil {
 		return Config{}, err
 	}
 	if cfg.WebhooksAllowPrivate, err = envBool("NANOFAKTURA_WEBHOOKS_ALLOW_PRIVATE"); err != nil {

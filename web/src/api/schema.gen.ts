@@ -2085,6 +2085,11 @@ export interface components {
         APIToken: {
             /** Format: date-time */
             created_at: string;
+            /**
+             * Format: date-time
+             * @description Omitted = never expires
+             */
+            expires_at?: string;
             /** Format: int64 */
             id: number;
             /** Format: date-time */
@@ -2094,6 +2099,11 @@ export interface components {
             prefix: string;
         };
         APITokenCreate: {
+            /**
+             * Format: int64
+             * @description Lifetime in days; omitted = no expiry
+             */
+            expires_in_days?: number;
             name: string;
         };
         Account: {
@@ -2271,6 +2281,7 @@ export interface components {
         };
         AuthStatus: {
             has_users: boolean;
+            setup_token_required: boolean;
             signup_allowed: boolean;
         };
         BankAccount: {
@@ -2455,6 +2466,11 @@ export interface components {
         CreatedAPIToken: {
             /** Format: date-time */
             created_at: string;
+            /**
+             * Format: date-time
+             * @description Omitted = never expires
+             */
+            expires_at?: string;
             /** Format: int64 */
             id: number;
             /** Format: date-time */
@@ -3062,7 +3078,7 @@ export interface components {
             expires_at: string;
             /** Format: int64 */
             id: number;
-            /** @description The invitation link (for copying); empty for invitations created before links were stored */
+            /** @description The invitation link (for copying); empty for invitations created before links were stored and for roles the caller cannot grant (owner invitations for admins) */
             invite_url: string;
             /**
              * Format: int64
@@ -3401,7 +3417,7 @@ export interface components {
             kind?: "invoice" | "reminder" | "paid_thanks";
             /** @description Default: the account template of kind in the invoice language */
             subject?: string;
-            /** @description Default: client_email of the invoice (+ the subject's email_copy as cc) */
+            /** @description Default: client_email of the invoice (+ the subject's email_copy as cc); at most 10 recipients in to + cc */
             to?: string[] | null;
         };
         InvoiceSummary: {
@@ -3710,6 +3726,7 @@ export interface components {
             /** @description Required when changing password */
             current_password?: string;
             name?: string;
+            /** @description New password (at most 72 bytes); also revokes the user's API tokens and other sessions */
             password?: string;
         };
         Member: {
@@ -4099,7 +4116,9 @@ export interface components {
             email: string;
             invitation_token?: string;
             name: string;
+            /** @description 8–72 characters, at most 72 bytes in UTF-8 */
             password: string;
+            setup_token?: string;
         };
         RematchResult: {
             /** Format: int64 */

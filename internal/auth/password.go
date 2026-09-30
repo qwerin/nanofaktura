@@ -5,6 +5,9 @@ import "golang.org/x/crypto/bcrypt"
 // MinPasswordLength is the minimum accepted password length.
 const MinPasswordLength = 8
 
+// MaxPasswordBytes is bcrypt's input limit; longer passwords are rejected.
+const MaxPasswordBytes = 72
+
 // dummyHash is compared against when a user does not exist, so login timing
 // does not reveal which emails are registered.
 var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("nanofaktura-dummy"), bcrypt.DefaultCost)

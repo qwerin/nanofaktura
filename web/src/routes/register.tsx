@@ -4,7 +4,7 @@ import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-ro
 import { LockIcon } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import { applyProblemToForm, errorMessage, isApiError } from '@/api/errors'
+import { applyProblemToForm, errorMessage, hasErrorCode, isApiError } from '@/api/errors'
 import { authQueries, useRegister } from '@/api/queries/auth'
 import { AuthLayout } from '@/components/auth-layout'
 import { ButtonLink } from '@/components/button-link'
@@ -30,6 +30,7 @@ const schema = z.object({
   email: z.email('Zadejte platný e-mail'),
   password: passwordSchema,
   account_name: z.string().trim().min(1, 'Zadejte název firmy nebo své jméno'),
+  setup_token: z.string().trim(),
 })
 type Values = z.infer<typeof schema>
 
@@ -61,25 +62,37 @@ function RegisterPage() {
     )
   }
 
-  return <RegisterForm firstUser={!status.data.has_users} />
+  return <RegisterForm firstUser={!status.data.has_users} setupToken={status.data.setup_token_required} />
 }
 
-function RegisterForm({ firstUser }: { firstUser: boolean }) {
+function RegisterForm({ firstUser, setupToken }: { firstUser: boolean; setupToken: boolean }) {
   const navigate = useNavigate()
   const register = useRegister()
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', email: '', password: '', account_name: '' },
+    defaultValues: { name: '', email: '', password: '', account_name: '', setup_token: '' },
   })
 
-  const onSubmit = form.handleSubmit(async (values) => {
+  const onSubmit = form.handleSubmit(async ({ setup_token, ...values }) => {
+    if (setupToken && !setup_token) {
+      form.setError('setup_token', { message: 'Zadejte instalační token' })
+      return
+    }
     try {
-      const me = await register.mutateAsync({ ...values, email: values.email.trim().toLowerCase() })
+      const me = await register.mutateAsync({
+        ...values,
+        email: values.email.trim().toLowerCase(),
+        ...(setupToken ? { setup_token } : {}),
+      })
       const slug = me.accounts?.[0]?.slug
       if (slug) await navigate({ to: '/a/$slug/settings/company', params: { slug }, replace: true })
       else await navigate({ to: '/', replace: true })
     } catch (err) {
       if (applyProblemToForm(err, form.setError)) return
+      if (hasErrorCode(err, 'setup_token_invalid')) {
+        form.setError('setup_token', { message: 'Instalační token nesouhlasí.' })
+        return
+      }
       form.setError('root', {
         message:
           isApiError(err) && err.status === 403
@@ -144,8 +157,20 @@ function RegisterForm({ firstUser }: { firstUser: boolean }) {
             label="Název firmy / OSVČ"
             autoComplete="organization"
             description="Za koho budete vystavovat faktury. Další údaje doplníte v nastavení."
-            enterKeyHint="go"
+            enterKeyHint={setupToken ? 'next' : 'go'}
           />
+          {setupToken && (
+            <TextField
+              control={form.control}
+              name="setup_token"
+              label="Instalační token"
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              description="Správce ho nastavil při instalaci (NANOFAKTURA_SETUP_TOKEN). Chrání novou instanci před cizí registrací."
+              enterKeyHint="go"
+            />
+          )}
         </FieldGroup>
         {rootError && (
           <p role="alert" className="text-sm text-destructive">

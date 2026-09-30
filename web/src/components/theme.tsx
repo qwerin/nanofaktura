@@ -29,7 +29,7 @@ function subscribeSystem(onChange: () => void) {
 
 /**
  * Světlý/tmavý režim: třída `.dark` na <html>, volba v localStorage (`nf-theme`), výchozí dle systému.
- * Počáteční třídu nastaví už inline skript v index.html, tady se jen udržuje v synchronizaci.
+ * Počáteční třídu nastaví už skript public/theme-init.js (načtený z index.html), tady se jen udržuje v synchronizaci.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemeChoice>(readStoredTheme)

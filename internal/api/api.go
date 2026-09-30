@@ -35,6 +35,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -47,6 +48,7 @@ import (
 	"github.com/qwerin/nanofaktura/internal/bankimport"
 	"github.com/qwerin/nanofaktura/internal/cnb"
 	"github.com/qwerin/nanofaktura/internal/config"
+	"github.com/qwerin/nanofaktura/internal/httpsec"
 	"github.com/qwerin/nanofaktura/internal/mail"
 	"github.com/qwerin/nanofaktura/internal/numbering"
 	"github.com/qwerin/nanofaktura/internal/secret"
@@ -105,7 +107,10 @@ type server struct {
 
 	webhookClient *http.Client // SSRF-safe unless cfg.WebhooksAllowPrivate
 
-	pdfSlots chan struct{} // semaphore bounding concurrent PDF renders
+	pdfSlots    chan struct{} // semaphore bounding concurrent PDF renders
+	exportSlots chan struct{} // semaphore bounding concurrent heavy exports (PDF ZIP, backup)
+	exportBusy  sync.Map      // account ID → struct{} while one of its heavy exports runs
+	limits      limits
 }
 
 // New builds the API router. db may be nil when only the OpenAPI document is needed.
@@ -113,10 +118,16 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 	s := newServer(db, cfg, deps)
 
 	router := chi.NewRouter()
+	// client IP / HTTPS behind trusted proxies, security headers, CSRF (SPEC §5)
+	router.Use(httpsec.Middleware(httpsec.Options{TrustedProxies: cfg.TrustedProxies, PublicHTTPS: cfg.PublicHTTPS()}))
+	router.Use(httpsec.CSRF)
 	hc := huma.DefaultConfig("NanoFaktura API", "1.0.0")
 	hc.OpenAPIPath = "/api/openapi"
 	hc.DocsPath = "/api/docs"
 	hc.SchemasPath = "/api/schemas"
+	if cfg.DisableAPIDocs {
+		hc.OpenAPIPath, hc.DocsPath, hc.SchemasPath = "", "", ""
+	}
 	hc.CreateHooks = nil // no "$schema" field in response bodies
 	hc.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
 		"session": {Type: "apiKey", In: "cookie", Name: auth.SessionCookie},
@@ -215,9 +226,23 @@ func newServer(db *gorm.DB, cfg config.Config, deps Deps) *server {
 	if deps.Secrets == nil {
 		deps.Secrets = secret.NewRandom()
 	}
-	return &server{db: db, cfg: cfg, deps: deps, auth: auth.NewService(db, deps.Now, cfg.SecureCookies),
+	return &server{db: db, cfg: cfg, deps: deps, auth: auth.NewService(db, deps.Now, secureCookies(cfg)),
 		webhookClient: webhooks.NewClient(cfg.WebhooksAllowPrivate),
-		pdfSlots:      make(chan struct{}, max(2, runtime.NumCPU()))}
+		pdfSlots:      make(chan struct{}, max(2, runtime.NumCPU())),
+		exportSlots:   make(chan struct{}, 2),
+		limits:        newLimits(deps.Now)}
+}
+
+// secureCookies decides the Secure attribute of the session cookie:
+// NANOFAKTURA_SECURE_COOKIES when set, otherwise on for an https PublicURL or
+// a request that arrived over HTTPS (directly or via a trusted proxy).
+func secureCookies(cfg config.Config) func(context.Context) bool {
+	return func(ctx context.Context) bool {
+		if cfg.SecureCookies != nil {
+			return *cfg.SecureCookies
+		}
+		return cfg.PublicHTTPS() || httpsec.InfoFrom(ctx).HTTPS
+	}
 }
 
 func defaultMailer(cfg config.Config) mail.Mailer {

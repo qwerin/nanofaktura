@@ -437,7 +437,18 @@ func Jobs(db *gorm.DB, cfg config.Config, deps Deps) []scheduler.Job {
 		{Name: "bank-sync", Run: s.RunBankSync, Every: 2 * time.Hour},
 		{Name: "todos", Run: s.RunTodos, Every: time.Hour},
 		{Name: "webhooks", Run: s.RunWebhooks}, // every tick (cmd/server ticks every minute)
+		{Name: "auth-cleanup", Run: s.RunAuthCleanup, Every: 24 * time.Hour},
 	}
+}
+
+// RunAuthCleanup deletes expired sessions, API tokens and invitations
+// (expired more than InvitationTTL ago, so "expired" stays visible a while).
+func (s *server) RunAuthCleanup(ctx context.Context, now time.Time) error {
+	db := s.db.WithContext(ctx)
+	if err := auth.DeleteExpired(db, now); err != nil {
+		return err
+	}
+	return db.Where("accepted_at IS NULL AND expires_at <= ?", now.Add(-InvitationTTL)).Delete(&model.Invitation{}).Error
 }
 
 // logJobErr logs a background failure that has no caller to report to.
