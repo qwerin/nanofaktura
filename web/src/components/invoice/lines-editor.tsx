@@ -339,12 +339,13 @@ function MobileLines({
   lines,
 }: InnerProps & { lines: FieldArray }) {
   const { errors } = useFormState({ control, name: 'lines' })
-  // Rozbalené karty podle `key`; nové řádky (bez uloženého názvu) jsou rozbalené.
-  const [open, setOpen] = useState<Set<string>>(() => new Set(lines.fields.filter((f) => !f.name).map((f) => f.key)))
+  // Sbalené karty podle `key`: na začátku řádky s názvem (uložené), nové řádky jsou rozbalené,
+  // dokud je uživatel sám nesbalí — i když mezitím dostanou název a přesunou se.
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(lines.fields.filter((f) => f.name).map((f) => f.key)))
   const baseId = useId()
 
   const toggle = (key: string) =>
-    setOpen((prev) => {
+    setCollapsed((prev) => {
       const next = new Set(prev)
       if (next.has(key)) next.delete(key)
       else next.add(key)
@@ -356,7 +357,7 @@ function MobileLines({
       {lines.fields.map((f, i) => {
         const err = errors.lines?.[i]
         const hasError = Boolean(err)
-        const expanded = open.has(f.key) || hasError || !f.name
+        const expanded = !collapsed.has(f.key) || hasError || !f.name
         const id = `${baseId}-${i}`
         return (
           <li key={f.key} className={cn('rounded-xl border bg-card', hasError && 'border-destructive/60')}>
