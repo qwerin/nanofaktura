@@ -343,7 +343,29 @@ Náhled PDF v nastavení (`GET /accounts/{slug}/pdf-preview?template=` s ukázko
 - Dashboard: tržby vs. náklady graf, neuhrazené/po splatnosti, cashflow očekávaných příjmů (dle due_on), úkoly, poslední aktivita.
 - Kopírování údajů klientovi jedním klepnutím, sdílení veřejného odkazu přes Web Share API na mobilu.
 
-### 7.16 Mimo rozsah
+### 7.16 Záloha, export a import účtu
+Kompletní přenos účtu mezi instancemi (a SQLite → Postgres) a záloha.
+- **Formát**: ZIP `nanofaktura-<slug>-<YYYY-MM-DD>.zip`: `manifest.json` (`format: "nanofaktura-backup"`, `version: 1`,
+  `exported_at`, `app_version`, `account: {slug, name}`, `counts` per entita, SHA-256 každého souboru), `account.json`
+  (profil + všechna nastavení), a JSON pole per entita: `bank_accounts`, `number_formats` (+ čítače), `subjects`,
+  `price_items`, `stock_moves`, `invoices` (s `lines`, `payments`), `expenses` (s `lines`, `payments`), `templates`,
+  `recurring`, `bank_transactions`, `todos`, `events`, `email_logs`, `webhooks`, `members` (jen e-mail, jméno, role —
+  informativně). Přílohy: `attachments.json` + soubory `attachments/<id>/<filename>`.
+  Exportní DTO jsou vlastní, stabilní a verzované (ne GORM modely ani API výstupy), s původními ID pro vazby.
+- **Nikdy se neexportují tajemství**: Fio tokeny, secrety webhooků, tokeny pozvánek/sessions/API. Webhooky se po importu
+  založí neaktivní bez secretu, bankovní účty bez tokenu, veřejné odkazy faktur dostanou nové tokeny.
+- **Export**: `GET /api/accounts/{slug}/backup` (owner, admin) streamuje ZIP; událost `account.exported`.
+- **Import**: `POST /api/accounts/import` (authed, multipart `file`, volitelně `name`) → **vždy nový účet** (volající = owner,
+  nový slug), vše v jedné transakci (vše nebo nic), přemapování ID, soubory příloh zapsány po commitu (při chybě uklizeny).
+  Validace: formát + verze manifestu (novější verze → 422 `unsupported_backup_version`), kontrolní součty, ochrana proti
+  zip-slip a zip bomb (limit velikosti `NANOFAKTURA_IMPORT_MAX_MB`, default 512), neznámé soubory ignorovat.
+  Číselné řady a čítače se přenesou (další číslo navazuje), recurring se naimportují **neaktivní** (aby nová instance
+  nevystavovala duplicitně), upomínky a poděkování za platbu se po importu vypnou — s upozorněním v odpovědi `warnings[]`.
+- **CLI** (pro správce instance): `nanofaktura backup export --account <slug> [--out soubor.zip]` a
+  `nanofaktura backup import --owner <email> soubor.zip` (bez HTTP, stejný kód jako API).
+- **UI**: Nastavení → „Záloha a přenos“ (stáhnout zálohu, co obsahuje, co ne); v přepínači účtů „Nový účet“ → „Obnovit ze zálohy“.
+
+### 7.17 Mimo rozsah
 EET (zrušeno), účetnictví (podvojné), mzdy, OCR účtenek (jen příprava: přílohy nákladu).
 
 ## Otevřené otázky
