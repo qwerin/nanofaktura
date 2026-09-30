@@ -21,6 +21,8 @@ go test ./internal/api/ -run TestAccount -v -count=1   # single test
 bin/nanofaktura backup export --account <slug> [--out f.zip]    # CLI backup (same env/DB as the server)
 bin/nanofaktura backup import --owner <email> [--name "…"] f.zip # restore as a NEW account
 bin/nanofaktura user reset-2fa --email <email>                   # turn off 2FA of a locked-out user
+bin/nanofaktura user verify-email --email <email>                # mark an e-mail verified (instance admins need it)
+bin/nanofaktura mail test --to <email> [--dkim-selector s]       # SMTP + SPF/DKIM/DMARC/MX diagnosis + test e-mail
 ```
 
 Config is env only (`NANOFAKTURA_*`, see `internal/config` / SPEC §5). OpenAPI at `/api/openapi.json`, docs at `/api/docs`.
@@ -34,7 +36,8 @@ internal/config/  env config
 internal/db/      Open(driver, dsn) (glebarez pure-Go SQLite or Postgres) + Migrate (AutoMigrate model.All())
 internal/model/   GORM structs + enum constants; no API concerns
 internal/auth/    bcrypt, sessions, API tokens, TOTP + recovery codes, huma middlewares, auth.UserFrom/AccountFrom/RoleFrom, roles (auth.Allow/ForEditors/ForManagers/RequireRole)
-internal/mail/    Mailer interface + SMTP / LogMailer (dev, no SMTP host) + mail.Render("{placeholder}" templates); tests: mail/mailtest.New()
+internal/mail/    Mailer interface + SMTP / LogMailer (dev, no SMTP host) + mail.Render("{placeholder}" templates) + optional DKIM signing; tests: mail/mailtest.New()
+internal/maildiag/ step-by-step SMTP diagnosis + DNS checks (MX/SPF/DMARC/DKIM) for the e-mail test; fakes in maildiag/smtptest (SMTP server, Resolver)
 internal/scheduler/ periodic background jobs (Job{Name, Run(ctx, now), Every}), started from cmd/server — see "Scheduler"
 internal/storage/ Storage interface (Put/Get/Delete by key) + Local disk implementation (NANOFAKTURA_DATA_DIR/attachments)
 internal/secret/  AES-256-GCM Box for secrets stored in the DB (Fio tokens) — see "Secrets"
@@ -64,9 +67,10 @@ internal/api/     api.New + one file per resource (DTOs next to handlers) + *_te
 
 ## Adding an account-scoped endpoint
 
-Routes live in three huma groups built in `api.New` (see the doc comment in `internal/api/api.go`):
-`public`, `authed` (401 without session cookie / `Authorization: Bearer nf_…`) and `account`
-(`/api/accounts/{slug}` prefix; non-member → 404; `{slug}` is added to OpenAPI automatically — don't declare it).
+Routes live in four huma groups built in `api.New` (see the doc comment in `internal/api/api.go`):
+`public`, `authed` (401 without session cookie / `Authorization: Bearer nf_…`), `account`
+(`/api/accounts/{slug}` prefix; non-member → 404; `{slug}` is added to OpenAPI automatically — don't declare it) and
+`admin` (`/api/admin` prefix, instance administrators only — see "Instance administration").
 
 1. Create `internal/api/subjects.go`:
 
@@ -239,6 +243,18 @@ Webhook deliveries are POSTed by the `webhooks` job (every tick); tests run it w
   not echoed in validation errors. Secrets in URLs (webhooks) go to events/logs only as `webhooks.Host(url)`.
 - **Credentials**: invitation links only for roles the caller may grant (`canManageRole`); the inviter's right is
   re-checked at accept time. Passwords ≤ 72 bytes (`checkPasswordBytes`).
+
+## Instance administration (SPEC §3.2)
+
+Instance admin = e-mail in `NANOFAKTURA_ADMIN_EMAILS` **and** `users.email_verified_at` set (`s.isInstanceAdmin(user)`).
+Never grant anything on the list alone: owners can invite (and register) any address. Verification comes from the
+link flow (`email_verification.go`), a completed password reset or `nanofaktura user verify-email`.
+Instance-wide operations go into the `admin` group (`s.registerAdmin(admin)` in `admin.go`, paths relative to
+`/api/admin`): `requireInstanceAdmin` answers 403 `not_instance_admin` and logs every non-GET as `admin action`; log
+details of the change in the handler (`slog.InfoContext(ctx, "admin …", "admin_id", …)`), never secrets. Outputs expose
+configuration only as "is set" booleans (like secrets). The e-mail test runs `maildiag.Run(ctx, EmailTestOptions(…))`
+straight against the configured SMTP (not through `deps.Mailer`); tests inject `Deps.Resolver` and point
+`cfg.SMTPHost` at `smtptest.Start` (see `admin_test.go`).
 
 ## Backup (SPEC §7.16)
 

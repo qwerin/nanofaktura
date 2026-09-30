@@ -114,6 +114,7 @@ vyhrává plný název. Nové nastavení pište plnými názvy.
 | `NANOFAKTURA_DISABLE_RATE_LIMIT` | – | `false` | Vypne limity pokusů (přihlášení, registrace, e-maily …) |
 | `NANOFAKTURA_DISABLE_API_DOCS` | – | `false` | Skryje `/api/docs` a `/api/openapi.json` |
 | `NANOFAKTURA_WEBAUTHN_ORIGINS` | – | *(prázdné)* | Další adresy pro bezpečnostní klíče (čárkou; vývoj s Vite) |
+| `NANOFAKTURA_ADMIN_EMAILS` | – | *(prázdné)* | E-maily správců instance (čárkou); *Správa instance* jen s ověřeným e-mailem |
 | **E-mail** | | | |
 | `NANOFAKTURA_SMTP_HOST` | `SMTP_HOST` | *(prázdné)* | SMTP server; prázdný = e-maily se jen vypíšou do logu |
 | `NANOFAKTURA_SMTP_PORT` | `SMTP_PORT` | `587` | Port (465 pro `tls`) |
@@ -121,6 +122,10 @@ vyhrává plný název. Nové nastavení pište plnými názvy.
 | `NANOFAKTURA_SMTP_USER` | `SMTP_USER` | *(prázdné)* | Přihlašovací jméno k SMTP (prázdné = bez přihlášení) |
 | `NANOFAKTURA_SMTP_PASSWORD` | `SMTP_PASSWORD` | *(prázdné)* | Heslo k SMTP |
 | `NANOFAKTURA_MAIL_FROM` | `MAIL_FROM` | `NanoFaktura <nanofaktura@localhost>` | Odesílatel e-mailů |
+| `NANOFAKTURA_DKIM_DOMAIN` | – | *(prázdné)* | Doména podpisu DKIM (obvykle doména z `MAIL_FROM`); DKIM jen se všemi třemi hodnotami |
+| `NANOFAKTURA_DKIM_SELECTOR` | – | *(prázdné)* | Selektor DKIM (záznam `<selektor>._domainkey.<doména>`) |
+| `NANOFAKTURA_DKIM_PRIVATE_KEY` | – | *(prázdné)* | Soukromý klíč PEM (RSA ≥ 2048 b nebo Ed25519; `\n` místo zalomení povoleno) |
+| `NANOFAKTURA_DKIM_PRIVATE_KEY_FILE` | – | *(prázdné)* | Místo klíče v proměnné cesta k souboru s PEM (jen jedno z obou) |
 | **Databáze a logy** | | | |
 | `NANOFAKTURA_DB_LOG` | – | `error` | Logování SQL: `silent`, `error`, `warn` (+ pomalé dotazy), `info` (vše); hodnoty se nelogují |
 | `NANOFAKTURA_DB_SLOW_MS` | – | `1000` | Hranice pomalého dotazu pro `warn` |
@@ -158,6 +163,9 @@ host=localhost user=nanofaktura password=tajne dbname=nanofaktura sslmode=disabl
   (limity pokusů podle IP klienta) a `X-Forwarded-Proto`. Nikdy nezadávejte adresy, ze kterých se k aplikaci
   dostane kdokoli přímo. Traefik overlay má výchozí privátní rozsahy (bezpečné jen proto, že port není publikovaný).
 - **SMTP** — bez `NANOFAKTURA_SMTP_HOST` se e-maily (i pozvánky a obnova hesla) jen vypisují do logu.
+- **Správce instance** — do `NANOFAKTURA_ADMIN_EMAILS` zapište svůj e-mail, v *Nastavení → Můj profil* ho ověřte
+  („Ověřit e-mail“, nebo `nanofaktura user verify-email --email …`) a v *Správa instance → Test e-mailu* zkontrolujte
+  SMTP, SPF, DKIM a DMARC. Neověřená adresa ze seznamu práva nedává (nelze je tak získat pozvánkou na cizí adresu).
 - **Zálohujte** databázi i datový volume (`/data`: přílohy a `secret.key`), nebo nastavte `NANOFAKTURA_SECRET_KEY`.
 - **Logy** — výchozí `NANOFAKTURA_DB_LOG=error` vypisuje jen chyby databáze; při ladění `warn` nebo `info`.
 - Server při startu varuje, pokud něco z výše uvedeného chybí.
@@ -177,7 +185,38 @@ NANOFAKTURA_DB_DRIVER=postgres NANOFAKTURA_DB_DSN="host=…" \
 
 # Uživatel ztratil druhý faktor i záložní kódy
 nanofaktura user reset-2fa --email jan@example.cz
+
+# Ověřit e-mail uživatele ručně (např. správce instance, když ještě nejde posílat e-maily)
+nanofaktura user verify-email --email jan@example.cz
+
+# Otestovat odesílání e-mailů: SMTP krok po kroku, DNS záznamy SPF/DKIM/DMARC/MX a testovací zpráva
+nanofaktura mail test --to jan@example.cz [--dkim-selector google]
 ```
+
+### E-maily, SPF, DKIM a DMARC
+
+Aby faktury nekončily ve spamu, musí doména odesílatele (z `NANOFAKTURA_MAIL_FROM`) mít v DNS správné záznamy.
+Nejrychlejší kontrola je *Správa instance → Test e-mailu* (nebo `nanofaktura mail test`) — u každého problému
+napíše, co opravit. Příklad pro doménu `firma.cz` (hodnoty SPF a DKIM vám dá poskytovatel SMTP):
+
+```
+firma.cz.                    TXT  "v=spf1 include:_spf.poskytovatel.cz -all"
+nf._domainkey.firma.cz.      TXT  "v=DKIM1; k=rsa; p=MIIBIjANBgkqh…"
+_dmarc.firma.cz.             TXT  "v=DMARC1; p=quarantine; rua=mailto:dmarc@firma.cz"
+```
+
+Podepisuje-li e-maily váš poskytovatel SMTP, stačí jeho DKIM záznam (v testu zadejte jeho selektor). Jinak může
+podepisovat přímo NanoFaktura:
+
+```bash
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out dkim.pem
+NANOFAKTURA_DKIM_DOMAIN=firma.cz
+NANOFAKTURA_DKIM_SELECTOR=nf
+NANOFAKTURA_DKIM_PRIVATE_KEY_FILE=/data/dkim.pem   # v Dockeru soubor ve volume /data
+```
+
+Hodnotu TXT záznamu `nf._domainkey.firma.cz` (veřejný klíč) pak zkopírujete z *Správa instance → Stav instance*.
+Výsledek ověříte v Gmailu: otevřete testovací e-mail → tři tečky → „Zobrazit originál“ → SPF, DKIM i DMARC „PASS“.
 
 ### Záloha a přenos účtu
 

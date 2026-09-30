@@ -131,6 +131,51 @@ Frontend: na `/login` odkaz „Zapomenuté heslo?“ → `/forgot-password`; `/r
 téže stránce (kód / „Použít bezpečnostní klíč“ / záložní kód). Nastavení → nová záložka „Zabezpečení“ (2FA: aplikace s QR,
 bezpečnostní klíče, záložní kódy ke stažení/zkopírování).
 
+### 3.2 Správa instance a ověření e-mailu
+
+**Správce instance** = uživatel, jehož e-mail je v `NANOFAKTURA_ADMIN_EMAILS` (čárkami, bez ohledu na velikost písmen)
+**a zároveň** má ověřený e-mail (`users.email_verified_at`). Ověření je nutné: vlastník účtu může pozvat libovolnou
+adresu a ta se pak zaregistruje — bez ověření by tak kdokoli získal správu instance. Neověřený uvedený e-mail práva nedává.
+
+Ověření e-mailu: nastaví ho dokončená obnova hesla (odkaz přišel do schránky), odkaz z e-mailu nebo CLI.
+- `POST /api/auth/me/verify-email` (přihlášený) → 204, pošle odkaz `{PUBLIC_URL}/verify-email/{token}` (starší neužité
+  odkazy zneplatní); už ověřený 409 `email_already_verified`; limit 3/h na uživatele.
+- `POST /api/auth/verify-email {token}` (veřejné) → `{email, verified}`; token uložen jako hash, platí 24 h, jednorázový;
+  neznámý 404, vypršelý/použitý nebo mezitím změněná adresa 410 `verification_expired`; limit 20/10 min na IP.
+- CLI `nanofaktura user verify-email --email <e-mail>` (např. když instance ještě neumí posílat e-maily).
+- `GET /api/auth/me` vrací navíc `email_verified`, `instance_admin`, `instance_admin_pending` (uveden, ale neověřen).
+
+Skupina `/api/admin/*` (authed + kontrola správce → jinak 403 `not_instance_admin`); každá změna se zapíše do logu
+(`admin action`: operace, správce, IP).
+- `GET /api/admin/status` → verze, Go, DB driver, start a uptime, počty uživatelů a účtů, souhrn konfigurace **bez tajemství**
+  (veřejná URL/https, SMTP host/port/TLS, zda je nastaveno přihlášení, odesílatel, DKIM doména/selektor/typ klíče + TXT
+  záznam s veřejným klíčem, limity pokusů, setup token nastaven?, registrace, trusted proxies, datový adresář a zda jde
+  zapisovat, zdroj klíče tajemství env|file, seznam správců, API docs) a česká varování (`warnings`).
+- `POST /api/admin/email-test {to?, dkim_selector?}` (výchozí příjemce = vlastní e-mail; limit 10/h na správce) →
+  report `{status, sent, queue_id, server_reply, from, to, smtp_host, smtp_port, tls_mode, dkim_signed, smtp[], dns[]}`.
+  Každý krok `{id, title, status ok|info|warning|error, message (česky), hint, details[], duration_ms}`.
+  SMTP kroky: `config` (SMTP nenastaveno → jen tento krok + DNS), `resolve`, `connect`, `tls` (implicitní TLS),
+  `banner`, `ehlo`, `starttls`, `ehlo_tls`, `auth` (mechanismus, nikdy heslo), `mail_from`, `rcpt_to` (relay denied),
+  `data` (queue id). TLS: verze, šifra, subjekt/vydavatel/platnost certifikátu, shoda s názvem hostitele.
+  DNS kontroly domény odesílatele: `mx` (i null MX), `spf` (právě jeden záznam, kvalifikátor `all`, limit 10 DNS
+  dotazů, best-effort vyhodnocení IP SMTP serveru — jinak „nelze ověřit“), `dmarc` (`p=`, `rua`), `dkim`
+  (nastavený selektor: záznam existuje a klíč odpovídá; jinak volitelně zadaný selektor). Pak se pošle skutečný
+  český testovací e-mail (URL instance, čas, odesílatel, návod „Zobrazit originál“ v Gmailu → spf/dkim/dmarc=pass).
+  CLI `nanofaktura mail test --to <e-mail> [--dkim-selector <s>]` (exit 1 při chybě).
+- `GET /api/admin/users?query=` (stránkováno) → `{id, email, name, created_at, email_verified_at, two_factor, accounts,
+  instance_admin, admin_listed}`; `POST /api/admin/users/{id}/reset-2fa|verify-email|send-verification` → 204
+  (`send-verification` u ověřeného 409 `email_already_verified`).
+
+**DKIM** (volitelné): `NANOFAKTURA_DKIM_DOMAIN` + `_SELECTOR` + `_PRIVATE_KEY` (PEM, `\n` povoleno) nebo `_PRIVATE_KEY_FILE`
+(jen všechny najednou; RSA ≥ 2048 b nebo Ed25519; kanonikalizace relaxed/relaxed, SHA-256). Podepisuje se každá odchozí
+zpráva; klíč se nikdy neloguje. Každá zpráva má `Date` a `Message-ID`. SMTP přihlášení PLAIN, nebo LOGIN, když server
+nabízí jen ten.
+
+Frontend: `/a/$slug/admin` (`/admin` přesměruje do prvního účtu) — záložky Stav instance, Test e-mailu (výsledek ve
+skupinách Připojení / TLS / Přihlášení / Odeslání / DNS: SPF · DKIM · DMARC · MX), Uživatelé; položka v nabídce
+uživatele, v mobilním „Více“ a v ⌘K jen pro `instance_admin`. `instance_admin_pending` → výzva „Ověřit e-mail“
+v Můj profil / Zabezpečení; stránka `/verify-email/$token`.
+
 ## 4. Doména
 
 ### 4.1 Account (firemní profil + nastavení)
@@ -270,6 +315,10 @@ unpaid_total, unpaid_count, overdue_total, overdue_count, revenue_total }` (jen 
 `NANOFAKTURA_TRUSTED_PROXIES` (čárkami oddělené IP/CIDR reverzních proxy, kterým se věří `X-Forwarded-For`/`-Proto`; výchozí žádné),
 `NANOFAKTURA_SETUP_TOKEN` (je-li nastaven, první registrace prázdné instance ho musí zadat), `NANOFAKTURA_DISABLE_RATE_LIMIT`
 (false; vypne limity pokusů), `NANOFAKTURA_DISABLE_API_DOCS` (false; skryje `/api/docs`, `/api/openapi.json`, `/api/schemas`).
+
+**Správa instance a e-mail (§3.2):** `NANOFAKTURA_ADMIN_EMAILS` (čárkami oddělené e-maily správců instance; práva jen
+s ověřeným e-mailem), `NANOFAKTURA_DKIM_DOMAIN`, `NANOFAKTURA_DKIM_SELECTOR`, `NANOFAKTURA_DKIM_PRIVATE_KEY` /
+`NANOFAKTURA_DKIM_PRIVATE_KEY_FILE` (DKIM podpis odchozích e-mailů; všechny tři, nebo žádný).
 
 ### 5.1 Zabezpečení HTTP
 - **Hlavičky** (`internal/httpsec`, na API i SPA): SPA má CSP `default-src 'self'; script-src 'self'` (žádný inline skript ani eval —
