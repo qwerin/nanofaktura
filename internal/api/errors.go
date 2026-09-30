@@ -52,6 +52,7 @@ const (
 	CodeAlreadyJoined            = "already_joined"
 	CodeInvitationExpired        = "invitation_expired"
 	CodeInvitationEmail          = "invitation_email_mismatch"
+	CodeInvitationRevoked        = "invitation_revoked"
 	CodeRecurringEnded           = "recurring_ended"
 	CodeTemplateMissing          = "template_missing"
 	CodeWrongPassword            = "wrong_password"

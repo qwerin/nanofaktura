@@ -272,3 +272,79 @@ func TestInvitationLifecycle(t *testing.T) {
 		t.Fatalf("invitation kept after mail failure")
 	}
 }
+
+// An admin must not obtain the link of an owner invitation (it would let
+// them register as owner), and an invitation dies with its inviter's right to
+// grant the role.
+func TestInvitationOwnerLinkHiddenFromAdmins(t *testing.T) {
+	ts := newTestServer(t)
+	owner := ts.signup("owner@example.cz", "Firma")
+	admin := ts.memberOf(owner, "admin@example.cz", "admin")
+
+	ownerInv, ownerToken := invite(owner, "boss@example.cz", "owner")
+	memberInv, _ := invite(admin, "clen@example.cz", "member")
+
+	list := doJSON[api.ListResponse[api.Invitation]](admin, http.StatusOK, "GET", admin.acct("/invitations"), nil)
+	for _, it := range list.Items {
+		switch it.ID {
+		case ownerInv.ID:
+			if it.InviteURL != "" || strings.Contains(fmt.Sprint(it), ownerToken) {
+				t.Fatalf("admin sees the owner invitation link: %+v", it)
+			}
+		case memberInv.ID:
+			if it.InviteURL == "" {
+				t.Fatalf("admin should see the link of its own member invitation: %+v", it)
+			}
+		}
+	}
+	if list.Total != 2 {
+		t.Fatalf("list: %+v", list)
+	}
+	// the owner still sees it
+	list = doJSON[api.ListResponse[api.Invitation]](owner, http.StatusOK, "GET", owner.acct("/invitations"), nil)
+	for _, it := range list.Items {
+		if it.ID == ownerInv.ID && it.InviteURL == "" {
+			t.Fatalf("owner should see the owner invitation link")
+		}
+	}
+	// resend of an owner invitation stays owner-only
+	res, body := admin.do("POST", fmt.Sprintf("%s/%d/resend", admin.acct("/invitations"), ownerInv.ID), nil)
+	assertCode(t, res, body, http.StatusForbidden, api.CodeOwnerOnly)
+}
+
+func TestInvitationRevokedWhenInviterLosesRole(t *testing.T) {
+	ts := newTestServer(t)
+	owner := ts.signup("owner@example.cz", "Firma")
+	second := ts.memberOf(owner, "second@example.cz", "owner")
+	admin := ts.memberOf(owner, "admin@example.cz", "admin")
+
+	// an owner invitation of an owner who is later demoted to admin
+	_, ownerToken := invite(second, "boss@example.cz", "owner")
+	// a member invitation of an admin who is later removed
+	_, memberToken := invite(admin, "clen@example.cz", "member")
+
+	owner.mustDo(http.StatusOK, "PATCH", memberURL(owner, userID(ts, "second@example.cz")), api.MemberPatch{Role: "admin"})
+	owner.mustDo(http.StatusNoContent, "DELETE", memberURL(owner, userID(ts, "admin@example.cz")), nil)
+
+	anon := ts.anon()
+	res, body := anon.do("GET", "/api/invitations/"+ownerToken, nil)
+	assertCode(t, res, body, http.StatusGone, api.CodeInvitationRevoked)
+	res, body = anon.do("POST", "/api/auth/register", api.RegisterRequest{
+		Email: "boss@example.cz", Name: "Boss", Password: testPassword, InvitationToken: ownerToken,
+	})
+	assertCode(t, res, body, http.StatusGone, api.CodeInvitationRevoked)
+	res, body = anon.do("POST", "/api/auth/register", api.RegisterRequest{
+		Email: "clen@example.cz", Name: "Člen", Password: testPassword, InvitationToken: memberToken,
+	})
+	assertCode(t, res, body, http.StatusGone, api.CodeInvitationRevoked)
+
+	// logged-in accept is checked the same way
+	boss := ts.signup("boss@example.cz", "Boss s.r.o.")
+	res, body = boss.do("POST", "/api/invitations/"+ownerToken+"/accept", nil)
+	assertCode(t, res, body, http.StatusGone, api.CodeInvitationRevoked)
+	var n int64
+	ts.db.Model(&model.Membership{}).Where("user_id = ? AND role = ?", userID(ts, "boss@example.cz"), "owner").Count(&n)
+	if n != 1 { // only its own account
+		t.Fatalf("boss owner memberships: %d", n)
+	}
+}

@@ -80,6 +80,7 @@ export const codeMessages: Record<string, string> = {
   already_joined: 'Už jste členem tohoto účtu.',
   invitation_expired: 'Pozvánka vypršela nebo už byla použita.',
   invitation_email_mismatch: 'Pozvánka byla poslána na jinou e-mailovou adresu.',
+  invitation_revoked: 'Pozvánka už neplatí — kdo ji poslal, už nemá oprávnění tuto roli udělit. Požádejte o novou.',
   recurring_ended: 'Pravidelná faktura už skončila. Nejdřív změňte datum konce.',
   template_missing: 'Šablona pravidelné faktury už neexistuje.',
   wrong_password: 'Současné heslo není správné.',
