@@ -320,6 +320,10 @@ func (s *server) listEvents(ctx context.Context, in *struct {
 	Since       string `query:"since" doc:"RFC 3339 instant or YYYY-MM-DD (inclusive)"`
 }) (*Out[ListResponse[Event]], error) {
 	q := s.scoped(ctx).Model(&model.Event{}).Order("created_at DESC, id DESC")
+	if auth.RequireRole(ctx, auth.RolesManagers...) != nil {
+		// webhooks are managers-only (also their events: older ones hold the URL)
+		q = q.Where("subject_type <> ?", events.SubjectWebhook)
+	}
 	if n := strings.TrimSuffix(strings.TrimSpace(in.Name), "*"); n != "" {
 		if strings.Contains(n, ".") && !strings.HasSuffix(n, ".") {
 			q = q.Where("name = ?", n)

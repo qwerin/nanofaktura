@@ -440,10 +440,12 @@ func (s *server) attemptDelivery(ctx context.Context, id uint, now time.Time, fo
 		if err != nil {
 			return err
 		}
-		data := map[string]any{"webhook_id": hook.ID, "url": hook.URL, "delivery_id": d.ID, "event": d.EventName,
+		// only the host: webhook URLs often carry a secret (path/query token)
+		host := webhooks.Host(hook.URL)
+		data := map[string]any{"webhook_id": hook.ID, "host": host, "delivery_id": d.ID, "event": d.EventName,
 			"attempts": d.Attempts, "error": d.Error, "consecutive_failures": hook.ConsecutiveFailures}
 		if err := record(actx, tx, events.Event{Name: events.WebhookFailed, SubjectType: events.SubjectWebhook, SubjectID: hook.ID,
-			Text: fmt.Sprintf("Webhook %s: událost %s se nepodařilo doručit ani po %d pokusech (%s)", hook.URL, d.EventName, d.Attempts, d.Error),
+			Text: fmt.Sprintf("Webhook %s: událost %s se nepodařilo doručit ani po %d pokusech (%s)", host, d.EventName, d.Attempts, d.Error),
 			Data: data}); err != nil {
 			return err
 		}
@@ -451,7 +453,7 @@ func (s *server) attemptDelivery(ctx context.Context, id uint, now time.Time, fo
 			return nil
 		}
 		return record(actx, tx, events.Event{Name: events.WebhookDisabled, SubjectType: events.SubjectWebhook, SubjectID: hook.ID,
-			Text: fmt.Sprintf("Webhook %s byl vypnut po %d neúspěšných doručeních za sebou", hook.URL, hook.ConsecutiveFailures), Data: data})
+			Text: fmt.Sprintf("Webhook %s byl vypnut po %d neúspěšných doručeních za sebou", host, hook.ConsecutiveFailures), Data: data})
 	})
 	if err != nil {
 		return nil, err
