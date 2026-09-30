@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useIsMutating, useQuery } from '@tanstack/react-query'
+import { useIsMutating, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import {
   BuildingIcon,
@@ -28,7 +28,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { formatIban } from '@/lib/bank'
 import { formatAddress } from '@/lib/contact'
-import { markOnboardingSeen } from '@/lib/onboarding'
+import { markOnboarded } from '@/lib/onboarding'
 import { cn } from '@/lib/utils'
 import { optionalIcoSchema } from '@/lib/validation'
 
@@ -56,7 +56,10 @@ function OnboardingPage() {
   const [step, setStep] = useState(0)
 
   // Průvodce se nabízí jen jednou — i když ho uživatel zavře v půlce.
-  useEffect(() => markOnboardingSeen(slug), [slug])
+  const queryClient = useQueryClient()
+  useEffect(() => {
+    void markOnboarded(queryClient, slug)
+  }, [slug, queryClient])
 
   const skip = () => void navigate({ to: '/a/$slug/dashboard', params: { slug }, replace: true })
   const next = () => {

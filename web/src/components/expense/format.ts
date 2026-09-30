@@ -10,8 +10,9 @@ export const expenseStatusLabels: Record<ExpenseStatus, string> = {
   paid: 'Uhrazeno',
 }
 
-export const expenseStatusOptions: SelectOption<ExpenseStatus>[] = [
-  { value: 'open', label: 'Neuhrazené' },
+/** Stavy ve filtru: `unpaid` = ve splatnosti i po ní (API pseudo-stav). */
+export const expenseStatusOptions: SelectOption<ExpenseStatus | 'unpaid'>[] = [
+  { value: 'unpaid', label: 'Neuhrazené' },
   { value: 'overdue', label: 'Po splatnosti' },
   { value: 'paid', label: 'Uhrazené' },
 ]

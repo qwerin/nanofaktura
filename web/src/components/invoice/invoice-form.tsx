@@ -180,6 +180,9 @@ export function InvoiceForm({ slug, account, invoice, preset }: InvoiceFormProps
             }
           }
           toast.success(isEdit ? 'Změny uloženy' : `${documentTypeLabels[saved.document_type]} ${saved.number} vystavena`)
+          if (saved.warnings.some((w) => w.code === 'no_bank_account')) {
+            toast.warning(`Pro měnu ${saved.currency} nemáte bankovní účet — doklad je bez platebních údajů a QR.`)
+          }
           allowLeave.current = true
           void navigate({ to: '/a/$slug/invoices/$invoiceId', params: { slug, invoiceId: saved.id }, replace: !isEdit })
         } catch (err) {

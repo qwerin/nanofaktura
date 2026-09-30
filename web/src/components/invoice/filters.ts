@@ -2,14 +2,13 @@
 
 import { z } from 'zod'
 import type { InvoiceFilters } from '@/api/queries/invoices'
-import type { InvoiceStatus } from '@/api/types'
 import { parseISODate, todayISO, toISODate } from '@/lib/date'
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 
 /** Search params stránky /invoices (neplatné hodnoty se tiše zahodí). */
 export const invoiceSearchSchema = z.object({
-  status: z.enum(['open', 'sent', 'paid', 'overdue', 'cancelled', 'uncollectible']).optional().catch(undefined),
+  status: z.enum(['unpaid', 'open', 'sent', 'paid', 'overdue', 'cancelled', 'uncollectible']).optional().catch(undefined),
   document_type: z.enum(['invoice', 'proforma', 'correction']).optional().catch(undefined),
   query: z.string().optional().catch(undefined),
   since: isoDate.optional().catch(undefined),
@@ -30,8 +29,9 @@ export const sortLabels: Record<InvoiceSort, string> = {
 }
 
 /** Záložky stavu v pořadí zobrazení. */
-export const statusTabs: { value: InvoiceStatus | undefined; label: string }[] = [
+export const statusTabs: { value: InvoiceSearch['status']; label: string }[] = [
   { value: undefined, label: 'Vše' },
+  { value: 'unpaid', label: 'Neuhrazené' },
   { value: 'overdue', label: 'Po splatnosti' },
   { value: 'open', label: 'Otevřené' },
   { value: 'sent', label: 'Odeslané' },

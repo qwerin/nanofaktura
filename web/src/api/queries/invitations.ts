@@ -43,6 +43,21 @@ export function useRevokeInvitation(slug: string) {
   })
 }
 
+/** „Poslat znovu“: stejný odkaz znovu e-mailem, platnost se prodlouží (odkaz dál funguje). */
+export function useResendInvitation(slug: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (invitation: Pick<Invitation, 'id'>) =>
+      unwrap(
+        api.POST('/api/accounts/{slug}/invitations/{id}/resend', { params: { path: { slug, id: invitation.id } } }),
+      ),
+    onSuccess: (updated) => {
+      qc.setQueryData<Invitation[]>(keys.invitations(slug), (old) => old?.map((i) => (i.id === updated.id ? updated : i)))
+    },
+    meta: { silent: true },
+  })
+}
+
 /** Přijetí pozvánky přihlášeným uživatelem → členství v účtu (`MeAccount`). */
 export function useAcceptInvitation(token: string) {
   const qc = useQueryClient()

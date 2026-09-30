@@ -6,7 +6,7 @@ const isoDate = z.string().refine((v) => parseISODate(v) !== null)
 
 /** Filtry seznamu nákladů v URL. Neplatné hodnoty se tiše zahodí. */
 export const expenseSearchSchema = z.object({
-  status: z.enum(['open', 'overdue', 'paid']).optional().catch(undefined),
+  status: z.enum(['unpaid', 'open', 'overdue', 'paid']).optional().catch(undefined),
   category: z.string().optional().catch(undefined),
   subject_id: z.coerce.number().int().positive().optional().catch(undefined),
   since: isoDate.optional().catch(undefined),

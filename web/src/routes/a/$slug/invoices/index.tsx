@@ -3,7 +3,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { ArrowDownIcon, ArrowUpIcon, FileTextIcon, PlusIcon, SearchXIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { invoiceQueries } from '@/api/queries/invoices'
-import type { InvoiceSummary } from '@/api/types'
+import type { DocumentSums, InvoiceSummary } from '@/api/types'
 import { ButtonLink } from '@/components/button-link'
 import { EmptyState } from '@/components/empty-state'
 import { useExportMenu } from '@/components/export/use-export-menu'
@@ -60,6 +60,7 @@ function InvoicesPage() {
   const list = useInfiniteQuery({ ...invoiceQueries.list(slug, filters), placeholderData: keepPreviousData })
   const items = useMemo(() => list.data?.pages.flatMap((p) => p.items), [list.data])
   const total = list.data?.pages[0]?.total ?? 0
+  const sums = list.data?.pages[0]?.sums ?? []
   const filtered = Object.keys(filters).length > 0
 
   const exportMenu = useExportMenu({ slug, kind: 'invoices', filters: { ...filters } })
@@ -157,7 +158,7 @@ function InvoicesPage() {
           <PageError error={list.error} reset={() => void list.refetch()} />
         ) : (
           <div className={cn('transition-opacity', list.isPlaceholderData && 'opacity-60')}>
-            {items && items.length > 0 && <ListSummary items={items} total={total} />}
+            {items && items.length > 0 && <ListSummary total={total} sums={sums} />}
             <ResponsiveList
               items={items}
               isLoading={list.isPending}
@@ -247,28 +248,17 @@ function InvoiceCard({ invoice: i }: { invoice: InvoiceSummary }) {
   )
 }
 
-/** Součty načtených položek (po měnách). API vrací jen počet, ne součty filtru. */
-function ListSummary({ items, total }: { items: InvoiceSummary[]; total: number }) {
-  const byCurrency = new Map<string, { total: number; remaining: number }>()
-  for (const i of items) {
-    if (i.status === 'cancelled') continue
-    const s = byCurrency.get(i.currency) ?? { total: 0, remaining: 0 }
-    s.total += i.total
-    if (i.status !== 'uncollectible') s.remaining += i.remaining_amount
-    byCurrency.set(i.currency, s)
-  }
-  const all = items.length >= total
+/** Počet a součty celého filtru (po měnách) — počítá API přes všechny stránky. */
+function ListSummary({ total, sums }: { total: number; sums: DocumentSums }) {
   return (
     <div className="mb-3 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-muted-foreground">
-      <span>
-        {all ? `${total} ${total === 1 ? 'doklad' : total < 5 ? 'doklady' : 'dokladů'}` : `Zobrazeno ${items.length} z ${total}`}
-      </span>
-      {[...byCurrency].map(([currency, s]) => (
-        <span key={currency} className="tabular-nums">
-          {all ? 'Celkem' : 'Součet zobrazených'} <span className="font-medium text-foreground">{formatMoney(s.total, currency)}</span>
-          {s.remaining !== 0 && (
+      <span>{`${total} ${total === 1 ? 'doklad' : total < 5 ? 'doklady' : 'dokladů'}`}</span>
+      {sums.map((s) => (
+        <span key={s.currency} className="tabular-nums">
+          Celkem <span className="font-medium text-foreground">{formatMoney(s.sum_total, s.currency)}</span>
+          {s.sum_remaining !== 0 && (
             <>
-              {' · '}neuhrazeno <span className="font-medium text-foreground">{formatMoney(s.remaining, currency)}</span>
+              {' · '}neuhrazeno <span className="font-medium text-foreground">{formatMoney(s.sum_remaining, s.currency)}</span>
             </>
           )}
         </span>

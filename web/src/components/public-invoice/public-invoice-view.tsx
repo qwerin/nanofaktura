@@ -51,7 +51,7 @@ export function PublicInvoiceView({ token, invoice: inv, today }: { token: strin
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-10 md:gap-5 md:pt-10 print:max-w-none print:gap-3 print:p-0">
         {/* Hlavička: dodavatel + číslo */}
         <header className="flex items-center gap-3">
-          <SupplierMark name={inv.supplier.name} />
+          <SupplierMark name={inv.supplier.name} logoUrl={inv.logo_url} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-base font-semibold tracking-tight">{inv.supplier.name}</p>
             <p className="truncate text-sm text-muted-foreground">
@@ -202,7 +202,19 @@ export function PublicInvoiceView({ token, invoice: inv, today }: { token: strin
   )
 }
 
-function SupplierMark({ name }: { name: string }) {
+function SupplierMark({ name, logoUrl }: { name: string; logoUrl?: string }) {
+  const [broken, setBroken] = useState(false)
+  if (logoUrl && !broken) {
+    const base = import.meta.env.VITE_API_BASE_URL ?? ''
+    return (
+      <img
+        src={`${base}${logoUrl}`}
+        alt=""
+        onError={() => setBroken(true)}
+        className="h-11 max-w-32 shrink-0 object-contain object-left"
+      />
+    )
+  }
   const letters = name
     .replace(/[,.].*$/, '')
     .split(/\s+/)

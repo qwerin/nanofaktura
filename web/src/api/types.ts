@@ -67,6 +67,8 @@ export type UpdateNumberFormatInput = RequestBody<'/api/accounts/{slug}/number-f
 export type Invoice = ResponseBody<'/api/accounts/{slug}/invoices/{id}', 'get'>
 export type InvoiceList = ResponseBody<'/api/accounts/{slug}/invoices', 'get'>
 export type InvoiceSummary = ListItem<InvoiceList>
+/** Součty seznamu dokladů za celý filtr, po měnách (faktury i náklady). */
+export type DocumentSums = InvoiceList['sums']
 export type InvoiceLine = Invoice['lines'][number]
 export type InvoicePayment = Invoice['payments'][number]
 export type VatRecapItem = Invoice['vat_recap'][number]

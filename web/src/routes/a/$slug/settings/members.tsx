@@ -178,7 +178,7 @@ function MembersPage() {
               </Button>
             </div>
           ) : (
-            <InvitationList slug={slug} invitations={invitations.data} members={members.data ?? []} actor={role} />
+            <InvitationList slug={slug} invitations={invitations.data} actor={role} />
           )}
         </section>
       )}

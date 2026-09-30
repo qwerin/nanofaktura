@@ -2,7 +2,7 @@ import { createFileRoute, notFound, Outlet, redirect, useMatch } from '@tanstack
 import { accountQueries } from '@/api/queries/accounts'
 import { authQueries } from '@/api/queries/auth'
 import { AppShell } from '@/components/layout/app-shell'
-import { isOnboardingSeen, isProfileEmpty, markOnboardingSeen } from '@/lib/onboarding'
+import { isOnboarded, isProfileEmpty, markOnboarded } from '@/lib/onboarding'
 import { canManageSettingsRole } from '@/lib/roles'
 
 // Přihlášená část aplikace. Guard: session (/api/auth/me) + členství v účtu `$slug`.
@@ -20,17 +20,15 @@ export const Route = createFileRoute('/a/$slug')({
 
     // Průvodce po registraci: jednou, jen pro správce a jen když je firemní profil prázdný.
     const onboardingPath = `/a/${params.slug}/onboarding`
-    if (
-      location.pathname !== onboardingPath &&
-      canManageSettingsRole(membership.role) &&
-      !isOnboardingSeen(params.slug)
-    ) {
+    if (location.pathname !== onboardingPath && canManageSettingsRole(membership.role)) {
       const account = await context.queryClient.ensureQueryData(accountQueries.detail(params.slug))
-      if (isProfileEmpty(account)) {
-        throw redirect({ to: '/a/$slug/onboarding', params: { slug: params.slug }, replace: true })
+      if (!isOnboarded(account)) {
+        if (isProfileEmpty(account)) {
+          throw redirect({ to: '/a/$slug/onboarding', params: { slug: params.slug }, replace: true })
+        }
+        // Vyplněný profil → průvodce už nikdy nenabízet.
+        void markOnboarded(context.queryClient, params.slug)
       }
-      // Vyplněný profil → průvodce už nikdy nenabízet.
-      markOnboardingSeen(params.slug)
     }
     return { me, membership }
   },

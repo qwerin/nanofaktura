@@ -3,13 +3,13 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { ListFilterIcon, PlusIcon, ReceiptIcon, XIcon } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { expenseQueries } from '@/api/queries/expenses'
-import type { ExpenseSummary } from '@/api/types'
+import type { DocumentSums, ExpenseSummary } from '@/api/types'
 import { ButtonLink } from '@/components/button-link'
 import { EmptyState } from '@/components/empty-state'
 import { ExpenseFilterDialog } from '@/components/expense/expense-filter-dialog'
 import { expenseSearchSchema, searchToFilters, type ExpenseSearch } from '@/components/expense/expense-search'
 import { ExpenseStatusBadge } from '@/components/expense/expense-status-badge'
-import { countActiveFilters, expenseStatusOptions, plural, sumByCurrency } from '@/components/expense/format'
+import { countActiveFilters, expenseStatusOptions, plural } from '@/components/expense/format'
 import { useCanEditDocuments } from '@/components/expense/permissions'
 import { SearchInput } from '@/components/expense/search-input'
 import { PageBody, PageHeader } from '@/components/page-header'
@@ -115,7 +115,7 @@ function ExpensesPage() {
           <PageError error={list.error} reset={() => void list.refetch()} />
         ) : (
           <>
-            {items && items.length > 0 && <TotalsBar items={items} total={total} />}
+            {items && items.length > 0 && <TotalsBar total={total} sums={list.data?.pages[0]?.sums ?? []} />}
             <ResponsiveList
               items={items}
               isLoading={list.isPending}
@@ -263,22 +263,19 @@ function DueCell({ expense: e }: { expense: ExpenseSummary }) {
   )
 }
 
-/** Součty zobrazeného výběru (API součty nevrací → počítá se z načtených stránek). */
-function TotalsBar({ items, total }: { items: ExpenseSummary[]; total: number }) {
-  const sums = sumByCurrency(items, (e) => e.total)
-  const remaining = sumByCurrency(items, (e) => (e.status === 'paid' ? 0 : e.remaining_amount)).filter((s) => s.amount !== 0)
-  const partial = items.length < total
+/** Počet a součty celého filtru po měnách (počítá API přes všechny stránky). */
+function TotalsBar({ total, sums }: { total: number; sums: DocumentSums }) {
+  const remaining = sums.filter((s) => s.sum_remaining !== 0)
   return (
     <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 rounded-xl border bg-muted/30 px-4 py-3 text-sm">
       <span className="text-muted-foreground">
         {total} {plural(total, ['náklad', 'náklady', 'nákladů'])}
-        {partial && <> · součty za {items.length} načtených</>}
       </span>
       <span className="flex flex-wrap gap-x-3">
         <span className="text-muted-foreground">Celkem</span>
         {sums.map((s) => (
           <strong key={s.currency} className="font-semibold tabular-nums">
-            {formatMoney(s.amount, s.currency)}
+            {formatMoney(s.sum_total, s.currency)}
           </strong>
         ))}
       </span>
@@ -287,7 +284,7 @@ function TotalsBar({ items, total }: { items: ExpenseSummary[]; total: number })
           <span className="text-muted-foreground">K úhradě</span>
           {remaining.map((s) => (
             <strong key={s.currency} className="font-semibold tabular-nums">
-              {formatMoney(s.amount, s.currency)}
+              {formatMoney(s.sum_remaining, s.currency)}
             </strong>
           ))}
         </span>

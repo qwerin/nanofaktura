@@ -1,5 +1,9 @@
 // Průvodce po registraci (SPEC §7.15): zobrazí se jednou, když má účet prázdný firemní profil.
 
+import type { QueryClient } from '@tanstack/react-query'
+import { api } from '@/api/client'
+import { keys } from '@/api/queries/keys'
+
 interface ProfileLike {
   registration_no: string
   street: string
@@ -12,21 +16,19 @@ export function isProfileEmpty(a: ProfileLike): boolean {
   return !a.registration_no && !a.street && !a.city && !a.email
 }
 
-const key = (slug: string) => `nf-onboarding:${slug}`
-
-/** Průvodce už byl pro účet zobrazen (dokončen nebo přeskočen). */
-export function isOnboardingSeen(slug: string): boolean {
-  try {
-    return localStorage.getItem(key(slug)) !== null
-  } catch {
-    // Bez localStorage (privátní režim…) průvodce nevnucujeme opakovaně.
-    return true
-  }
+/** Průvodce už byl pro účet zobrazen (dokončen nebo přeskočen) — příznak `onboarded_at` na účtu. */
+export function isOnboarded(a: { onboarded_at?: string | null }): boolean {
+  return Boolean(a.onboarded_at)
 }
 
-export function markOnboardingSeen(slug: string): void {
+/**
+ * Označí průvodce za zobrazený (PATCH `onboarded: true`) a uloží nový účet do cache, aby guard
+ * v `/a/$slug` hned viděl `onboarded_at`. Chyba se ignoruje — nejhůř se průvodce nabídne znovu.
+ */
+export async function markOnboarded(qc: QueryClient, slug: string): Promise<void> {
   try {
-    localStorage.setItem(key(slug), new Date().toISOString())
+    const { data } = await api.PATCH('/api/accounts/{slug}', { params: { path: { slug } }, body: { onboarded: true } })
+    if (data) qc.setQueryData(keys.accountDetail(slug), data)
   } catch {
     // ignore
   }
