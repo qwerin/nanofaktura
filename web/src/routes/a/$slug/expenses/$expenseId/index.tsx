@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
+import { accountQueries } from '@/api/queries/accounts'
 import { expenseQueries, useDeleteExpense, useDeleteExpensePayment, useExpenseAction } from '@/api/queries/expenses'
 import type { Expense, ExpensePayment } from '@/api/types'
 import { Attachments } from '@/components/attachments/attachments'
@@ -46,6 +47,7 @@ function ExpenseDetailPage() {
   const navigate = useNavigate()
   const canEdit = useCanEditDocuments()
   const expense = useQuery(expenseQueries.detail(slug, expenseId))
+  const account = useQuery(accountQueries.detail(slug))
   const action = useExpenseAction(slug, expenseId)
   const remove = useDeleteExpense(slug)
   const [paymentOpen, setPaymentOpen] = useState(false)
@@ -109,7 +111,7 @@ function ExpenseDetailPage() {
         <aside className="flex min-w-0 flex-col gap-4 md:gap-6">
           <PaymentsCard expense={e} slug={slug} canEdit={canEdit} onAdd={() => setPaymentOpen(true)} />
           <Card title="Údaje">
-            <InfoList expense={e} />
+            <InfoList expense={e} vatPayer={account.data?.vat_mode === 'vat_payer'} />
           </Card>
           <HistorySection subjectType="expense" subjectId={e.id} />
         </aside>
@@ -405,7 +407,7 @@ function PaymentsCard({ expense: e, slug, canEdit, onAdd }: { expense: Expense; 
   )
 }
 
-function InfoList({ expense: e }: { expense: Expense }) {
+function InfoList({ expense: e, vatPayer }: { expense: Expense; vatPayer: boolean }) {
   const rows: [string, ReactNode][] = [
     ['Interní číslo', e.number],
     ['Variabilní symbol', e.variable_symbol || '—'],
@@ -413,8 +415,12 @@ function InfoList({ expense: e }: { expense: Expense }) {
     ['Úhrada', paymentMethodLabel(e.payment_method)],
     ['Měna', e.currency + (e.currency !== 'CZK' && e.exchange_rate !== '1' ? ` (kurz ${e.exchange_rate.replace('.', ',')})` : '')],
     ['Daňově uznatelný', e.tax_deductible ? 'Ano' : 'Ne'],
+    ...(vatPayer ? [['Odpočet DPH', e.vat_deductible ? 'Ano' : 'Ne'] as [string, ReactNode]] : []),
     ['Ceny', e.prices_include_vat ? 'včetně DPH' : 'bez DPH'],
   ]
+  if (e.reverse_charge) {
+    rows.push(['Přenesená daňová povinnost', `Daň přiznáváte vy · ${e.supply_type === 'goods' ? 'zboží' : 'služba'}`])
+  }
   if (e.supplier_iban || e.supplier_bank_account) rows.push(['Účet dodavatele', e.supplier_bank_account || e.supplier_iban])
   return (
     <div className="flex flex-col gap-4">

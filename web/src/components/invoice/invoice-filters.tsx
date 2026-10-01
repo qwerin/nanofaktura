@@ -30,7 +30,7 @@ interface Props {
 
 const docTypeItems = [
   { value: 'all', label: 'Všechny doklady' },
-  ...(['invoice', 'proforma', 'correction'] as const).map((v) => ({ value: v, label: documentTypeShortLabels[v] })),
+  ...(['invoice', 'proforma', 'correction', 'tax_document'] as const).map((v) => ({ value: v, label: documentTypeShortLabels[v] })),
 ]
 const sortItems = (Object.keys(sortLabels) as InvoiceSort[]).map((v) => ({ value: v, label: sortLabels[v] }))
 

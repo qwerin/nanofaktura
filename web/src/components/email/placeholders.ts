@@ -80,6 +80,12 @@ const documentNames: Record<DocType, Record<EmailLang, [string, string]>> = {
     sk: ['opravný daňový doklad', 'Opravný daňový doklad'],
     de: ['Rechnungskorrektur', 'Rechnungskorrektur'],
   },
+  tax_document: {
+    cs: ['daňový doklad k přijaté platbě', 'Daňový doklad k přijaté platbě'],
+    en: ['tax document for a received payment', 'Tax document for a received payment'],
+    sk: ['daňový doklad k prijatej platbe', 'Daňový doklad k prijatej platbe'],
+    de: ['Steuerbeleg zur erhaltenen Anzahlung', 'Steuerbeleg zur erhaltenen Anzahlung'],
+  },
 }
 
 const paymentLabels: Record<EmailLang, [string, string, string]> = {

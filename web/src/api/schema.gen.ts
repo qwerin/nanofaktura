@@ -932,6 +932,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/accounts/{slug}/invoices/{id}/final-invoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug invoices by ID final invoice
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-invoices-by-id-final-invoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/accounts/{slug}/invoices/{id}/isdoc": {
         parameters: {
             query?: never;
@@ -2480,6 +2500,18 @@ export interface components {
             number: string;
             taxable_fulfillment_due: string;
         };
+        A2Row: {
+            /** @description 21 % */
+            basic: components["schemas"]["Pair"];
+            /** @description k_stat: the supplier's country code */
+            country: string;
+            number: string;
+            /** @description 12 % */
+            reduced: components["schemas"]["Pair"];
+            taxable_fulfillment_due: string;
+            /** @description vatid_dod: the supplier's VAT ID without the country prefix */
+            vat_id: string;
+        };
         APIToken: {
             /** Format: date-time */
             created_at: string;
@@ -2701,6 +2733,15 @@ export interface components {
             setup_token_required: boolean;
             signup_allowed: boolean;
         };
+        B1Row: {
+            /** @description 21 % */
+            basic: components["schemas"]["Pair"];
+            number: string;
+            /** @description 12 % */
+            reduced: components["schemas"]["Pair"];
+            supplier_vat_no: string;
+            taxable_fulfillment_due: string;
+        };
         BankAccount: {
             /**
              * Format: int64
@@ -2878,10 +2919,16 @@ export interface components {
         };
         ControlStatement: {
             a1: components["schemas"]["A1Row"][];
+            a2: components["schemas"]["A2Row"][];
             a4: components["schemas"]["DocumentRow"][];
             a5: components["schemas"]["RateSums"];
+            b1: components["schemas"]["B1Row"][];
             b2: components["schemas"]["DocumentRow"][];
             b3: components["schemas"]["RateSums"];
+        };
+        CorrectionCreate: {
+            /** @description Reason of the correction (§ 45 ZDPH), e.g. 'Vrácení zboží'; required for VAT payers */
+            correction_reason?: string;
         };
         CreatedAPIToken: {
             /** Format: date-time */
@@ -2908,7 +2955,7 @@ export interface components {
             currency: string;
             /**
              * Format: int64
-             * @description Σ (total − paid), cancelled/uncollectible documents excluded
+             * @description Σ (total − paid) of unpaid (open/sent) documents; overpayments of paid documents are not netted
              */
             sum_remaining: number;
             /**
@@ -2954,6 +3001,15 @@ export interface components {
             unpaid_total: number;
             /** Format: int64 */
             year: number;
+        };
+        Deposit: {
+            number: string;
+            /** Format: int64 */
+            tax_document_id: number;
+            taxable_fulfillment_due: string;
+            /** Format: int64 */
+            total: number;
+            vat_recap: components["schemas"]["VatRecapItem"][];
         };
         DiagCheck: {
             /** @description Technical details (server replies, records); never passwords */
@@ -3236,6 +3292,8 @@ export interface components {
             private_note: string;
             /** Format: int64 */
             remaining_amount: number;
+            /** @description The supplier charged no VAT and the recipient self-assesses it (EU, § 92a, services from outside the EU); line rates are the recipient's */
+            reverse_charge: boolean;
             round_total: boolean;
             /** Format: int64 */
             rounding: number;
@@ -3262,7 +3320,13 @@ export interface components {
             supplier_swift_bic: string;
             supplier_vat_no: string;
             supplier_zip: string;
+            /**
+             * @description Reverse charge from the EU: services or goods
+             * @enum {string}
+             */
+            supply_type: "services" | "goods";
             tags: string[];
+            /** @description Income tax: counts as a tax-deductible expense */
             tax_deductible: boolean;
             taxable_fulfillment_due: string;
             /** Format: int64 */
@@ -3270,6 +3334,8 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
             variable_symbol: string;
+            /** @description VAT: the VAT deduction is claimed in the VAT return (independent of tax_deductible) */
+            vat_deductible: boolean;
             vat_recap: components["schemas"]["VatRecapItem"][];
             /** Format: int64 */
             vat_total: number;
@@ -3293,7 +3359,7 @@ export interface components {
              * @description Default: issued_on + due_days
              */
             due_on?: string;
-            /** @description Default 1 */
+            /** @description CZK per unit, > 0; default: ČNB rate of the DUZP for a foreign currency, 1 for CZK */
             exchange_rate?: string;
             /**
              * Format: date
@@ -3311,6 +3377,7 @@ export interface components {
             payment_method?: "bank" | "cash" | "card" | "cod" | "paypal" | "custom";
             prices_include_vat?: boolean;
             private_note?: string;
+            reverse_charge?: boolean;
             round_total?: boolean;
             /**
              * Format: int64
@@ -3328,6 +3395,8 @@ export interface components {
             supplier_swift_bic?: string;
             supplier_vat_no?: string;
             supplier_zip?: string;
+            /** @enum {string} */
+            supply_type?: "services" | "goods";
             tags?: string[] | null;
             /** @description Default true */
             tax_deductible?: boolean;
@@ -3335,6 +3404,8 @@ export interface components {
             taxable_fulfillment_due?: string;
             /** @description Default: digits of original_number (last 10) */
             variable_symbol?: string;
+            /** @description Default true */
+            vat_deductible?: boolean;
         };
         ExpenseLine: {
             /** Format: int64 */
@@ -3376,6 +3447,7 @@ export interface components {
             payment_method?: "bank" | "cash" | "card" | "cod" | "paypal" | "custom";
             prices_include_vat?: boolean;
             private_note?: string;
+            reverse_charge?: boolean;
             round_total?: boolean;
             /**
              * Format: int64
@@ -3393,11 +3465,14 @@ export interface components {
             supplier_swift_bic?: string;
             supplier_vat_no?: string;
             supplier_zip?: string;
+            /** @enum {string} */
+            supply_type?: "services" | "goods";
             /** @description Replaces all tags; [] clears */
             tags?: string[] | null;
             tax_deductible?: boolean;
             taxable_fulfillment_due?: string;
             variable_symbol?: string;
+            vat_deductible?: boolean;
         };
         ExpensePayment: {
             /** Format: int64 */
@@ -3453,6 +3528,8 @@ export interface components {
             private_note: string;
             /** Format: int64 */
             remaining_amount: number;
+            /** @description The supplier charged no VAT and the recipient self-assesses it (EU, § 92a, services from outside the EU); line rates are the recipient's */
+            reverse_charge: boolean;
             round_total: boolean;
             /** Format: int64 */
             rounding: number;
@@ -3479,7 +3556,13 @@ export interface components {
             supplier_swift_bic: string;
             supplier_vat_no: string;
             supplier_zip: string;
+            /**
+             * @description Reverse charge from the EU: services or goods
+             * @enum {string}
+             */
+            supply_type: "services" | "goods";
             tags: string[];
+            /** @description Income tax: counts as a tax-deductible expense */
             tax_deductible: boolean;
             taxable_fulfillment_due: string;
             /** Format: int64 */
@@ -3487,8 +3570,22 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
             variable_symbol: string;
+            /** @description VAT: the VAT deduction is claimed in the VAT return (independent of tax_deductible) */
+            vat_deductible: boolean;
             /** Format: int64 */
             vat_total: number;
+        };
+        FinalInvoiceCreate: {
+            /**
+             * Format: date
+             * @description Default today
+             */
+            issued_on?: string;
+            /**
+             * Format: date
+             * @description DUZP (date of the delivery) for VAT payers; default issued_on
+             */
+            taxable_fulfillment_due?: string;
         };
         FlatRate: {
             /**
@@ -3537,6 +3634,16 @@ export interface components {
              * @description Payments received in the year (without VAT for VAT payers)
              */
             income: number;
+            /**
+             * Format: int64
+             * @description Payments left out: their document has an invalid exchange rate
+             */
+            invalid_rates: number;
+            /**
+             * @description Exchange rate used for foreign-currency payments: document = the rate of the paid document (ČNB rate of its DUZP); payments in another currency at the payment-day rate are not tracked separately
+             * @enum {string}
+             */
+            rate_basis: "document";
             /**
              * Format: int64
              * @description Tax-deductible expenses paid in the year (without deductible VAT for VAT payers)
@@ -3646,17 +3753,25 @@ export interface components {
             client_country: string;
             client_email: string;
             client_full_name: string;
+            /** @description Customer's local VAT number (Slovak IČ DPH), printed next to the DIČ */
+            client_local_vat_no: string;
             client_name: string;
             client_registration_no: string;
             client_street: string;
             client_vat_no: string;
             client_zip: string;
+            /** @description Reason of a correction (§ 45 ZDPH); required for VAT payers */
+            correction_reason: string;
             /** Format: date-time */
             created_at: string;
             currency: string;
             custom_payment_method: string;
-            /** @enum {string} */
-            document_type: "invoice" | "proforma" | "correction";
+            deposits: components["schemas"]["Deposit"][];
+            /**
+             * @description tax_document = tax document for a received proforma payment (issued automatically for VAT payers)
+             * @enum {string}
+             */
+            document_type: "invoice" | "proforma" | "correction" | "tax_document";
             /** Format: int64 */
             due_days: number;
             due_on: string;
@@ -3694,6 +3809,7 @@ export interface components {
              * @description The recurring invoice that generated this document
              */
             recurring_id?: number;
+            related_documents: components["schemas"]["RelatedDocument"][];
             /**
              * Format: int64
              * @description Correction → corrected invoice, final invoice → proforma
@@ -3719,6 +3835,11 @@ export interface components {
              * @description Sum of VAT bases
              */
             subtotal: number;
+            /**
+             * @description EU reverse charge: services (§ 9/1, 'daň odvede zákazník') or goods (§ 64, exempt supply of goods)
+             * @enum {string}
+             */
+            supply_type: "services" | "goods";
             swift_bic: string;
             tags: string[];
             taxable_fulfillment_due: string;
@@ -3756,11 +3877,14 @@ export interface components {
             client_country?: string;
             client_email?: string;
             client_full_name?: string;
+            client_local_vat_no?: string;
             client_name?: string;
             client_registration_no?: string;
             client_street?: string;
             client_vat_no?: string;
             client_zip?: string;
+            /** @description Reason of a correction (required for VAT payers) */
+            correction_reason?: string;
             /** @description Default: account default_currency */
             currency?: string;
             custom_payment_method?: string;
@@ -3774,7 +3898,7 @@ export interface components {
              * @description Default: subject due_days, then account default_due_days
              */
             due_days?: number;
-            /** @description Default 1 */
+            /** @description CZK per unit, > 0; default: ČNB rate of the DUZP (issue date) for a foreign currency, 1 for CZK */
             exchange_rate?: string;
             /** @description Default: account default_footer_note */
             footer_note?: string;
@@ -3806,6 +3930,11 @@ export interface components {
             round_total?: boolean;
             /** Format: int64 */
             subject_id: number;
+            /**
+             * @description EU reverse charge: services (default) or goods (§ 64)
+             * @enum {string}
+             */
+            supply_type?: "services" | "goods";
             swift_bic?: string;
             tags?: string[] | null;
             /** @description YYYY-MM-DD or empty; default issued_on for VAT payers, empty otherwise */
@@ -3882,11 +4011,13 @@ export interface components {
             client_country?: string;
             client_email?: string;
             client_full_name?: string;
+            client_local_vat_no?: string;
             client_name?: string;
             client_registration_no?: string;
             client_street?: string;
             client_vat_no?: string;
             client_zip?: string;
+            correction_reason?: string;
             currency?: string;
             custom_payment_method?: string;
             /** Format: int64 */
@@ -3915,6 +4046,8 @@ export interface components {
              * @description Changing the subject re-snapshots client_* (unless sent explicitly)
              */
             subject_id?: number;
+            /** @enum {string} */
+            supply_type?: "services" | "goods";
             swift_bic?: string;
             /** @description Replaces all tags; [] clears */
             tags?: string[] | null;
@@ -3959,17 +4092,24 @@ export interface components {
             client_country: string;
             client_email: string;
             client_full_name: string;
+            /** @description Customer's local VAT number (Slovak IČ DPH), printed next to the DIČ */
+            client_local_vat_no: string;
             client_name: string;
             client_registration_no: string;
             client_street: string;
             client_vat_no: string;
             client_zip: string;
+            /** @description Reason of a correction (§ 45 ZDPH); required for VAT payers */
+            correction_reason: string;
             /** Format: date-time */
             created_at: string;
             currency: string;
             custom_payment_method: string;
-            /** @enum {string} */
-            document_type: "invoice" | "proforma" | "correction";
+            /**
+             * @description tax_document = tax document for a received proforma payment (issued automatically for VAT payers)
+             * @enum {string}
+             */
+            document_type: "invoice" | "proforma" | "correction" | "tax_document";
             /** Format: int64 */
             due_days: number;
             due_on: string;
@@ -4030,6 +4170,11 @@ export interface components {
              * @description Sum of VAT bases
              */
             subtotal: number;
+            /**
+             * @description EU reverse charge: services (§ 9/1, 'daň odvede zákazník') or goods (§ 64, exempt supply of goods)
+             * @enum {string}
+             */
+            supply_type: "services" | "goods";
             swift_bic: string;
             tags: string[];
             taxable_fulfillment_due: string;
@@ -4312,7 +4457,7 @@ export interface components {
             /** Format: date-time */
             created_at: string;
             /** @enum {string} */
-            document_type: "invoice" | "proforma" | "correction" | "expense";
+            document_type: "invoice" | "proforma" | "correction" | "tax_document" | "expense";
             /** @example {YYYY}-{NNNN} */
             format: string;
             /** Format: int64 */
@@ -4323,7 +4468,7 @@ export interface components {
         };
         NumberFormatCreate: {
             /** @enum {string} */
-            document_type: "invoice" | "proforma" | "correction" | "expense";
+            document_type: "invoice" | "proforma" | "correction" | "tax_document" | "expense";
             /**
              * @description Placeholders {YYYY}, {YY}, {MM}, {N}…{NNNNNN}; at least one {N…}
              * @example {YYYY}-{NNNN}
@@ -4354,6 +4499,7 @@ export interface components {
             /** Format: int64 */
             expenses_total: number;
             income_tax: components["schemas"]["IncomeTax"];
+            invalid_rate_documents: string[];
             /**
              * Format: int64
              * @description Invoices in average_days_to_pay
@@ -4402,14 +4548,24 @@ export interface components {
             invoice_id: number;
             note: string;
             paid_on: string;
+            /**
+             * Format: int64
+             * @description Payment taken over from a proforma payment (final invoice, tax document); delete that one instead
+             */
+            source_payment_id?: number;
+            /**
+             * Format: int64
+             * @description Proforma payment of a VAT payer: its tax document
+             */
+            tax_document_id?: number;
         };
         PaymentCreate: {
             /**
              * Format: int64
-             * @description Minor units, non-zero (negative = refund); default: remaining_amount
+             * @description Minor units, non-zero (negative = refund), same sign as remaining_amount; default: remaining_amount
              */
             amount?: number;
-            /** @description Proforma only: also issue the final invoice, paid by the same payment */
+            /** @description Proforma only: also issue the final invoice dated paid_on; it takes over all proforma payments (a partial payment leaves the rest due on the final invoice) and settles the proforma */
             create_final_invoice?: boolean;
             note?: string;
             /**
@@ -4423,6 +4579,11 @@ export interface components {
             final_invoice_id?: number;
             invoice: components["schemas"]["Invoice"];
             payment: components["schemas"]["Payment"];
+            /**
+             * Format: int64
+             * @description Tax document issued for the received proforma payment (VAT payers)
+             */
+            tax_document_id?: number;
         };
         PriceItem: {
             archived: boolean;
@@ -4504,7 +4665,7 @@ export interface components {
             custom_payment_method: string;
             customer: components["schemas"]["PublicParty"];
             /** @enum {string} */
-            document_type: "invoice" | "proforma" | "correction";
+            document_type: "invoice" | "proforma" | "correction" | "tax_document";
             due_on: string;
             exchange_rate: string;
             footer_note: string;
@@ -4703,6 +4864,16 @@ export interface components {
             /** @description 8–72 characters, at most 72 bytes in UTF-8 */
             password: string;
             setup_token?: string;
+        };
+        RelatedDocument: {
+            /** @enum {string} */
+            document_type: "invoice" | "proforma" | "correction" | "tax_document";
+            /** Format: int64 */
+            id: number;
+            number: string;
+            status: string;
+            /** Format: int64 */
+            total: number;
         };
         RematchResult: {
             /** Format: int64 */
@@ -5166,8 +5337,21 @@ export interface components {
         VatReturn: {
             /** @description ř. 1: taxable supplies at the basic rate */
             r1: components["schemas"]["Pair"];
+            /** @description ř. 10: domestic reverse charge (§ 92a), recipient, basic rate */
+            r10: components["schemas"]["Pair"];
+            /** @description ř. 11: domestic reverse charge (§ 92a), recipient, reduced rate */
+            r11: components["schemas"]["Pair"];
+            /** @description ř. 12: other supplies taxed by the recipient (services from outside the EU), basic rate */
+            r12: components["schemas"]["Pair"];
+            /** @description ř. 13: the same, reduced rate */
+            r13: components["schemas"]["Pair"];
             /** @description ř. 2: taxable supplies at the reduced rate */
             r2: components["schemas"]["Pair"];
+            /**
+             * Format: int64
+             * @description ř. 20: exempt supply of goods to another EU member state (§ 64)
+             */
+            r20: number;
             /**
              * Format: int64
              * @description ř. 21: services with place of supply in another EU member state (§ 102)
@@ -5183,15 +5367,27 @@ export interface components {
              * @description ř. 26: other supplies with right to deduction (e.g. services outside the EU)
              */
             r26: number;
+            /** @description ř. 3: goods acquired from another EU member state, basic rate */
+            r3: components["schemas"]["Pair"];
+            /** @description ř. 4: goods acquired from another EU member state, reduced rate */
+            r4: components["schemas"]["Pair"];
             /** @description ř. 40: received taxable supplies at the basic rate (full deduction) */
             r40: components["schemas"]["Pair"];
             /** @description ř. 41: received taxable supplies at the reduced rate (full deduction) */
             r41: components["schemas"]["Pair"];
+            /** @description ř. 43: deduction of the VAT self-assessed in ř. 3–13, basic rate */
+            r43: components["schemas"]["Pair"];
+            /** @description ř. 44: deduction of the VAT self-assessed in ř. 3–13, reduced rate */
+            r44: components["schemas"]["Pair"];
             /**
              * Format: int64
              * @description ř. 46: total deduction in full
              */
             r46: number;
+            /** @description ř. 5: services received from a person registered in another EU member state (§ 9/1), basic rate */
+            r5: components["schemas"]["Pair"];
+            /** @description ř. 6: the same, reduced rate */
+            r6: components["schemas"]["Pair"];
             /**
              * Format: int64
              * @description ř. 62: output tax
@@ -5226,7 +5422,7 @@ export interface components {
         };
         Warning: {
             /** @enum {string} */
-            code: "unsupported_rate" | "reverse_charge_no_dic" | "eu_reverse_charge_no_vat" | "zero_rate_not_reported" | "supplier_no_dic" | "calculation_error";
+            code: "unsupported_rate" | "reverse_charge_no_dic" | "eu_reverse_charge_no_vat" | "zero_rate_not_reported" | "supplier_no_dic" | "calculation_error" | "missing_taxable_date" | "possible_reverse_charge" | "reverse_charge_import" | "reverse_charge_subject_code" | "ec_sales_list" | "correction_of_cancelled" | "control_statement_monthly";
             /** @description Document number */
             document: string;
             /** @description English description */
@@ -6956,7 +7152,7 @@ export interface operations {
             query?: {
                 /** @description Effective status, comma-separated for several: open, sent, overdue, paid, cancelled, uncollectible, unpaid (= open + sent + overdue). open/sent exclude overdue documents */
                 status?: string;
-                document_type?: "invoice" | "proforma" | "correction";
+                document_type?: "invoice" | "proforma" | "correction" | "tax_document";
                 subject_id?: number;
                 /** @description Documents generated by this recurring invoice */
                 recurring_id?: number;
@@ -7004,7 +7200,7 @@ export interface operations {
             query?: {
                 /** @description Effective status, comma-separated for several: open, sent, overdue, paid, cancelled, uncollectible, unpaid (= open + sent + overdue). open/sent exclude overdue documents */
                 status?: string;
-                document_type?: "invoice" | "proforma" | "correction";
+                document_type?: "invoice" | "proforma" | "correction" | "tax_document";
                 subject_id?: number;
                 /** @description Documents generated by this recurring invoice */
                 recurring_id?: number;
@@ -7052,7 +7248,7 @@ export interface operations {
             query?: {
                 /** @description Effective status, comma-separated for several: open, sent, overdue, paid, cancelled, uncollectible, unpaid (= open + sent + overdue). open/sent exclude overdue documents */
                 status?: string;
-                document_type?: "invoice" | "proforma" | "correction";
+                document_type?: "invoice" | "proforma" | "correction" | "tax_document";
                 subject_id?: number;
                 /** @description Documents generated by this recurring invoice */
                 recurring_id?: number;
@@ -7277,7 +7473,7 @@ export interface operations {
                 per_page?: number;
                 /** @description Effective status, comma-separated for several: open, sent, overdue, paid, cancelled, uncollectible, unpaid (= open + sent + overdue). open/sent exclude overdue documents */
                 status?: string;
-                document_type?: "invoice" | "proforma" | "correction";
+                document_type?: "invoice" | "proforma" | "correction" | "tax_document";
                 subject_id?: number;
                 /** @description Documents generated by this recurring invoice */
                 recurring_id?: number;
@@ -7361,7 +7557,7 @@ export interface operations {
             query?: {
                 /** @description Effective status, comma-separated for several: open, sent, overdue, paid, cancelled, uncollectible, unpaid (= open + sent + overdue). open/sent exclude overdue documents */
                 status?: string;
-                document_type?: "invoice" | "proforma" | "correction";
+                document_type?: "invoice" | "proforma" | "correction" | "tax_document";
                 subject_id?: number;
                 /** @description Documents generated by this recurring invoice */
                 recurring_id?: number;
@@ -7554,7 +7750,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CorrectionCreate"];
+            };
+        };
         responses: {
             /** @description Created */
             201: {
@@ -7632,6 +7832,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListResponseEmailLog"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-invoices-by-id-final-invoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["FinalInvoiceCreate"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invoice"];
                 };
             };
             /** @description Error */
@@ -8040,7 +8277,7 @@ export interface operations {
             query?: {
                 page?: number;
                 per_page?: number;
-                document_type?: "invoice" | "proforma" | "correction" | "expense";
+                document_type?: "invoice" | "proforma" | "correction" | "tax_document" | "expense";
             };
             header?: never;
             path: {

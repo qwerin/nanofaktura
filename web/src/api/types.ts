@@ -102,6 +102,10 @@ export type InvoiceListQuery = NonNullable<
 >
 export type CreatePaymentInput = RequestBody<'/api/accounts/{slug}/invoices/{id}/payments', 'post'>
 export type PaymentResult = ResponseBody<'/api/accounts/{slug}/invoices/{id}/payments', 'post'>
+export type CorrectionInput = RequestBody<'/api/accounts/{slug}/invoices/{id}/correction', 'post'>
+export type FinalInvoiceInput = RequestBody<'/api/accounts/{slug}/invoices/{id}/final-invoice', 'post'>
+export type RelatedDocument = Invoice['related_documents'][number]
+export type InvoiceDeposit = Invoice['deposits'][number]
 
 // --- Dashboard ---
 export type Dashboard = ResponseBody<'/api/accounts/{slug}/dashboard', 'get'>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { calculateTotals, chargesNoVat, type CalcOptions } from './calc'
-import { allowedActions, dueInfo, plural, storedStatus } from './status'
+import { allowedActions, dueInfo, isSettledProforma, plural, storedStatus } from './status'
 
 const net: CalcOptions = { pricesIncludeVat: false, reverseCharge: false, roundTotal: false, nonVatPayer: false }
 
@@ -139,5 +139,31 @@ describe('allowedActions', () => {
     expect(paid.has('mark_as_uncollectible')).toBe(false)
     expect(paid.has('edit')).toBe(true)
     expect(allowedActions({ ...inv, document_type: 'proforma' }).has('correction')).toBe(false)
+  })
+
+  it('proforma: final invoice until settled', () => {
+    const proforma = { ...inv, document_type: 'proforma' as const }
+    expect(allowedActions(proforma).has('final_invoice')).toBe(true)
+    expect(allowedActions({ ...proforma, status: 'cancelled' }).has('final_invoice')).toBe(false)
+    expect(allowedActions({ ...inv, document_type: 'invoice' }).has('final_invoice')).toBe(false)
+    // vyúčtovaná proforma (částečně zaplacená): bez dalších plateb, úprav a vyúčtování
+    const settled = allowedActions({
+      ...proforma,
+      status: 'paid',
+      payment_count: 1,
+      paid_amount: 400,
+      remaining_amount: 600,
+      related_documents: [{ document_type: 'tax_document' }, { document_type: 'invoice' }],
+    })
+    for (const x of ['final_invoice', 'add_payment', 'edit'] as const) expect(settled.has(x), x).toBe(false)
+    expect(isSettledProforma({ document_type: 'proforma', related_documents: [{ document_type: 'tax_document' }] })).toBe(false)
+  })
+
+  it('tax document: no manual edits', () => {
+    const a = allowedActions({ ...inv, document_type: 'tax_document', status: 'paid', payment_count: 1, remaining_amount: 0 })
+    for (const x of ['edit', 'delete', 'duplicate', 'cancel', 'correction', 'add_payment', 'mark_as_uncollectible'] as const) {
+      expect(a.has(x), x).toBe(false)
+    }
+    expect(a.has('lock')).toBe(true)
   })
 })

@@ -1,9 +1,10 @@
 // Podklad pro daňové přiznání OSVČ: skutečné výdaje vs. výdajové paušály (80/60/40/30 %).
 // Čistě informativní — nejde o daňové poradenství.
 
-import { CircleCheckIcon, InfoIcon, TrendingDownIcon } from 'lucide-react'
+import { CircleCheckIcon, InfoIcon, TrendingDownIcon, TriangleAlertIcon } from 'lucide-react'
 import type { IncomeTax } from '@/api/types'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { plural } from '@/components/invoice/status'
 import { Badge } from '@/components/ui/badge'
 import { formatMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
@@ -23,7 +24,8 @@ export function IncomeTaxSection({ tax, year, currency }: { tax: IncomeTax; year
         </h2>
         <p className="text-sm text-muted-foreground">
           Srovnání základu daně při skutečných výdajích a při výdajových paušálech. Podle plateb přijatých a
-          zaplacených v roce{tax.income !== 0 ? ', u plátce DPH bez daně' : ''}.
+          zaplacených v roce{tax.income !== 0 ? ', u plátce DPH bez daně' : ''}. Platby v cizí měně jsou přepočtené
+          kurzem placeného dokladu (kurz ČNB k jeho DUZP).
         </p>
       </div>
 
@@ -41,6 +43,16 @@ export function IncomeTaxSection({ tax, year, currency }: { tax: IncomeTax; year
           <dd className="text-base font-medium tabular-nums">{m(tax.real_tax_base)}</dd>
         </div>
       </dl>
+
+      {tax.invalid_rates > 0 && (
+        <Alert variant="destructive">
+          <TriangleAlertIcon />
+          <AlertTitle>
+            {tax.invalid_rates} {plural(tax.invalid_rates, ['platba chybí', 'platby chybí', 'plateb chybí'])} ve výpočtu
+          </AlertTitle>
+          <AlertDescription>Placený doklad v cizí měně nemá platný kurz. Doplňte kurz na dokladu.</AlertDescription>
+        </Alert>
+      )}
 
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" aria-label="Varianty výdajů">
         {[real, ...flats].map((o) => (

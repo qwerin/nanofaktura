@@ -35,6 +35,7 @@ const docTypeLabels: Record<InvoiceRow['document_type'], string | null> = {
   invoice: null,
   proforma: 'Záloha',
   correction: 'Opravný doklad',
+  tax_document: 'Daňový doklad k platbě',
 }
 
 /** Doklady kontaktu (jen čtení) — posledních 20, odkaz na detail faktury. */

@@ -18,6 +18,7 @@ export const documentTypeLabels: Record<DocumentType, string> = {
   invoice: 'Faktura',
   proforma: 'Zálohová faktura',
   correction: 'Opravný doklad',
+  tax_document: 'Daňový doklad k přijaté platbě',
 }
 
 /** Krátké popisky pro přepínače a filtry. */
@@ -25,6 +26,7 @@ export const documentTypeShortLabels: Record<DocumentType, string> = {
   invoice: 'Faktura',
   proforma: 'Zálohová',
   correction: 'Opravný',
+  tax_document: 'Daňový doklad k platbě',
 }
 
 export const paymentMethodLabels: Record<PaymentMethod, string> = {
@@ -88,6 +90,13 @@ interface ActionSource {
   remaining_amount: number
   /** Počet plateb (u detailu `payments.length`). */
   payment_count: number
+  /** Související doklady (detail) — u proformy odhalí vyúčtovací fakturu. */
+  related_documents?: { document_type: DocumentType }[]
+}
+
+/** Proforma, ke které už existuje vyúčtovací faktura (je vyúčtovaná, i když zbývá částka). */
+export function isSettledProforma(inv: Pick<ActionSource, 'document_type' | 'related_documents'>): boolean {
+  return inv.document_type === 'proforma' && (inv.related_documents ?? []).some((d) => d.document_type === 'invoice')
 }
 
 /** Uložený stav — `overdue` je odvozený z `open`/`sent`. */
@@ -103,15 +112,25 @@ export type UiAction =
   | 'duplicate'
   | 'correction'
   | 'add_payment'
+  | 'final_invoice'
 
 /** Akce, které má smysl v daném stavu nabídnout (SPEC §4.5). */
 export function allowedActions(inv: ActionSource): Set<UiAction> {
   const s = storedStatus(inv)
   const locked = Boolean(inv.locked_at)
   const live = s === 'open' || s === 'sent'
-  const out = new Set<UiAction>(['duplicate'])
+  const out = new Set<UiAction>()
 
-  if (!locked && s !== 'cancelled' && s !== 'uncollectible') out.add('edit')
+  // Daňový doklad k přijaté platbě vzniká a zaniká s platbou zálohy — ručně se nemění.
+  if (inv.document_type === 'tax_document') {
+    if (s === 'open') out.add('mark_as_sent')
+    out.add(locked ? 'unlock' : 'lock')
+    return out
+  }
+  const settled = isSettledProforma(inv)
+
+  out.add('duplicate')
+  if (!locked && !settled && s !== 'cancelled' && s !== 'uncollectible') out.add('edit')
   if (!locked && inv.payment_count === 0) out.add('delete')
   if (s === 'open') out.add('mark_as_sent')
   if (live && inv.payment_count === 0) out.add('cancel')
@@ -120,6 +139,7 @@ export function allowedActions(inv: ActionSource): Set<UiAction> {
   if (s === 'uncollectible') out.add('undo_uncollectible')
   out.add(locked ? 'unlock' : 'lock')
   if (inv.document_type === 'invoice') out.add('correction')
-  if (s !== 'cancelled' && s !== 'uncollectible' && inv.remaining_amount !== 0) out.add('add_payment')
+  if (!settled && s !== 'cancelled' && s !== 'uncollectible' && inv.remaining_amount !== 0) out.add('add_payment')
+  if (inv.document_type === 'proforma' && !settled && s !== 'cancelled' && s !== 'uncollectible') out.add('final_invoice')
   return out
 }

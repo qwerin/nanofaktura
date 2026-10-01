@@ -20,27 +20,38 @@ import {
   BellRingIcon,
   FileStackIcon,
   MailIcon,
+  FileCheckIcon,
+  Link2Icon,
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
+import { hasErrorCode } from '@/api/errors'
 import {
   invoicePdfUrl,
   invoiceQueries,
-  useCreateCorrection,
   useDeleteInvoice,
   useDeletePayment,
   useDuplicateInvoice,
   useInvoiceAction,
 } from '@/api/queries/invoices'
-import type { EmailKind, Invoice, InvoiceAction, InvoicePayment } from '@/api/types'
+import type { EmailKind, Invoice, InvoiceAction, InvoiceDeposit, InvoicePayment, RelatedDocument } from '@/api/types'
 import { EmailHistory } from '@/components/email/email-history'
 import { HistorySection } from '@/components/events/timeline'
 import { sendableKinds } from '@/components/email/placeholders'
 import { SendInvoiceDialog } from '@/components/email/send-invoice-dialog'
 import { AddPaymentDialog } from '@/components/invoice/add-payment-dialog'
+import { CorrectionDialog } from '@/components/invoice/correction-dialog'
+import { FinalInvoiceDialog } from '@/components/invoice/final-invoice-dialog'
 import { DueText } from '@/components/invoice/due-text'
 import { StatusBadge } from '@/components/invoice/status-badge'
-import { allowedActions, documentTypeLabels, paymentMethodLabels, type UiAction } from '@/components/invoice/status'
+import {
+  allowedActions,
+  documentTypeLabels,
+  isSettledProforma,
+  paymentMethodLabels,
+  statusLabels,
+  type UiAction,
+} from '@/components/invoice/status'
 import { TotalsPanel } from '@/components/invoice/totals-panel'
 import { useCanEditDocuments } from '@/components/invoice/use-can-edit'
 import { PageBody, PageHeader, type PageAction } from '@/components/page-header'
@@ -51,6 +62,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { formatDate, formatDateTime } from '@/lib/date'
 import { formatMoney, formatVatRate } from '@/lib/money'
@@ -113,15 +125,19 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
   const [confirmPending, setConfirmPending] = useState(false)
   const [send, setSend] = useState<{ open: boolean; kind: EmailKind; key: number }>({ open: false, kind: 'invoice', key: 0 })
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false)
+  const [correctionOpen, setCorrectionOpen] = useState(false)
+  const [finalOpen, setFinalOpen] = useState(false)
 
   const action = useInvoiceAction(slug, inv.id)
   const duplicate = useDuplicateInvoice(slug, inv.id)
-  const correction = useCreateCorrection(slug, inv.id)
   const remove = useDeleteInvoice(slug)
   const deletePayment = useDeletePayment(slug, inv.id)
 
   const allowed = canEdit ? allowedActions({ ...inv, payment_count: inv.payments.length }) : new Set<UiAction>()
   const payer = inv.your_vat_mode !== 'non_vat_payer'
+  const taxDocument = inv.document_type === 'tax_document'
+  const settled = isSettledProforma(inv)
+  const finalInvoice = settled ? inv.related_documents.find((d) => d.document_type === 'invoice') : undefined
   const pdfUrl = invoicePdfUrl(slug, inv.id)
   const pdfName = `faktura-${inv.number.replace(/[^A-Za-z0-9._-]/g, '-')}.pdf`
   const publicUrl = inv.public_token ? `${window.location.origin}/p/${inv.public_token}` : null
@@ -223,7 +239,13 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
           },
         ]
       : []),
-    ...(canEdit
+    ...act('final_invoice', {
+      label: 'Vystavit vyúčtování',
+      icon: FileCheckIcon,
+      overflow: true,
+      onClick: () => setFinalOpen(true),
+    }),
+    ...(allowed.has('duplicate')
       ? [
           {
             label: 'Duplikovat',
@@ -239,24 +261,14 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
           },
         ]
       : []),
-    ...(canEdit && inv.document_type !== 'correction'
+    ...(canEdit && inv.document_type !== 'correction' && !taxDocument
       ? [{ label: 'Uložit jako šablonu', icon: FileStackIcon, overflow: true, onClick: () => setSaveTemplateOpen(true) }]
       : []),
     ...act('correction', {
       label: 'Vystavit opravný doklad',
       icon: FileMinusIcon,
       overflow: true,
-      onClick: () =>
-        ask({
-          title: 'Vystavit opravný doklad?',
-          description: `Vytvoří se opravný daňový doklad k ${inv.number} se zápornými množstvími. Pak ho můžete upravit.`,
-          confirmLabel: 'Vystavit',
-          run: () =>
-            correction.mutateAsync().then((c) => {
-              toast.success(`Opravný doklad ${c.number} vystaven`)
-              void navigate({ to: '/a/$slug/invoices/$invoiceId/edit', params: { slug, invoiceId: c.id } })
-            }),
-        }),
+      onClick: () => setCorrectionOpen(true),
     }),
     ...act('lock', { label: 'Zamknout', icon: LockIcon, overflow: true, onClick: () => run('lock', 'Doklad zamčen') }),
     ...act('unlock', { label: 'Odemknout', icon: LockOpenIcon, overflow: true, onClick: () => run('unlock', 'Doklad odemčen') }),
@@ -270,7 +282,15 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
           description: 'Doklad zůstane v evidenci jako stornovaný a nebude se počítat do tržeb. Storno jde vrátit.',
           confirmLabel: 'Stornovat',
           destructive: true,
-          run: () => action.mutateAsync('cancel').then(() => toast.success('Doklad stornován')),
+          run: () =>
+            action.mutateAsync('cancel').then(
+              () => toast.success('Doklad stornován'),
+              (err: unknown) => {
+                // Odeslaný daňový doklad nejde stornovat — nabídneme rovnou dobropis (chybu toastuje globální handler).
+                if (hasErrorCode(err, 'correction_required') && allowed.has('correction')) setCorrectionOpen(true)
+                else throw err
+              },
+            ),
         }),
     }),
     ...act('undo_cancel', {
@@ -320,7 +340,7 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
 
   const title = inv.number
   const client = [inv.client_street, [inv.client_zip, inv.client_city].filter(Boolean).join(' ')].filter(Boolean)
-  const busy = action.isPending || duplicate.isPending || correction.isPending
+  const busy = action.isPending || duplicate.isPending
 
   return (
     <>
@@ -360,10 +380,26 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
               <p className="text-xs text-muted-foreground">Celkem</p>
               <p className="text-2xl font-semibold tracking-tight tabular-nums">{formatMoney(inv.total, inv.currency)}</p>
             </div>
-            {inv.status !== 'cancelled' && inv.remaining_amount !== 0 && inv.remaining_amount !== inv.total && (
+            {finalInvoice ? (
               <p className="text-sm text-muted-foreground md:text-right">
-                zbývá <span className="font-medium text-foreground tabular-nums">{formatMoney(inv.remaining_amount, inv.currency)}</span>
+                Vyúčtováno fakturou{' '}
+                <Link
+                  to="/a/$slug/invoices/$invoiceId"
+                  params={{ slug, invoiceId: finalInvoice.id }}
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  {finalInvoice.number}
+                </Link>
               </p>
+            ) : (
+              !taxDocument &&
+              inv.status !== 'cancelled' &&
+              inv.remaining_amount !== 0 &&
+              inv.remaining_amount !== inv.total && (
+                <p className="text-sm text-muted-foreground md:text-right">
+                  zbývá <span className="font-medium text-foreground tabular-nums">{formatMoney(inv.remaining_amount, inv.currency)}</span>
+                </p>
+              )
             )}
           </div>
         </section>
@@ -381,6 +417,7 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
                     inv.client_country && inv.client_country !== 'CZ' ? inv.client_country : '',
                     inv.client_registration_no && `IČO ${inv.client_registration_no}`,
                     inv.client_vat_no && `DIČ ${inv.client_vat_no}`,
+                    inv.client_local_vat_no && `IČ DPH ${inv.client_local_vat_no}`,
                     inv.client_email,
                   ]}
                 />
@@ -433,9 +470,31 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
                 showVat={payer}
                 reverseCharge={inv.reverse_charge}
                 paid={inv.paid_amount}
-                remaining={inv.remaining_amount}
+                remaining={settled || taxDocument ? undefined : inv.remaining_amount}
               />
+              {settled && finalInvoice && inv.remaining_amount !== 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Zbylých {formatMoney(inv.remaining_amount, inv.currency)} je k úhradě na faktuře {finalInvoice.number}.
+                </p>
+              )}
+              {taxDocument && (
+                <p className="text-xs text-muted-foreground">
+                  Doklad o přijaté záloze — není pohledávkou, DPH z něj se odečte ve vyúčtování.
+                </p>
+              )}
             </Section>
+
+            {inv.deposits.length > 0 && <DepositsSection slug={slug} deposits={inv.deposits} currency={inv.currency} payer={payer} />}
+
+            {inv.related_documents.length > 0 && (
+              <Section title="Související doklady">
+                <ul className="-my-1 divide-y">
+                  {inv.related_documents.map((d) => (
+                    <RelatedRow key={d.id} slug={slug} doc={d} current={inv} />
+                  ))}
+                </ul>
+              </Section>
+            )}
 
             <Section
               title="Platby"
@@ -456,12 +515,15 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
                     <PaymentRow
                       key={p.id}
                       p={p}
+                      slug={slug}
                       currency={inv.currency}
                       canDelete={canEdit}
                       onDelete={() =>
                         ask({
                           title: 'Smazat platbu?',
-                          description: `Platba ${formatMoney(p.amount, inv.currency)} z ${formatDate(p.paid_on)} se odstraní a stav faktury se přepočítá.`,
+                          description: `Platba ${formatMoney(p.amount, inv.currency)} z ${formatDate(p.paid_on)} se odstraní a stav faktury se přepočítá.${
+                            p.tax_document_id ? ' Smaže se i daňový doklad k této platbě.' : ''
+                          }`,
                           confirmLabel: 'Smazat platbu',
                           destructive: true,
                           run: () => deletePayment.mutateAsync(p.id).then(() => toast.success('Platba smazána')),
@@ -507,7 +569,7 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
                 {inv.currency !== 'CZK' && <Info label="Kurz">{inv.exchange_rate}</Info>}
                 {inv.order_number && <Info label="Objednávka">{inv.order_number}</Info>}
                 {inv.related_id && (
-                  <Info label={inv.document_type === 'correction' ? 'Opravuje' : 'Související'}>
+                  <Info label={inv.document_type === 'correction' ? 'Opravuje' : 'Zálohová faktura'}>
                     <Link
                       to="/a/$slug/invoices/$invoiceId"
                       params={{ slug, invoiceId: inv.related_id }}
@@ -538,6 +600,12 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
           initialKind={send.kind}
           onOpenChange={(open) => setSend((s) => ({ ...s, open }))}
         />
+      )}
+      {allowed.has('correction') && (
+        <CorrectionDialog slug={slug} invoice={inv} open={correctionOpen} onOpenChange={setCorrectionOpen} />
+      )}
+      {allowed.has('final_invoice') && (
+        <FinalInvoiceDialog slug={slug} invoice={inv} open={finalOpen} onOpenChange={setFinalOpen} />
       )}
       {canEdit && <SaveAsTemplateDialog slug={slug} invoice={inv} open={saveTemplateOpen} onOpenChange={setSaveTemplateOpen} />}
 
@@ -670,7 +738,95 @@ function LinesView({ inv, payer }: { inv: Invoice; payer: boolean }) {
   )
 }
 
-function PaymentRow({ p, currency, canDelete, onDelete }: { p: InvoicePayment; currency: string; canDelete: boolean; onDelete: () => void }) {
+/** Popisek dokladu, který odkazuje na ten zobrazený (dobropis, daňový doklad k platbě, vyúčtování). */
+function relatedLabel(doc: RelatedDocument, current: Invoice): string {
+  if (current.document_type === 'proforma' && doc.document_type === 'invoice') return 'Vyúčtováno fakturou'
+  if (doc.document_type === 'tax_document') return 'Daňový doklad k platbě'
+  return documentTypeLabels[doc.document_type]
+}
+
+function RelatedRow({ slug, doc, current }: { slug: string; doc: RelatedDocument; current: Invoice }) {
+  const status = doc.status in statusLabels ? statusLabels[doc.status as keyof typeof statusLabels] : doc.status
+  return (
+    <li className="flex items-center gap-3 py-2">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <Link2Icon className="size-4" />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="text-xs text-muted-foreground">{relatedLabel(doc, current)}</span>
+        <Link
+          to="/a/$slug/invoices/$invoiceId"
+          params={{ slug, invoiceId: doc.id }}
+          className="truncate font-medium text-primary underline-offset-4 hover:underline"
+        >
+          {doc.number}
+        </Link>
+      </div>
+      <div className="flex shrink-0 flex-col items-end">
+        <span className="text-sm font-medium tabular-nums">{formatMoney(doc.total, current.currency)}</span>
+        <span className="text-xs text-muted-foreground">{status}</span>
+      </div>
+    </li>
+  )
+}
+
+/** Odpočet záloh na vyúčtovací faktuře: daňové doklady k přijatým platbám a jejich DPH po sazbách. */
+function DepositsSection({ slug, deposits, currency, payer }: { slug: string; deposits: InvoiceDeposit[]; currency: string; payer: boolean }) {
+  const m = (v: number) => formatMoney(v, currency)
+  const sum = deposits.reduce((s, d) => s + d.total, 0)
+  return (
+    <Section title="Odpočet záloh">
+      <ul className="-my-1 divide-y">
+        {deposits.map((d) => (
+          <li key={d.tax_document_id} className="flex flex-col gap-1 py-2 text-sm">
+            <div className="flex items-baseline justify-between gap-3">
+              <Link
+                to="/a/$slug/invoices/$invoiceId"
+                params={{ slug, invoiceId: d.tax_document_id }}
+                className="truncate font-medium text-primary underline-offset-4 hover:underline"
+              >
+                {d.number}
+              </Link>
+              <span className="shrink-0 font-medium tabular-nums">−{m(d.total)}</span>
+            </div>
+            <span className="text-xs text-muted-foreground">DUZP {formatDate(d.taxable_fulfillment_due)}</span>
+            {payer &&
+              d.vat_recap.map((r) => (
+                <span key={r.vat_rate_bps} className="flex justify-between gap-3 text-xs text-muted-foreground tabular-nums">
+                  <span>
+                    DPH {formatVatRate(r.vat_rate_bps)} ze základu {m(r.base)}
+                  </span>
+                  <span>{m(r.vat)}</span>
+                </span>
+              ))}
+          </li>
+        ))}
+      </ul>
+      {deposits.length > 1 && (
+        <p className="flex justify-between text-sm font-medium tabular-nums">
+          <span>Zálohy celkem</span>
+          <span>−{m(sum)}</span>
+        </p>
+      )}
+      <p className="text-xs text-muted-foreground">DPH ze záloh už bylo odvedeno, ve vyúčtování se odečte.</p>
+    </Section>
+  )
+}
+
+function PaymentRow({
+  p,
+  slug,
+  currency,
+  canDelete,
+  onDelete,
+}: {
+  p: InvoicePayment
+  slug: string
+  currency: string
+  canDelete: boolean
+  onDelete: () => void
+}) {
+  const takenOver = Boolean(p.source_payment_id)
   return (
     <li className="flex items-center gap-3 py-2">
       <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-success/12 text-success dark:bg-success/20">
@@ -681,13 +837,41 @@ function PaymentRow({ p, currency, canDelete, onDelete }: { p: InvoicePayment; c
         <span className="truncate text-xs text-muted-foreground">
           {formatDate(p.paid_on)}
           {p.note && ` · ${p.note}`}
+          {takenOver && ' · převzato ze zálohy'}
         </span>
+        {p.tax_document_id && (
+          <Link
+            to="/a/$slug/invoices/$invoiceId"
+            params={{ slug, invoiceId: p.tax_document_id }}
+            className="text-xs text-primary underline-offset-4 hover:underline"
+          >
+            Daňový doklad k platbě
+          </Link>
+        )}
       </div>
-      {canDelete && (
-        <Button variant="ghost" size="icon" aria-label="Smazat platbu" className="text-muted-foreground hover:text-destructive" onClick={onDelete}>
-          <Trash2Icon />
-        </Button>
-      )}
+      {canDelete &&
+        (takenOver ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <span
+                  tabIndex={0}
+                  aria-label="Platba převzatá ze zálohové faktury"
+                  className="inline-flex rounded-md focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                >
+                  <Button variant="ghost" size="icon" aria-label="Smazat platbu" disabled className="pointer-events-none text-muted-foreground">
+                    <Trash2Icon />
+                  </Button>
+                </span>
+              }
+            />
+            <TooltipContent className="max-w-64">Platba převzatá ze zálohové faktury — smažte ji na zálohové faktuře.</TooltipContent>
+          </Tooltip>
+        ) : (
+          <Button variant="ghost" size="icon" aria-label="Smazat platbu" className="text-muted-foreground hover:text-destructive" onClick={onDelete}>
+            <Trash2Icon />
+          </Button>
+        ))}
     </li>
   )
 }

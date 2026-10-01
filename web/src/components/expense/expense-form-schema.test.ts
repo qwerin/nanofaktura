@@ -52,6 +52,11 @@ describe('expenseFormSchema', () => {
     expect(paths).toEqual(['due_on', 'exchange_rate', 'lines.0.name', 'lines.0.quantity', 'lines.0.unit_price', 'supplier_name', 'variable_symbol'])
   })
 
+  it('exchange rate must be positive', () => {
+    const r = expenseFormSchema.safeParse(valid({ currency: 'EUR', exchange_rate: '0' }))
+    expect(r.error?.issues.map((i) => i.path.join('.'))).toEqual(['exchange_rate'])
+  })
+
   it('requires at least one line', () => {
     const r = expenseFormSchema.safeParse(valid({ lines: [] }))
     expect(r.error?.issues[0]?.path).toEqual(['lines'])
@@ -77,6 +82,16 @@ describe('to API input', () => {
     expect(input).not.toHaveProperty('supplier_name')
     expect(input.exchange_rate).toBe('24.355')
     expect(input.number).toBe('N2026-0001')
+  })
+
+  it('sends VAT deduction and reverse charge separately from income tax', () => {
+    const d = newExpenseDefaults(account, '2026-09-26')
+    expect(d).toMatchObject({ tax_deductible: true, vat_deductible: true, reverse_charge: false })
+    const plain = toCreateExpenseInput(valid({ tax_deductible: false }), 'CZK')
+    expect(plain).toMatchObject({ tax_deductible: false, vat_deductible: true, reverse_charge: false })
+    expect(plain).not.toHaveProperty('supply_type')
+    const rc = toCreateExpenseInput(valid({ reverse_charge: true, supply_type: 'goods', vat_deductible: false }), 'CZK')
+    expect(rc).toMatchObject({ reverse_charge: true, supply_type: 'goods', vat_deductible: false, tax_deductible: true })
   })
 
   it('expenseToFormValues maps a saved expense', () => {

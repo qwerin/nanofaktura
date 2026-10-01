@@ -98,7 +98,7 @@ function DashboardPage() {
             className="col-span-2 md:col-span-1"
             label={`Tržby ${shownYear}`}
             value={stats.data && m(stats.data.revenue_total)}
-            hint="Vystavené faktury bez storen"
+            hint="Vystavené faktury vč. DPH, bez storen"
           />
           <Kpi
             label="Neuhrazeno"
@@ -122,7 +122,7 @@ function DashboardPage() {
           <div className="mb-4 flex items-center justify-between gap-2">
             <div>
               <h2 className="text-base font-semibold tracking-tight">Tržby po měsících</h2>
-              <p className="text-xs text-muted-foreground">{currency} · podle data vystavení</p>
+              <p className="text-xs text-muted-foreground">{currency} vč. DPH · podle data vystavení</p>
             </div>
             <div className="flex items-center gap-1" role="group" aria-label="Rok">
               <Button variant="ghost" size="icon" aria-label="Předchozí rok" onClick={() => setYear(shownYear - 1)}>

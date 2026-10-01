@@ -6,7 +6,7 @@ import { formatMoney } from '@/lib/money'
 
 type RateSums = ControlStatement['a5']
 
-/** Kontrolní hlášení (DPHKH1): oddíly A.1, A.4, A.5, B.2, B.3 — tabulky na desktopu, karty na mobilu. */
+/** Kontrolní hlášení (DPHKH1): oddíly A.1, A.2, A.4, A.5, B.1, B.2, B.3 — tabulky na desktopu, karty na mobilu. */
 export function ControlStatementView({ data, currency }: { data: ControlStatement; currency: string }) {
   const m = (v: number) => formatMoney(v, currency)
   return (
@@ -34,6 +34,21 @@ export function ControlStatementView({ data, currency }: { data: ControlStatemen
         </Part>
       )}
 
+      {data.a2.length > 0 && (
+        <Part
+          code="A.2"
+          title="Přijatá plnění, u nichž daň přiznáváte vy (ze zahraničí)"
+          hint="Pořízení zboží a přijetí služeb z jiného státu EU, služby ze zemí mimo EU."
+        >
+          <DocumentRows
+            rows={data.a2.map((r) => ({ ...r, vat_no: `${r.country}${r.vat_id}` }))}
+            m={m}
+            partyLabel="DIČ dodavatele"
+            empty=""
+          />
+        </Part>
+      )}
+
       <Part code="A.4" title="Prodeje plátcům nad 10 000 Kč" hint="Každý doklad zvlášť, s DIČ odběratele.">
         <DocumentRows rows={data.a4} m={m} partyLabel="DIČ odběratele" empty="Žádné doklady nad 10 000 Kč." />
       </Part>
@@ -41,6 +56,16 @@ export function ControlStatementView({ data, currency }: { data: ControlStatemen
       <Part code="A.5" title="Ostatní prodeje" hint="Doklady do 10 000 Kč a prodeje neplátcům — souhrnně.">
         <Sums sums={data.a5} m={m} />
       </Part>
+
+      {data.b1.length > 0 && (
+        <Part
+          code="B.1"
+          title="Přenesení daňové povinnosti — odběratel"
+          hint="Tuzemské přenesení (§ 92a). Kód předmětu plnění doplňte v EPO."
+        >
+          <DocumentRows rows={data.b1.map((r) => ({ ...r, vat_no: r.supplier_vat_no }))} m={m} partyLabel="DIČ dodavatele" empty="" />
+        </Part>
+      )}
 
       <Part code="B.2" title="Nákupy od plátců nad 10 000 Kč" hint="Evidenční číslo dokladu dodavatele a jeho DIČ.">
         <DocumentRows rows={data.b2} m={m} partyLabel="DIČ dodavatele" empty="Žádné přijaté doklady nad 10 000 Kč." />
@@ -74,7 +99,7 @@ function DocumentRows({
   partyLabel,
   empty,
 }: {
-  rows: ControlDocumentRow[]
+  rows: Pick<ControlDocumentRow, 'number' | 'vat_no' | 'taxable_fulfillment_due' | 'basic' | 'reduced'>[]
   m: (v: number) => string
   partyLabel: string
   empty: string

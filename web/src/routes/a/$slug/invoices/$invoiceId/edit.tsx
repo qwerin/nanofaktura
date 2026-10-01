@@ -7,7 +7,7 @@ import { invoiceQueries } from '@/api/queries/invoices'
 import { ButtonLink } from '@/components/button-link'
 import { EmptyState } from '@/components/empty-state'
 import { InvoiceForm } from '@/components/invoice/invoice-form'
-import { allowedActions } from '@/components/invoice/status'
+import { allowedActions, isSettledProforma } from '@/components/invoice/status'
 import { useCanEditDocuments } from '@/components/invoice/use-can-edit'
 import { PageBody, PageHeader } from '@/components/page-header'
 import { PageError } from '@/components/page-states'
@@ -61,9 +61,13 @@ function EditInvoicePage() {
             description={
               !canEdit
                 ? 'Vaše role v účtu neumožňuje upravovat doklady.'
-                : inv.locked_at
-                  ? 'Doklad je zamčený. Odemkněte ho v detailu.'
-                  : 'Stornovaný nebo nedobytný doklad nejde upravovat. Nejdřív ho obnovte.'
+                : inv.document_type === 'tax_document'
+                  ? 'Daňový doklad k přijaté platbě odpovídá platbě zálohy a ručně se neupravuje. Při chybě opravte platbu na zálohové faktuře.'
+                  : isSettledProforma(inv)
+                    ? 'Záloha je už vyúčtovaná konečnou fakturou. Změny proveďte na ní.'
+                    : inv.locked_at
+                      ? 'Doklad je zamčený. Odemkněte ho v detailu.'
+                      : 'Stornovaný nebo nedobytný doklad nejde upravovat. Nejdřív ho obnovte.'
             }
             action={
               <ButtonLink variant="outline" {...back}>

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { TriangleAlertIcon } from 'lucide-react'
 import { z } from 'zod'
 import { reportQueries } from '@/api/queries/reports'
 import { PageBody, PageHeader } from '@/components/page-header'
@@ -8,6 +9,7 @@ import { IncomeTaxSection } from '@/components/reports/income-tax'
 import { MonthlyChart } from '@/components/reports/monthly-chart'
 import { ReportsNav, Stepper } from '@/components/reports/reports-nav'
 import { TopCustomers } from '@/components/reports/top-customers'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatMoney, LOCALE } from '@/lib/money'
 import { cn } from '@/lib/utils'
@@ -71,9 +73,25 @@ function OverviewPage() {
     <>
       {header}
       <PageBody className="flex flex-col gap-4 md:gap-6">
+        {data && data.invalid_rate_documents.length > 0 && (
+          <Alert variant="destructive">
+            <TriangleAlertIcon />
+            <AlertTitle>Doklady s neplatným kurzem</AlertTitle>
+            <AlertDescription>
+              <p>Tyto doklady v cizí měně nemají platný kurz, a proto v přehledu chybí. Doplňte u nich kurz:</p>
+              <ul className="list-disc pl-5">
+                {data.invalid_rate_documents.map((n) => (
+                  <li key={n} className="tabular-nums">
+                    {n}
+                  </li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-          <Kpi label="Tržby" value={data && m(data.revenue_total)} hint="Vystavené faktury a dobropisy" />
-          <Kpi label="Náklady" value={data && m(data.expenses_total)} hint="Všechny přijaté doklady" />
+          <Kpi label="Tržby vč. DPH" value={data && m(data.revenue_total)} hint="Vystavené faktury a dobropisy" />
+          <Kpi label="Náklady vč. DPH" value={data && m(data.expenses_total)} hint="Všechny přijaté doklady" />
           <Kpi
             label="Zisk"
             value={data && m(data.profit_total)}

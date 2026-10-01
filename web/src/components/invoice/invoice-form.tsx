@@ -12,7 +12,7 @@ import { errorMessage, isApiError } from '@/api/errors'
 import { bankAccountQueries } from '@/api/queries/bank-accounts'
 import { useCreateInvoice, useUpdateInvoice } from '@/api/queries/invoices'
 import { keys } from '@/api/queries/keys'
-import type { Account, DocumentType, Invoice } from '@/api/types'
+import type { Account, Invoice } from '@/api/types'
 import { SelectField, SwitchField, TextareaField, TextField, type SelectOption } from '@/components/form/fields'
 import { ResponsiveDialog } from '@/components/responsive-dialog'
 import { StickyActionBar } from '@/components/sticky-action-bar'
@@ -29,12 +29,15 @@ import { calculateTotals, chargesNoVat } from './calc'
 import {
   apiFieldToFormField,
   computeDueOn,
-  invoiceFormSchema,
+  CORRECTION_REASONS,
+  invoiceFormSchemaFor,
   invoiceToValues,
   newInvoiceValues,
   toCalcLine,
   toCreateBody,
   toPatchBody,
+  requiresTaxableDate,
+  type FormDocumentType,
   type InvoiceFormValues,
 } from './form-model'
 import { LinesEditor } from './lines-editor'
@@ -54,6 +57,11 @@ const languageOptions: SelectOption[] = [
   { value: 'de', label: 'Němčina' },
 ]
 const DUE_CHIPS = [7, 14, 30] as const
+const supplyTypeOptions: SelectOption[] = [
+  { value: 'services', label: 'Služba – daň odvede zákazník' },
+  { value: 'goods', label: 'Zboží do EU – osvobozeno dle § 64' },
+]
+
 
 interface InvoiceFormProps {
   slug: string
@@ -61,7 +69,7 @@ interface InvoiceFormProps {
   /** Existující faktura = režim úprav. */
   invoice?: Invoice
   /** Předvolby nové faktury (z URL). */
-  preset?: { documentType?: DocumentType; subject?: InvoiceFormValues['subject']; relatedId?: number }
+  preset?: { documentType?: FormDocumentType; subject?: InvoiceFormValues['subject']; relatedId?: number }
 }
 
 export function InvoiceForm({ slug, account, invoice, preset }: InvoiceFormProps) {
@@ -86,7 +94,8 @@ export function InvoiceForm({ slug, account, invoice, preset }: InvoiceFormProps
     return v
   }, [invoice, account, preset])
 
-  const form = useForm<InvoiceFormValues>({ resolver: zodResolver(invoiceFormSchema), defaultValues: defaults })
+  const schema = useMemo(() => invoiceFormSchemaFor(vatMode), [vatMode])
+  const form = useForm<InvoiceFormValues>({ resolver: zodResolver(schema), defaultValues: defaults })
   const { control, formState, setValue } = form
 
   const [documentType, currency, issuedOn, dueDays, paymentMethod, pricesIncludeVat, roundTotal, reverseCharge, lines, subject] =
@@ -194,7 +203,7 @@ export function InvoiceForm({ slug, account, invoice, preset }: InvoiceFormProps
     )()
 
   const ids = { subject: useId(), tags: useId(), related: useId(), bank: useId() }
-  const docTypes: DocumentType[] = ['invoice', 'proforma', 'correction']
+  const docTypes: FormDocumentType[] = ['invoice', 'proforma', 'correction']
 
   return (
     <form
@@ -259,7 +268,10 @@ export function InvoiceForm({ slug, account, invoice, preset }: InvoiceFormProps
               )}
             />
             {documentType === 'correction' && (
-              <RelatedInvoiceField slug={slug} subjectId={subject?.id} control={control} id={ids.related} currentId={invoice?.id} />
+              <>
+                <RelatedInvoiceField slug={slug} subjectId={subject?.id} control={control} id={ids.related} currentId={invoice?.id} />
+                <CorrectionReasonField control={control} required={vatMode === 'vat_payer'} />
+              </>
             )}
           </FormCard>
 
@@ -286,7 +298,15 @@ export function InvoiceForm({ slug, account, invoice, preset }: InvoiceFormProps
                   </Field>
                 )}
               />
-              {payer && <TextField control={control} name="taxable_fulfillment_due" label="Datum zdanitelného plnění" type="date" />}
+              {payer && (
+                <TextField
+                  control={control}
+                  name="taxable_fulfillment_due"
+                  label="Datum zdanitelného plnění"
+                  type="date"
+                  description={requiresTaxableDate(vatMode, reverseCharge) ? undefined : 'Nepovinné.'}
+                />
+              )}
               <Controller
                 control={control}
                 name="due_days"
@@ -362,6 +382,9 @@ export function InvoiceForm({ slug, account, invoice, preset }: InvoiceFormProps
                     label="Přenesená daňová povinnost"
                     description="DPH odvede odběratel."
                   />
+                )}
+                {payer && reverseCharge && (
+                  <SelectField control={control} name="supply_type" label="Druh plnění" options={supplyTypeOptions} />
                 )}
               </div>
               <div className="rounded-lg bg-muted/50 p-4">
@@ -579,6 +602,36 @@ function RelatedInvoiceField({
           {subjectId && !list.isPending && items.length === 0 && (
             <FieldDescription>Tento odběratel nemá žádnou fakturu k opravě.</FieldDescription>
           )}
+          <FieldError errors={[fieldState.error]} />
+        </Field>
+      )}
+    />
+  )
+}
+
+/** Důvod opravy s návrhy — u plátce povinný. */
+function CorrectionReasonField({
+  control,
+  required,
+}: {
+  control: ReturnType<typeof useForm<InvoiceFormValues>>['control']
+  required: boolean
+}) {
+  return (
+    <Controller
+      control={control}
+      name="correction_reason"
+      render={({ field, fieldState }) => (
+        <Field data-invalid={fieldState.invalid || undefined}>
+          <FieldLabel htmlFor="invoice-correction-reason">Důvod opravy{required ? '' : ' (nepovinné)'}</FieldLabel>
+          <Input id="invoice-correction-reason" {...field} autoComplete="off" maxLength={500} aria-invalid={fieldState.invalid || undefined} />
+          <div className="flex flex-wrap gap-1">
+            {CORRECTION_REASONS.map((r) => (
+              <Button key={r} type="button" variant="outline" size="sm" onClick={() => field.onChange(r)}>
+                {r}
+              </Button>
+            ))}
+          </div>
           <FieldError errors={[fieldState.error]} />
         </Field>
       )}

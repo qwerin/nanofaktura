@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { Account } from '@/api/types'
-import { computeDueOn, convertPrice, invoiceFormSchema, newInvoiceValues, toCreateBody, toPatchBody } from './form-model'
+import {
+  computeDueOn,
+  convertPrice,
+  invoiceFormSchema,
+  invoiceFormSchemaFor,
+  newInvoiceValues,
+  toCreateBody,
+  toPatchBody,
+} from './form-model'
 
 const account = {
   vat_mode: 'vat_payer',
@@ -65,6 +73,39 @@ describe('invoice form model', () => {
     expect(toPatchBody({ ...v, variable_symbol: '' }, { variable_symbol: true, number: true }, true)).toEqual({
       variable_symbol: '',
     })
+  })
+
+  it('VAT payer rules: DUZP, correction reason, exchange rate', () => {
+    const base = {
+      ...newInvoiceValues(account, { today: '2026-09-26' }),
+      subject: { id: 7, name: 'ACME' },
+      lines: [{ name: 'Práce', quantity: '1', unit_name: 'h', unit_price: '100', vat_rate_bps: '2100' }],
+    }
+    const issues = (mode: Parameters<typeof invoiceFormSchemaFor>[0], v: typeof base) =>
+      invoiceFormSchemaFor(mode).safeParse(v).error?.issues.map((i) => i.path.join('.')) ?? []
+
+    expect(issues('vat_payer', { ...base, taxable_fulfillment_due: '' })).toEqual(['taxable_fulfillment_due'])
+    expect(issues('non_vat_payer', { ...base, taxable_fulfillment_due: '' })).toEqual([])
+    // identifikovaná osoba: DUZP jen u přenesení daňové povinnosti
+    expect(issues('identified_person', { ...base, taxable_fulfillment_due: '' })).toEqual([])
+    expect(issues('identified_person', { ...base, taxable_fulfillment_due: '', reverse_charge: true })).toEqual(['taxable_fulfillment_due'])
+
+    const correction = { ...base, document_type: 'correction' as const, related_id: '3' }
+    expect(issues('vat_payer', correction)).toEqual(['correction_reason'])
+    expect(issues('non_vat_payer', correction)).toEqual([])
+    expect(issues('vat_payer', { ...correction, correction_reason: 'Vrácení zboží' })).toEqual([])
+    expect(toCreateBody({ ...correction, correction_reason: ' Sleva z ceny ' }, true).correction_reason).toBe('Sleva z ceny')
+
+    expect(issues('vat_payer', { ...base, exchange_rate: '0' })).toEqual(['exchange_rate'])
+    expect(issues('vat_payer', { ...base, exchange_rate: '0,000' })).toEqual(['exchange_rate'])
+    expect(issues('vat_payer', { ...base, exchange_rate: '24,5' })).toEqual([])
+  })
+
+  it('sends supply_type only with reverse charge', () => {
+    const v = { ...newInvoiceValues(account, { today: '2026-09-26' }), subject: { id: 7, name: 'ACME' }, supply_type: 'goods' as const }
+    expect(toCreateBody(v, true).supply_type).toBeUndefined()
+    expect(toCreateBody({ ...v, reverse_charge: true }, true).supply_type).toBe('goods')
+    expect(toCreateBody({ ...v, reverse_charge: true }, false).supply_type).toBeUndefined()
   })
 
   it('computes the due date', () => {

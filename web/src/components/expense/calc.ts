@@ -16,6 +16,8 @@ export interface CalcLine {
 export interface CalcOptions {
   pricesIncludeVat: boolean
   roundTotal: boolean
+  /** Přenesená daňová povinnost: dodavatel DPH neúčtuje, sazby jsou jen informativní. */
+  reverseCharge?: boolean
 }
 
 export interface LineAmounts {
@@ -54,12 +56,12 @@ export function calculateTotals(lines: CalcLine[], opts: CalcOptions): Totals {
   const lineAmounts = lines.map((l) => {
     const amount = divRoundHalfAway(BigInt(l.unitPrice) * BigInt(quantityToMilli(l.quantity)), BigInt(QUANTITY_SCALE))
     sums.set(l.vatRateBps, (sums.get(l.vatRateBps) ?? 0n) + amount)
-    return split(amount, l.vatRateBps, opts.pricesIncludeVat)
+    return split(amount, opts.reverseCharge ? 0 : l.vatRateBps, opts.pricesIncludeVat)
   })
 
   const recap: VatRecapRow[] = [...sums.entries()]
     .sort(([a], [b]) => b - a)
-    .map(([rate, sum]) => ({ vatRateBps: rate, ...split(sum, rate, opts.pricesIncludeVat) }))
+    .map(([rate, sum]) => ({ vatRateBps: rate, ...split(sum, opts.reverseCharge ? 0 : rate, opts.pricesIncludeVat) }))
 
   const subtotal = recap.reduce((s, r) => s + r.base, 0)
   const vatTotal = recap.reduce((s, r) => s + r.vat, 0)

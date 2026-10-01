@@ -276,7 +276,7 @@ function ReportBody({
         <Alert className="border-warning/50 bg-warning/10">
           <TriangleAlertIcon className="text-warning-foreground dark:text-warning" />
           <AlertTitle>
-            {report.warnings.length === 1 ? 'Jeden doklad vyžaduje pozornost' : `${report.warnings.length} upozornění k dokladům`}
+            {report.warnings.length === 1 ? 'Jedno upozornění k přiznání' : `${report.warnings.length} upozornění k přiznání`}
           </AlertTitle>
           <AlertDescription>
             <ul className="mt-1 flex list-disc flex-col gap-1 pl-4">

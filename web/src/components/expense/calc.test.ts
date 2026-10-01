@@ -38,6 +38,16 @@ describe('calculateTotals', () => {
     expect(t.total).toBe(12100)
   })
 
+  it('reverse charge: no VAT on the document, rates kept in the recap', () => {
+    const t = calculateTotals([{ unitPrice: 10000, quantity: '1', vatRateBps: 2100 }], {
+      pricesIncludeVat: false,
+      roundTotal: false,
+      reverseCharge: true,
+    })
+    expect(t.recap).toEqual([{ vatRateBps: 2100, base: 10000, vat: 0, total: 10000 }])
+    expect(t.total).toBe(10000)
+  })
+
   it('round_total rounds half away from zero to whole units', () => {
     const t = calculateTotals([{ unitPrice: 10050, quantity: '1', vatRateBps: 0 }], { pricesIncludeVat: true, roundTotal: true })
     expect(t.total).toBe(10100)

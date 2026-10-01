@@ -22,6 +22,10 @@ import { SupplierFields } from './supplier-fields'
 import { UnsavedChangesGuard } from './unsaved-changes-guard'
 
 const FORM_FIELDS = Object.keys(expenseFormSchema.shape)
+const supplyTypeOptions = [
+  { value: 'services', label: 'Služba' },
+  { value: 'goods', label: 'Zboží' },
+]
 
 interface ExpenseFormProps {
   mode: 'create' | 'edit'
@@ -46,8 +50,12 @@ export function ExpenseForm({ mode, defaultValues, account, onSubmit, onCancel, 
   const lines = useWatch({ control: form.control, name: 'lines' })
   const pricesIncludeVat = useWatch({ control: form.control, name: 'prices_include_vat' })
   const roundTotal = useWatch({ control: form.control, name: 'round_total' })
-  const totals = draftTotals(lines ?? [], { pricesIncludeVat, roundTotal })
+  const reverseCharge = useWatch({ control: form.control, name: 'reverse_charge' })
+  const totals = draftTotals(lines ?? [], { pricesIncludeVat, roundTotal, reverseCharge })
   const defaultCurrency = account?.default_currency || 'CZK'
+  const vatPayer = account?.vat_mode === 'vat_payer'
+  // Samovyměření DPH se týká plátců i identifikovaných osob.
+  const canReverseCharge = account !== undefined && account.vat_mode !== 'non_vat_payer'
 
   const submit = form.handleSubmit(
     async (values) => {
@@ -110,14 +118,46 @@ export function ExpenseForm({ mode, defaultValues, account, onSubmit, onCancel, 
           <SwitchField control={form.control} name="prices_include_vat" label="Ceny včetně DPH" description="Jak jsou ceny uvedené na dokladu." disabled={saving} />
           <SwitchField control={form.control} name="round_total" label="Zaokrouhlit celkovou částku" description="Na celé koruny, typicky u plateb v hotovosti." disabled={saving} />
         </div>
+        {(canReverseCharge || reverseCharge) && (
+          <SwitchField
+            control={form.control}
+            name="reverse_charge"
+            label="Daň přiznávám já jako odběratel (přenesená daňová povinnost)"
+            description="Služby nebo zboží z EU, stavební práce (§ 92a), služby ze zahraničí. Dodavatel DPH neúčtuje — u položek zvolte sazbu, kterou daň přiznáte."
+            disabled={saving}
+          />
+        )}
+        {reverseCharge && (
+          <SelectField control={form.control} name="supply_type" label="Druh plnění" options={supplyTypeOptions} disabled={saving} />
+        )}
         <LineEditor form={form} defaultVatRateBps={account?.default_vat_rate_bps ?? 2100} disabled={saving} />
-        <div className="flex justify-end">
+        <div className="flex flex-col items-end gap-2">
           <TotalsSummary totals={totals} currency={currency} className="w-full rounded-xl border bg-muted/30 p-4 sm:max-w-xs" />
+          {reverseCharge && (
+            <p className="w-full text-xs text-muted-foreground sm:max-w-xs">
+              DPH na dokladu je 0 — daň podle sazeb položek přiznáte v přiznání k DPH (a případně si ji odečtete).
+            </p>
+          )}
         </div>
       </section>
 
       <Section title="Další" description="Daňová uznatelnost a interní poznámka.">
-        <SwitchField control={form.control} name="tax_deductible" label="Daňově uznatelný náklad" description="Započítá se do daňových výdajů." disabled={saving} />
+        <SwitchField
+          control={form.control}
+          name="tax_deductible"
+          label="Daňově uznatelný náklad"
+          description="Daň z příjmů: započítá se do daňových výdajů."
+          disabled={saving}
+        />
+        {vatPayer && (
+          <SwitchField
+            control={form.control}
+            name="vat_deductible"
+            label="Uplatnit odpočet DPH"
+            description="DPH: daň z dokladu si odečtete v přiznání k DPH."
+            disabled={saving}
+          />
+        )}
         {mode === 'edit' && (
           <TextField control={form.control} name="number" label="Interní číslo" autoComplete="off" description="Přiděluje se automaticky z číselné řady nákladů." disabled={saving} />
         )}

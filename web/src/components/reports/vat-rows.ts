@@ -31,8 +31,45 @@ export function vatReturnSections(r: VatReturn, { hideEmpty = false } = {}): Vat
       ],
     },
     {
+      title: 'Daň přiznává příjemce (samovyměření)',
+      rows: [
+        { line: '3', label: 'Pořízení zboží z jiného členského státu, základní sazba 21 %', ...pair(r.r3) },
+        { line: '4', label: 'Pořízení zboží z jiného členského státu, snížená sazba 12 %', ...pair(r.r4) },
+        {
+          line: '5',
+          label: 'Přijetí služby od osoby registrované v jiném členském státě, základní sazba 21 %',
+          ...pair(r.r5),
+        },
+        {
+          line: '6',
+          label: 'Přijetí služby od osoby registrované v jiném členském státě, snížená sazba 12 %',
+          ...pair(r.r6),
+        },
+        {
+          line: '10',
+          label: 'Přenesení daňové povinnosti – příjemce, základní sazba 21 %',
+          hint: 'Tuzemské přenesení (§ 92a), např. stavební práce.',
+          ...pair(r.r10),
+        },
+        { line: '11', label: 'Přenesení daňové povinnosti – příjemce, snížená sazba 12 %', ...pair(r.r11) },
+        {
+          line: '12',
+          label: 'Ostatní plnění s povinností přiznat daň příjemcem, základní sazba 21 %',
+          hint: 'Např. služby ze zemí mimo EU.',
+          ...pair(r.r12),
+        },
+        { line: '13', label: 'Ostatní plnění s povinností přiznat daň příjemcem, snížená sazba 12 %', ...pair(r.r13) },
+      ],
+    },
+    {
       title: 'Plnění bez daně s nárokem na odpočet',
       rows: [
+        {
+          line: '20',
+          label: 'Dodání zboží do jiného členského státu',
+          hint: 'Osvobozeno (§ 64), zákazník má DIČ v jiném státě EU.',
+          base: r.r20,
+        },
         {
           line: '21',
           label: 'Služby do jiného státu EU',
@@ -53,6 +90,8 @@ export function vatReturnSections(r: VatReturn, { hideEmpty = false } = {}): Vat
       rows: [
         { line: '40', label: 'Nákupy od tuzemských plátců, základní sazba 21 %', ...pair(r.r40) },
         { line: '41', label: 'Nákupy od tuzemských plátců, snížená sazba 12 %', ...pair(r.r41) },
+        { line: '43', label: 'Odpočet z plnění ř. 3–13, základní sazba 21 %', ...pair(r.r43) },
+        { line: '44', label: 'Odpočet z plnění ř. 3–13, snížená sazba 12 %', ...pair(r.r44) },
         { line: '46', label: 'Odpočet daně celkem', vat: r.r46 },
       ],
     },
@@ -85,10 +124,22 @@ const WARNING_TEXTS: Record<VatWarning['code'], (p: Record<string, string>) => s
   zero_rate_not_reported: (p) => `částka s nulovou sazbou (${(p.amount ?? '').replace('.', ',')} Kč) se v přiznání neuvádí.`,
   supplier_no_dic: () => 'odpočet vynechán — dodavatel nemá české DIČ (pořízení z EU / dovoz je potřeba doplnit ručně).',
   calculation_error: () => 'doklad nejde přepočítat, zkontrolujte částky a kurz.',
+  missing_taxable_date: () => 'chybí DUZP — v přiznání je podle data vystavení. Doplňte DUZP.',
+  possible_reverse_charge: () =>
+    'dodavatel neúčtoval DPH. Pokud daň přiznáváte vy (služby či zboží ze zahraničí, § 92a), označte náklad jako přenesenou daňovou povinnost.',
+  reverse_charge_import: () => 'zboží ze zemí mimo EU je dovoz (DPH vyměří celní úřad) — do přiznání se neuvádí.',
+  reverse_charge_subject_code: () => 'v kontrolním hlášení doplňte v EPO kód předmětu plnění (§ 92a).',
+  ec_sales_list: () => 'plnění do jiných států EU (ř. 20 a 21) podejte také v souhrnném hlášení.',
+  correction_of_cancelled: () => 'opravuje stornovanou fakturu, původní doklad v přiznání není.',
+  control_statement_monthly: () =>
+    'právnická osoba podává kontrolní hlášení měsíčně — vytvořte ho za každý měsíc čtvrtletí.',
 }
 
 /** Varování VAT reportu (kód + parametry) → česky; neznámý kód = anglická zpráva backendu. */
 export function translateVatWarning(w: VatWarning): string {
   const fmt = WARNING_TEXTS[w.code] as ((p: Record<string, string>) => string) | undefined
-  return fmt ? `${w.document}: ${fmt(w.params ?? {})}` : w.message
+  if (!fmt) return w.message
+  const text = fmt(w.params ?? {})
+  // Varování za celé období nemají doklad — věta pak začíná velkým písmenem.
+  return w.document ? `${w.document}: ${text}` : text.charAt(0).toUpperCase() + text.slice(1)
 }

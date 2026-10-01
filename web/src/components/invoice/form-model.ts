@@ -40,39 +40,72 @@ export const subjectValueSchema = z.object({
   city: z.string().optional(),
 })
 
-export const invoiceFormSchema = z
-  .object({
-    document_type: z.enum(['invoice', 'proforma', 'correction']),
-    related_id: z.string(),
-    subject: subjectValueSchema.nullable().refine((v) => v !== null, 'Vyberte odběratele'),
-    number: z.string(),
-    variable_symbol: z.string().trim().regex(/^\d{0,10}$/, 'Nejvýše 10 číslic'),
-    order_number: z.string(),
-    issued_on: dateString,
-    taxable_fulfillment_due: optionalDate,
-    due_days: z.string().trim().regex(/^\d{1,3}$/, 'Počet dní 0–999'),
-    currency: z.string().min(3),
-    exchange_rate: z.string().trim().regex(/^\d+([.,]\d+)?$/, 'Kurz, např. 24,355'),
-    language: z.enum(['cs', 'en', 'sk', 'de']),
-    payment_method: z.enum(['bank', 'cash', 'card', 'cod', 'paypal', 'custom']),
-    custom_payment_method: z.string(),
-    bank_account_id: z.string(),
-    note: z.string(),
-    footer_note: z.string(),
-    private_note: z.string(),
-    tags: z.array(z.string()),
-    prices_include_vat: z.boolean(),
-    round_total: z.boolean(),
-    reverse_charge: z.boolean(),
-    lines: z.array(lineSchema).min(1, 'Přidejte aspoň jednu položku'),
-  })
-  .superRefine((v, ctx) => {
+/** Kurz měny: kladné číslo s desetinnou čárkou/tečkou. */
+export const exchangeRateString = z
+  .string()
+  .trim()
+  .regex(/^\d+([.,]\d+)?$/, 'Kurz, např. 24,355')
+  .refine((v) => Number(v.replace(',', '.')) > 0, 'Kurz musí být větší než 0')
+
+/** Ručně vystavitelné typy dokladů (daňový doklad k platbě vzniká jen automaticky). */
+export type FormDocumentType = Exclude<DocumentType, 'tax_document'>
+export type VatMode = Account['vat_mode']
+
+const baseInvoiceSchema = z.object({
+  document_type: z.enum(['invoice', 'proforma', 'correction']),
+  related_id: z.string(),
+  subject: subjectValueSchema.nullable().refine((v) => v !== null, 'Vyberte odběratele'),
+  number: z.string(),
+  variable_symbol: z.string().trim().regex(/^\d{0,10}$/, 'Nejvýše 10 číslic'),
+  order_number: z.string(),
+  issued_on: dateString,
+  taxable_fulfillment_due: optionalDate,
+  due_days: z.string().trim().regex(/^\d{1,3}$/, 'Počet dní 0–999'),
+  currency: z.string().min(3),
+  exchange_rate: exchangeRateString,
+  language: z.enum(['cs', 'en', 'sk', 'de']),
+  payment_method: z.enum(['bank', 'cash', 'card', 'cod', 'paypal', 'custom']),
+  custom_payment_method: z.string(),
+  bank_account_id: z.string(),
+  note: z.string(),
+  footer_note: z.string(),
+  private_note: z.string(),
+  tags: z.array(z.string()),
+  prices_include_vat: z.boolean(),
+  round_total: z.boolean(),
+  reverse_charge: z.boolean(),
+  supply_type: z.enum(['services', 'goods']),
+  correction_reason: z.string().max(500),
+  lines: z.array(lineSchema).min(1, 'Přidejte aspoň jednu položku'),
+})
+
+/** Návrhy důvodu opravy (§ 45 ZDPH). */
+export const CORRECTION_REASONS = ['Vrácení zboží', 'Sleva z ceny', 'Chyba v ceně nebo množství', 'Reklamace'] as const
+
+/** DUZP je povinné u plátce a u identifikované osoby s přenesením daňové povinnosti. */
+export function requiresTaxableDate(vatMode: VatMode, reverseCharge: boolean): boolean {
+  return vatMode === 'vat_payer' || (vatMode === 'identified_person' && reverseCharge)
+}
+
+/** Schéma formuláře podle režimu DPH účtu (plátce má přísnější povinná pole). */
+export function invoiceFormSchemaFor(vatMode: VatMode) {
+  return baseInvoiceSchema.superRefine((v, ctx) => {
     if (v.document_type === 'correction' && !v.related_id) {
       ctx.addIssue({ code: 'custom', path: ['related_id'], message: 'Vyberte opravovanou fakturu' })
     }
+    if (requiresTaxableDate(vatMode, v.reverse_charge) && !v.taxable_fulfillment_due) {
+      ctx.addIssue({ code: 'custom', path: ['taxable_fulfillment_due'], message: 'Zadejte datum zdanitelného plnění' })
+    }
+    if (vatMode === 'vat_payer' && v.document_type === 'correction' && !v.correction_reason.trim()) {
+      ctx.addIssue({ code: 'custom', path: ['correction_reason'], message: 'Uveďte důvod opravy' })
+    }
   })
+}
 
-export type InvoiceFormValues = z.input<typeof invoiceFormSchema>
+/** Schéma bez pravidel plátce (neplátce). */
+export const invoiceFormSchema = invoiceFormSchemaFor('non_vat_payer')
+
+export type InvoiceFormValues = z.input<typeof baseInvoiceSchema>
 export type LineValues = z.input<typeof lineSchema>
 
 export function emptyLine(vatRateBps: number): LineValues {
@@ -82,7 +115,7 @@ export function emptyLine(vatRateBps: number): LineValues {
 /** Výchozí hodnoty nové faktury z nastavení účtu. */
 export function newInvoiceValues(
   account: Account,
-  opts: { today: string; documentType?: DocumentType; bankAccountId?: number },
+  opts: { today: string; documentType?: FormDocumentType; bankAccountId?: number },
 ): InvoiceFormValues {
   const payer = account.vat_mode !== 'non_vat_payer'
   return {
@@ -108,6 +141,8 @@ export function newInvoiceValues(
     prices_include_vat: false,
     round_total: account.round_total,
     reverse_charge: false,
+    supply_type: 'services',
+    correction_reason: '',
     lines: [emptyLine(payer ? account.default_vat_rate_bps : 0)],
   }
 }
@@ -115,7 +150,8 @@ export function newInvoiceValues(
 /** Hodnoty formuláře z uložené faktury (úprava). */
 export function invoiceToValues(inv: Invoice): InvoiceFormValues {
   return {
-    document_type: inv.document_type,
+    // Daňový doklad k platbě se ve formuláři neupravuje (allowedActions ho vylučuje).
+    document_type: inv.document_type === 'tax_document' ? 'invoice' : inv.document_type,
     related_id: inv.related_id ? String(inv.related_id) : '',
     subject: { id: inv.subject_id, name: inv.client_name, registration_no: inv.client_registration_no, city: inv.client_city },
     number: inv.number,
@@ -137,6 +173,8 @@ export function invoiceToValues(inv: Invoice): InvoiceFormValues {
     prices_include_vat: inv.prices_include_vat,
     round_total: inv.round_total,
     reverse_charge: inv.reverse_charge,
+    supply_type: inv.supply_type || 'services',
+    correction_reason: inv.correction_reason ?? '',
     lines: inv.lines.map((l) => ({
       id: l.id,
       price_item_id: l.price_item_id,
@@ -200,6 +238,8 @@ function fullBody(v: InvoiceFormValues, opts: { payer: boolean; withLineIds: boo
     lines: v.lines.map((l) => lineToInput(l, opts.withLineIds)),
   }
   if (opts.payer) body.taxable_fulfillment_due = v.taxable_fulfillment_due
+  if (opts.payer && v.reverse_charge) body.supply_type = v.supply_type
+  if (v.document_type === 'correction') body.correction_reason = v.correction_reason.trim()
   if (v.bank_account_id) body.bank_account_id = Number(v.bank_account_id)
   if (v.related_id) body.related_id = Number(v.related_id)
   if (v.number.trim()) body.number = v.number.trim()

@@ -40,6 +40,9 @@ export const expenseFormSchema = z
     currency: z.string().min(3),
     exchange_rate: z.string().trim(),
     tax_deductible: z.boolean(),
+    vat_deductible: z.boolean(),
+    reverse_charge: z.boolean(),
+    supply_type: z.enum(['services', 'goods']),
     prices_include_vat: z.boolean(),
     round_total: z.boolean(),
     lines: z.array(lineSchema).min(1, 'Přidejte aspoň jednu položku'),
@@ -47,6 +50,8 @@ export const expenseFormSchema = z
   .superRefine((v, ctx) => {
     if (v.exchange_rate !== '' && !/^\d+([.,]\d{1,6})?$/.test(v.exchange_rate)) {
       ctx.addIssue({ code: 'custom', path: ['exchange_rate'], message: 'Kurz ve tvaru 24,355' })
+    } else if (v.exchange_rate !== '' && !(Number(v.exchange_rate.replace(',', '.')) > 0)) {
+      ctx.addIssue({ code: 'custom', path: ['exchange_rate'], message: 'Kurz musí být větší než 0' })
     }
     if (v.due_on && v.issued_on && v.due_on < v.issued_on) {
       ctx.addIssue({ code: 'custom', path: ['due_on'], message: 'Splatnost je před datem vystavení' })
@@ -75,6 +80,9 @@ export function newExpenseDefaults(account: Pick<Account, 'default_currency' | '
     currency: account?.default_currency || 'CZK',
     exchange_rate: '',
     tax_deductible: true,
+    vat_deductible: true,
+    reverse_charge: false,
+    supply_type: 'services',
     prices_include_vat: true,
     round_total: false,
     lines: [emptyLine(account?.default_vat_rate_bps ?? 2100)],
@@ -104,6 +112,9 @@ export function expenseToFormValues(e: Expense): ExpenseFormValues {
     currency: e.currency,
     exchange_rate: e.exchange_rate && e.exchange_rate !== '1' ? e.exchange_rate.replace('.', ',') : '',
     tax_deductible: e.tax_deductible,
+    vat_deductible: e.vat_deductible,
+    reverse_charge: e.reverse_charge,
+    supply_type: e.supply_type || 'services',
     prices_include_vat: e.prices_include_vat,
     round_total: e.round_total,
     lines: e.lines.length ? e.lines.map(lineToDraft) : [emptyLine(2100)],
@@ -135,6 +146,9 @@ function commonFields(v: ExpenseFormValues, defaultCurrency: string) {
     currency: v.currency,
     exchange_rate: foreign && v.exchange_rate ? v.exchange_rate.replace(',', '.') : '1',
     tax_deductible: v.tax_deductible,
+    vat_deductible: v.vat_deductible,
+    reverse_charge: v.reverse_charge,
+    ...(v.reverse_charge ? { supply_type: v.supply_type } : {}),
     prices_include_vat: v.prices_include_vat,
     round_total: v.round_total,
     lines: v.lines.map(draftToLineInput),

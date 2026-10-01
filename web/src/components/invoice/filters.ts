@@ -9,7 +9,7 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 /** Search params stránky /invoices (neplatné hodnoty se tiše zahodí). */
 export const invoiceSearchSchema = z.object({
   status: z.enum(['unpaid', 'open', 'sent', 'paid', 'overdue', 'cancelled', 'uncollectible']).optional().catch(undefined),
-  document_type: z.enum(['invoice', 'proforma', 'correction']).optional().catch(undefined),
+  document_type: z.enum(['invoice', 'proforma', 'correction', 'tax_document']).optional().catch(undefined),
   query: z.string().optional().catch(undefined),
   since: isoDate.optional().catch(undefined),
   until: isoDate.optional().catch(undefined),

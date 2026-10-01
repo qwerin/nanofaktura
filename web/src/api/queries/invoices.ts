@@ -8,7 +8,9 @@ import {
 import { api, unwrap } from '../client'
 import type {
   CreateInvoiceInput,
+  CorrectionInput,
   CreatePaymentInput,
+  FinalInvoiceInput,
   Invoice,
   InvoiceAction,
   InvoiceListQuery,
@@ -122,9 +124,27 @@ export function useDuplicateInvoice(slug: string, id: number) {
 export function useCreateCorrection(slug: string, id: number) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: () =>
-      unwrap(api.POST('/api/accounts/{slug}/invoices/{id}/correction', { params: { path: { slug, id } } })),
-    onSuccess: (inv) => afterChange(qc, slug, inv),
+    mutationFn: (body: CorrectionInput = {}) =>
+      unwrap(api.POST('/api/accounts/{slug}/invoices/{id}/correction', { params: { path: { slug, id } }, body })),
+    onSuccess: (inv) => {
+      afterChange(qc, slug, inv)
+      void qc.invalidateQueries({ queryKey: keys.invoiceDetail(slug, id) })
+    },
+    meta: { silent: true },
+  })
+}
+
+/** Vyúčtování zálohy: nová konečná faktura k proformě (201). */
+export function useCreateFinalInvoice(slug: string, id: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: FinalInvoiceInput) =>
+      unwrap(api.POST('/api/accounts/{slug}/invoices/{id}/final-invoice', { params: { path: { slug, id } }, body })),
+    onSuccess: (inv) => {
+      afterChange(qc, slug, inv)
+      void qc.invalidateQueries({ queryKey: keys.invoiceDetail(slug, id) })
+    },
+    meta: { silent: true },
   })
 }
 
@@ -133,7 +153,11 @@ export function useCreatePayment(slug: string, id: number) {
   return useMutation({
     mutationFn: (body: CreatePaymentInput) =>
       unwrap(api.POST('/api/accounts/{slug}/invoices/{id}/payments', { params: { path: { slug, id } }, body })),
-    onSuccess: (res) => afterChange(qc, slug, res.invoice),
+    onSuccess: (res) => {
+      afterChange(qc, slug, res.invoice)
+      // Platba zálohy může vytvořit daňový doklad / vyúčtování — jejich detaily se načtou znovu.
+      void qc.invalidateQueries({ queryKey: keys.invoices(slug) })
+    },
     meta: { silent: true },
   })
 }
@@ -148,7 +172,8 @@ export function useDeletePayment(slug: string, id: number) {
         }),
       ),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: keys.invoiceDetail(slug, id) })
+      // I související doklady (daňový doklad k platbě, vyúčtování) se mění.
+      void qc.invalidateQueries({ queryKey: keys.invoices(slug) })
       afterChange(qc, slug)
     },
   })
