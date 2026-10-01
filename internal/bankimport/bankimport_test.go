@@ -32,10 +32,11 @@ func TestParseAmount(t *testing.T) {
 		{"100.00-", 0, "CZK", -10000},
 		{"1,234,567", 0, "CZK", 123456700},
 		{"431", 0, "CZK", 43100},
-		{"1500", 0, "JPY", 1500},
-		{"1500,00", 0, "JPY", 1500},
+		// money audit M-04: hundredths in every currency, like the rest of the app
+		{"1500", 0, "JPY", 150000},
+		{"1500,00", 0, "JPY", 150000},
 		{"1,5 CZK", 0, "CZK", 150},
-		{"12,345", 0, "KWD", 12345},
+		{"12,340", 0, "KWD", 1234},
 		{",5", 0, "CZK", 50},
 	} {
 		got, err := ParseAmount(tc.in, tc.sep, tc.cur)
@@ -47,6 +48,9 @@ func TestParseAmount(t *testing.T) {
 		if v, err := ParseAmount(bad, 0, "CZK"); err == nil {
 			t.Errorf("ParseAmount(%q) = %d, want error", bad, v)
 		}
+	}
+	if v, err := ParseAmount("12,345", 0, "KWD"); err == nil { // a third decimal place cannot be kept
+		t.Errorf("ParseAmount(12,345 KWD) = %d, want error", v)
 	}
 }
 

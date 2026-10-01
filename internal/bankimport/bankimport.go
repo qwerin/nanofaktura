@@ -120,16 +120,11 @@ func czechScore(s string) int {
 	return score
 }
 
-// minorDigits returns the number of decimal places of a currency (ISO 4217).
-func minorDigits(currency string) int {
-	switch currency {
-	case "JPY", "KRW", "ISK", "CLP", "VND", "PYG", "UGX", "XAF", "XOF", "XPF", "KMF", "GNF", "RWF", "VUV", "DJF", "BIF":
-		return 0
-	case "BHD", "KWD", "OMR", "JOD", "TND", "LYD", "IQD":
-		return 3
-	}
-	return 2
-}
+// minorDigits is the number of decimal places of the minor units: always 2.
+// The whole application keeps money in hundredths of the currency unit
+// (SPEC §2, also for JPY or BHD), so a bank amount of 1000 JPY is 100000 and
+// an amount with a non-zero third decimal place is rejected, never rounded.
+func minorDigits(string) int { return 2 }
 
 // ParseAmount converts a decimal amount ("-1 234,50", "1,234.50", "+12.5",
 // "100.00-") into minor units of currency. decimalSep is ',' or '.'; 0 detects

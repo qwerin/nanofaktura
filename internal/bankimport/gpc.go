@@ -70,19 +70,10 @@ func gpcDate(s string) (string, bool) {
 	return t.Format(time.DateOnly), true
 }
 
-// gpcMoney converts an unsigned amount with 2 implied decimals into minor units of currency.
-func gpcMoney(s, currency string) (int64, error) {
-	v, err := strconv.ParseInt(s, 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	switch minorDigits(currency) {
-	case 0:
-		return v / 100, nil
-	case 3:
-		return v * 10, nil
-	}
-	return v, nil
+// gpcMoney converts an unsigned amount with 2 implied decimals into minor
+// units (hundredths, as everywhere in the application).
+func gpcMoney(s, _ string) (int64, error) {
+	return strconv.ParseInt(s, 10, 64)
 }
 
 // ParseGPC parses an ABO/GPC statement file (several merged statements are
