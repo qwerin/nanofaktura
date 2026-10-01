@@ -4,6 +4,7 @@ import {
   ChevronsUpDownIcon,
   KeyRoundIcon,
   LogOutIcon,
+  MonitorDownIcon,
   PlusIcon,
   SettingsIcon,
   UserIcon,
@@ -41,6 +42,7 @@ import { TodoCountBadge } from '@/components/todos/todo-count-badge'
 import { useCurrentAccount } from '@/hooks/use-current-account'
 import { roleLabel } from '@/lib/roles'
 import { adminNav, initials, mainNav } from './nav'
+import { useInstallAction } from '@/components/install/use-install-action'
 import { useLogoutAction } from './use-logout-action'
 
 /** Desktopová navigace (≥ md). Na mobilu ji nahrazuje BottomTabBar. */
@@ -187,62 +189,72 @@ function UserMenu() {
   const navigate = useNavigate()
   const logout = useLogoutAction()
   const { theme, setTheme } = useThemeChoice()
+  const installApp = useInstallAction()
   if (!user) return null
 
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={<SidebarMenuButton size="lg" className="data-popup-open:bg-sidebar-accent" />}
-          >
-            <Avatar className="size-8">
-              <AvatarFallback className="text-xs font-medium">{initials(user.name || user.email)}</AvatarFallback>
-            </Avatar>
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-medium">{user.name}</span>
-              <span className="truncate text-xs text-muted-foreground">{user.email}</span>
-            </div>
-            <ChevronsUpDownIcon className="ml-auto text-muted-foreground" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="min-w-60" side="top" align="start" sideOffset={4}>
-            <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => void navigate({ to: '/a/$slug/settings/profile', params: { slug } })}>
-                <UserIcon />
-                Můj profil
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => void navigate({ to: '/a/$slug/settings/tokens', params: { slug } })}>
-                <KeyRoundIcon />
-                API tokeny
-              </DropdownMenuItem>
-              {me?.instance_admin && (
-                <DropdownMenuItem onClick={() => void navigate({ to: adminNav.to, params: { slug } })}>
-                  <adminNav.icon />
-                  {adminNav.label}
+    <>
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={<SidebarMenuButton size="lg" className="data-popup-open:bg-sidebar-accent" />}
+            >
+              <Avatar className="size-8">
+                <AvatarFallback className="text-xs font-medium">{initials(user.name || user.email)}</AvatarFallback>
+              </Avatar>
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-medium">{user.name}</span>
+                <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+              </div>
+              <ChevronsUpDownIcon className="ml-auto text-muted-foreground" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="min-w-60" side="top" align="start" sideOffset={4}>
+              <DropdownMenuGroup>
+                <DropdownMenuItem onClick={() => void navigate({ to: '/a/$slug/settings/profile', params: { slug } })}>
+                  <UserIcon />
+                  Můj profil
                 </DropdownMenuItem>
-              )}
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuLabel className="text-xs text-muted-foreground">Motiv</DropdownMenuLabel>
-              <DropdownMenuRadioGroup value={theme} onValueChange={(v) => setTheme(v as ThemeChoice)}>
-                {themeOptions.map((o) => (
-                  <DropdownMenuRadioItem key={o.value} value={o.value}>
-                    <o.icon />
-                    {o.label}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout.run} disabled={logout.isPending}>
-              <LogOutIcon />
-              Odhlásit se
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
+                <DropdownMenuItem onClick={() => void navigate({ to: '/a/$slug/settings/tokens', params: { slug } })}>
+                  <KeyRoundIcon />
+                  API tokeny
+                </DropdownMenuItem>
+                {me?.instance_admin && (
+                  <DropdownMenuItem onClick={() => void navigate({ to: adminNav.to, params: { slug } })}>
+                    <adminNav.icon />
+                    {adminNav.label}
+                  </DropdownMenuItem>
+                )}
+                {installApp.available && (
+                  <DropdownMenuItem onClick={installApp.run}>
+                    <MonitorDownIcon />
+                    Nainstalovat aplikaci
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="text-xs text-muted-foreground">Motiv</DropdownMenuLabel>
+                <DropdownMenuRadioGroup value={theme} onValueChange={(v) => setTheme(v as ThemeChoice)}>
+                  {themeOptions.map((o) => (
+                    <DropdownMenuRadioItem key={o.value} value={o.value}>
+                      <o.icon />
+                      {o.label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={logout.run} disabled={logout.isPending}>
+                <LogOutIcon />
+                Odhlásit se
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarMenuItem>
+      </SidebarMenu>
+      {installApp.dialog}
+    </>
   )
 }
 

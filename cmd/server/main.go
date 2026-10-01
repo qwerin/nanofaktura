@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"mime"
 	"net/http"
 	"os"
 	"os/signal"
@@ -141,6 +142,8 @@ func warnInsecureSetup(gdb *gorm.DB, cfg config.Config) {
 // withSPA serves /api/* from the API and everything else from dir, falling
 // back to index.html for unknown paths (client-side routing).
 func withSPA(apiHandler http.Handler, dir string) http.Handler {
+	// not in Go's built-in table; minimal images have no /etc/mime.types
+	_ = mime.AddExtensionType(".webmanifest", "application/manifest+json")
 	files := http.FileServer(http.Dir(dir))
 	index := filepath.Join(dir, "index.html")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

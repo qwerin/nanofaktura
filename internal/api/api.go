@@ -186,6 +186,7 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 	s.registerInvoices(account)
 	s.registerInvoiceActions(account)
 	s.registerPayments(account)
+	s.registerMarkPaid(account)
 	s.registerInvoicePDF(account)
 	s.registerInvoiceISDOC(account)
 	s.registerPublicInvoices(public, account)

@@ -484,6 +484,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/accounts/{slug}/expenses/mark-paid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug expenses mark paid
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-expenses-mark-paid"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/accounts/{slug}/expenses/{id}": {
         parameters: {
             query?: never;
@@ -784,6 +804,26 @@ export interface paths {
          * @description Allowed roles: owner, admin, member.
          */
         post: operations["post-api-accounts-by-slug-invoices"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/invoices/mark-paid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug invoices mark paid
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-invoices-mark-paid"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4198,6 +4238,20 @@ export interface components {
             me?: components["schemas"]["Me"];
             two_factor?: components["schemas"]["TwoFactorChallenge"];
         };
+        MarkPaidRequest: {
+            /** @description Only count the documents that would be marked */
+            dry_run?: boolean;
+            /**
+             * Format: date
+             * @description Payment date of all documents; default: each document's due date (issue date without one), at most today
+             */
+            paid_on?: string;
+        };
+        MarkPaidResult: {
+            /** Format: int64 */
+            count: number;
+            sums: components["schemas"]["CurrencySum"][];
+        };
         MatchSuggestion: {
             /** Format: int64 */
             expense_id?: number;
@@ -6548,6 +6602,57 @@ export interface operations {
             };
         };
     };
+    "post-api-accounts-by-slug-expenses-mark-paid": {
+        parameters: {
+            query?: {
+                /** @description Effective status, comma-separated for several: open, overdue, paid, unpaid (= open + overdue). open excludes overdue expenses */
+                status?: string;
+                /** @description Exact category */
+                category?: string;
+                subject_id?: number;
+                /** @description Total or remaining amount equals this value (minor units; manual payment matching) */
+                amount?: number;
+                /** @description issued_on ≥ since */
+                since?: string;
+                /** @description issued_on ≤ until */
+                until?: string;
+                /** @description Number, original number, supplier name, variable symbol or description (case-insensitive substring) */
+                query?: string;
+                sort?: "-issued_on" | "issued_on" | "-number" | "due_on" | "-total";
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkPaidRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkPaidResult"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "get-api-accounts-by-slug-expenses-by-id": {
         parameters: {
             query?: never;
@@ -7238,6 +7343,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Invoice"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-invoices-mark-paid": {
+        parameters: {
+            query?: {
+                /** @description Effective status, comma-separated for several: open, sent, overdue, paid, cancelled, uncollectible, unpaid (= open + sent + overdue). open/sent exclude overdue documents */
+                status?: string;
+                document_type?: "invoice" | "proforma" | "correction";
+                subject_id?: number;
+                /** @description Documents generated by this recurring invoice */
+                recurring_id?: number;
+                /** @description Total or remaining amount equals this value (minor units; manual payment matching) */
+                amount?: number;
+                /** @description issued_on ≥ since */
+                since?: string;
+                /** @description issued_on ≤ until */
+                until?: string;
+                /** @description Number, client name or variable symbol (case-insensitive substring) */
+                query?: string;
+                sort?: "-issued_on" | "issued_on" | "-number" | "due_on" | "-total";
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkPaidRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkPaidResult"];
                 };
             };
             /** @description Error */

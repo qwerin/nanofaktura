@@ -272,6 +272,10 @@ Nepovolený přechod → 409 s lidsky čitelnou zprávou.
 `DELETE …/payments/{payment_id}`. Model `Payment`: `id, account_id, invoice_id, paid_on, amount, note, created_at`.
 Po změně: `paid_amount ≥ total` (u záporných totalů `≤`) → `status=paid`, `paid_on` = datum poslední platby; jinak návrat na `sent`/`open` a `paid_on=""`.
 Platba na cancelled/uncollectible → 409.
+**Hromadná úhrada** `POST /api/accounts/{slug}/invoices/mark-paid` (a `/expenses/mark-paid`) s query parametry filtru seznamu
+`{paid_on?, dry_run?}` → 200 `{count, sums}`: každý neuhrazený doklad filtru (faktury `open|sent`, náklady `open`; `total ≠ paid_amount`)
+dostane platbu zbývající částky, v jedné transakci. Datum: `paid_on`, jinak splatnost (bez ní vystavení), nejpozději dnes.
+`dry_run` jen spočítá (`sums[].sum_remaining` = částka k úhradě). Poděkování za úhradu se neposílá (staré doklady zadané zpětně).
 `create_final_invoice` u proformy vytvoří `invoice` se stejnými řádky, `related_id=proforma.id`, rovnou zaplacenou (platba se stejným datem a částkou);
 id nové faktury vrátit v odpovědi (`final_invoice_id`).
 
@@ -468,6 +472,9 @@ Náhled PDF v nastavení (`GET /accounts/{slug}/pdf-preview?template=` s ukázko
 - Onboarding po registraci: průvodce (IČO → ARES předvyplní firmu, bankovní účet, plátcovství DPH, logo) + ukázková první faktura.
 - Dashboard: tržby vs. náklady graf, neuhrazené/po splatnosti, cashflow očekávaných příjmů (dle due_on), úkoly, poslední aktivita.
 - Kopírování údajů klientovi jedním klepnutím, sdílení veřejného odkazu přes Web Share API na mobilu.
+- Instalace jako aplikace (PWA, `display: standalone` — bez adresního řádku): položka „Nainstalovat aplikaci“ v menu (mobil „Více“,
+  desktop uživatelské menu). Chromium → systémový dialog (`beforeinstallprompt`), iOS a ostatní mobilní prohlížeče → návod
+  (Sdílet → Přidat na plochu); v nainstalované aplikaci se nenabízí.
 
 ### 7.16 Záloha, export a import účtu
 Kompletní přenos účtu mezi instancemi (a SQLite → Postgres) a záloha.

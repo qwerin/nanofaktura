@@ -7,11 +7,13 @@ import {
   LayoutDashboardIcon,
   LogOutIcon,
   PlusIcon,
+  SmartphoneIcon,
   UsersIcon,
   type LucideIcon,
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { CreateAccountDialog } from '@/components/account/create-account-dialog'
+import { useInstallAction } from '@/components/install/use-install-action'
 import { ThemeSegmented } from '@/components/theme'
 import { NewsBadge } from '@/components/news/news-badge'
 import { TodoCountBadge } from '@/components/todos/todo-count-badge'
@@ -113,6 +115,7 @@ function MoreDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (open
   const navigate = useNavigate()
   const logout = useLogoutAction()
   const [createOpen, setCreateOpen] = useState(false)
+  const installApp = useInstallAction()
   const close = () => onOpenChange(false)
 
   return (
@@ -200,6 +203,19 @@ function MoreDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (open
               )}
             </Section>
 
+            {installApp.available && (
+              <Row
+                onClick={() => {
+                  close()
+                  installApp.run()
+                }}
+                leading={<SmartphoneIcon className="size-5 text-muted-foreground" />}
+                trailing={<ChevronRightIcon className="size-4 text-muted-foreground" />}
+              >
+                Nainstalovat aplikaci
+              </Row>
+            )}
+
             <Section title="Motiv">
               <ThemeSegmented />
             </Section>
@@ -218,6 +234,7 @@ function MoreDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (open
           if (!o) close()
         }}
       />
+      {installApp.dialog}
     </>
   )
 }

@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { ListFilterIcon, PlusIcon, ReceiptIcon, XIcon } from 'lucide-react'
+import { CheckCheckIcon, ListFilterIcon, PlusIcon, ReceiptIcon, XIcon } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { expenseQueries } from '@/api/queries/expenses'
 import type { DocumentSums, ExpenseSummary } from '@/api/types'
@@ -12,7 +12,8 @@ import { ExpenseStatusBadge } from '@/components/expense/expense-status-badge'
 import { countActiveFilters, expenseStatusOptions, plural } from '@/components/expense/format'
 import { useCanEditDocuments } from '@/components/expense/permissions'
 import { SearchInput } from '@/components/expense/search-input'
-import { PageBody, PageHeader } from '@/components/page-header'
+import { MarkPaidDialog } from '@/components/mark-paid-dialog'
+import { PageBody, PageHeader, type PageAction } from '@/components/page-header'
 import { PageError } from '@/components/page-states'
 import { ResponsiveList } from '@/components/responsive-list'
 import { Badge } from '@/components/ui/badge'
@@ -54,6 +55,14 @@ function ExpensesPage() {
   const openDetail = (e: ExpenseSummary) =>
     void navigate({ to: '/a/$slug/expenses/$expenseId', params: { slug, expenseId: e.id } })
 
+  const [markPaidOpen, setMarkPaidOpen] = useState(false)
+  const markPaidAction: PageAction = {
+    label: 'Označit jako uhrazené',
+    icon: CheckCheckIcon,
+    overflow: true,
+    onClick: () => setMarkPaidOpen(true),
+  }
+
   const newAction = {
     label: 'Nový náklad',
     icon: PlusIcon,
@@ -63,7 +72,7 @@ function ExpensesPage() {
 
   return (
     <>
-      <PageHeader title="Náklady" description="Přijaté faktury, účtenky a další výdaje." actions={canEdit ? [newAction] : []} />
+      <PageHeader title="Náklady" description="Přijaté faktury, účtenky a další výdaje." actions={canEdit ? [newAction, markPaidAction] : []} />
       <PageBody className="flex flex-col gap-4">
         <div className="flex flex-col gap-3">
           <div className="flex gap-2">
@@ -233,6 +242,13 @@ function ExpensesPage() {
         value={search}
         supplierName={supplier.data?.name}
         onApply={(next) => void navigate({ search: next, replace: true })}
+      />
+      <MarkPaidDialog
+        slug={slug}
+        target={{ kind: 'expenses', filters }}
+        filtered={Object.keys(filters).length > 0}
+        open={markPaidOpen}
+        onOpenChange={setMarkPaidOpen}
       />
     </>
   )

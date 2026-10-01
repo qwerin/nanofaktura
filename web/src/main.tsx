@@ -1,4 +1,5 @@
 import '@/lib/zod-config'
+import '@/hooks/use-install-app' // zachytí beforeinstallprompt co nejdřív
 import { QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider } from '@tanstack/react-router'
 import { StrictMode } from 'react'

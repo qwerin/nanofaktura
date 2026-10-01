@@ -1,6 +1,6 @@
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { ArrowDownIcon, ArrowUpIcon, FileTextIcon, PlusIcon, SearchXIcon } from 'lucide-react'
+import { ArrowDownIcon, ArrowUpIcon, CheckCheckIcon, FileTextIcon, PlusIcon, SearchXIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { invoiceQueries } from '@/api/queries/invoices'
 import type { DocumentSums, InvoiceSummary } from '@/api/types'
@@ -20,7 +20,8 @@ import { StatusBadge } from '@/components/invoice/status-badge'
 import { documentTypeShortLabels } from '@/components/invoice/status'
 import { useDebouncedValue } from '@/components/invoice/use-debounced'
 import { useCanEditDocuments } from '@/components/invoice/use-can-edit'
-import { PageBody, PageHeader } from '@/components/page-header'
+import { MarkPaidDialog } from '@/components/mark-paid-dialog'
+import { PageBody, PageHeader, type PageAction } from '@/components/page-header'
 import { PageError } from '@/components/page-states'
 import { ResponsiveList, type ListColumn } from '@/components/responsive-list'
 import { Badge } from '@/components/ui/badge'
@@ -67,6 +68,13 @@ function InvoicesPage() {
   const filtered = Object.keys(filters).length > 0
 
   const exportMenu = useExportMenu({ slug, kind: 'invoices', filters: { ...filters } })
+  const [markPaidOpen, setMarkPaidOpen] = useState(false)
+  const markPaidAction: PageAction = {
+    label: 'Označit jako uhrazené',
+    icon: CheckCheckIcon,
+    overflow: true,
+    onClick: () => setMarkPaidOpen(true),
+  }
 
   const newAction = {
     label: 'Nová faktura',
@@ -150,7 +158,7 @@ function InvoicesPage() {
 
   return (
     <>
-      <PageHeader title="Faktury" description="Vydané faktury, zálohy a opravné doklady." actions={[...(canEdit ? [newAction] : []), exportMenu.action]}>
+      <PageHeader title="Faktury" description="Vydané faktury, zálohy a opravné doklady." actions={[...(canEdit ? [newAction] : []), exportMenu.action, ...(canEdit ? [markPaidAction] : [])]}>
         <div className="flex flex-col gap-3 pt-1 md:pt-0">
           <InvoiceFilterBar search={search} queryInput={queryInput} onQueryInput={setQueryInput} onChange={setSearch} />
           <StatusChips value={search.status} onChange={(status) => setSearch({ status })} />
@@ -223,6 +231,13 @@ function InvoicesPage() {
         )}
       </PageBody>
       {exportMenu.drawer}
+      <MarkPaidDialog
+        slug={slug}
+        target={{ kind: 'invoices', filters }}
+        filtered={filtered}
+        open={markPaidOpen}
+        onOpenChange={setMarkPaidOpen}
+      />
     </>
   )
 }
