@@ -96,11 +96,16 @@ type Payment struct {
 	RecipientName  string // optional, max 35 chars
 }
 
+// MaxAmount is the largest amount of a QR Platba (AM has at most 10
+// characters: 9 999 999.99).
+const MaxAmount = 9_999_999_99
+
 // Build returns the SPAYD string for p, or "" if the IBAN is not a Czech one
-// (QR Platba is a Czech domestic standard) or the amount is not positive.
+// (QR Platba is a Czech domestic standard) or the amount is not positive or
+// too large for the format.
 func Build(p Payment) string {
 	iban := NormalizeIBAN(p.IBAN)
-	if !strings.HasPrefix(iban, "CZ") || !ValidIBAN(iban) || p.Amount <= 0 {
+	if !strings.HasPrefix(iban, "CZ") || !ValidIBAN(iban) || p.Amount <= 0 || p.Amount > MaxAmount {
 		return ""
 	}
 	acc := iban
@@ -163,8 +168,10 @@ func clean(s string, max int) string {
 
 var bankSWIFT = map[string]string{
 	"0100": "KOMBCZPP", "0300": "CEKOCZPP", "0600": "AGBACZPP", "0710": "CNBACZPP",
-	"0800": "GIBACZPX", "2010": "FIOBCZPP", "2060": "CITFCZPP", "2700": "BACXCZPP",
-	"3030": "AIRACZPP", "3500": "INGBCZPP", "4300": "NROZCZPP", "5500": "RZBCCZPP",
-	"5800": "JTBPCZPP", "6000": "PMBPCZPP", "6100": "EQBKCZPP", "6210": "BREXCZPP",
-	"6800": "VBOECZ2X", "7910": "DEUTCZPX", "8040": "OBKLCZ2X", "8250": "BKCHCZPP",
+	"0800": "GIBACZPX", "2010": "FIOBCZPP", "2060": "CITFCZPP", "2250": "CTASCZ22",
+	"2600": "CITICZPX", "2700": "BACXCZPP", "3030": "AIRACZPP", "3060": "BPKOCZPP",
+	"3500": "INGBCZPP", "4000": "EXPNCZPP", "4300": "CMZRCZP1", "5500": "RZBCCZPP",
+	"5800": "JTBPCZPP", "6000": "PMBPCZPP", "6100": "EQBKCZPP", "6200": "COBACZPX",
+	"6210": "BREXCZPP", "6700": "SUBACZPP", "6800": "VBOECZ2X", "7910": "DEUTCZPX",
+	"8040": "OBKLCZ2X", "8250": "BKCHCZPP",
 }

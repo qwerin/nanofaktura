@@ -66,6 +66,18 @@ func TestBuild(t *testing.T) {
 	}
 }
 
+// Money M-09 / tax L-05: AM has at most 10 characters (9 999 999.99).
+func TestBuildAmountLimit(t *testing.T) {
+	p := Payment{IBAN: "CZ6508000000192000145399", Amount: MaxAmount}
+	if Build(p) == "" {
+		t.Fatal("max amount rejected")
+	}
+	p.Amount++
+	if s := Build(p); s != "" {
+		t.Fatalf("over the limit: %s", s)
+	}
+}
+
 func TestDigits(t *testing.T) {
 	if d := Digits("FV-2026/000123456", 10); d != "6000123456" {
 		t.Errorf("got %s", d)
