@@ -84,7 +84,7 @@ test.describe('invoice lifecycle', () => {
     await expect(page.getByRole('main').getByRole('button', { name: 'Přidat platbu' })).toHaveCount(0)
 
     await docAction(page, 'Vystavit opravný doklad')
-    await confirm(page, 'Vystavit opravný doklad?', 'Vystavit')
+    await confirm(page, 'Vystavit opravný doklad', 'Vystavit')
     await expect(page).toHaveURL(/\/invoices\/\d+\/edit$/)
     const correctionId = Number(page.url().match(/invoices\/(\d+)\/edit/)![1])
     const correction = await api.get(api.acct(`/invoices/${correctionId}`))
