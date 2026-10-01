@@ -347,6 +347,9 @@ func (s *server) saveAsTemplate(ctx context.Context, in *struct {
 	if inv.DocumentType == model.DocCorrection {
 		return nil, conflict(CodeCorrectionTemplate, "a correction cannot be saved as a template")
 	}
+	if inv.DocumentType == model.DocTaxDocument {
+		return nil, conflict(CodeTaxDocumentFixed, "a tax document for a received payment cannot be saved as a template")
+	}
 	name := ""
 	if in.Body != nil {
 		name = strings.TrimSpace(in.Body.Name)

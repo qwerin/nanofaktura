@@ -101,6 +101,10 @@ func TestProformaTaxDocumentsAndFinalInvoice(t *testing.T) {
 	res, body = a.do("PATCH", invURL(a, td.ID, ""), map[string]any{"lines": []map[string]any{{"name": "x", "unit_price": 1}}})
 	assertCode(t, res, body, http.StatusConflict, "tax_document_fixed")
 	a.mustDo(http.StatusOK, "PATCH", invURL(a, td.ID, ""), map[string]any{"private_note": "ok"})
+	for _, op := range []string{"/duplicate", "/save-as-template"} {
+		res, body = a.do("POST", invURL(a, td.ID, op), nil)
+		assertCode(t, res, body, http.StatusConflict, "tax_document_fixed")
+	}
 
 	// final invoice at the delivery (April): full lines, the advance deducted
 	ts.now = day(2026, 4, 2)
