@@ -3,10 +3,10 @@ package api
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	"github.com/qwerin/nanofaktura/internal/auth"
 	"github.com/qwerin/nanofaktura/internal/billing"
@@ -41,7 +41,7 @@ func (s *server) createPayment(ctx context.Context, in *struct {
 	var res PaymentResult
 	wasPaid := false
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		m, err := loadInvoice(ctx, tx, in.ID)
+		m, err := loadInvoiceForUpdate(ctx, tx, in.ID)
 		if err != nil {
 			return err
 		}
@@ -114,7 +114,10 @@ func (s *server) deletePayment(ctx context.Context, in *struct {
 	PaymentID uint `path:"payment_id"`
 }) (*NoContent, error) {
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		m, err := loadInvoice(ctx, tx, in.ID)
+		if err := lockBankTxsOfPayment(ctx, tx, in.PaymentID); err != nil {
+			return err
+		}
+		m, err := loadInvoiceForUpdate(ctx, tx, in.ID)
 		if err != nil {
 			return err
 		}
@@ -134,10 +137,8 @@ func (s *server) deletePayment(ctx context.Context, in *struct {
 			return err
 		}
 		p := m.Payments[idx]
-		m.Payments = append(m.Payments[:idx], m.Payments[idx+1:]...)
-		applyPayments(m)
-		if err := tx.Omit(clause.Associations).Save(m).Error; err != nil {
-			return dbErr(err, "invoice")
+		if err := refreshInvoicePayments(tx, m); err != nil {
+			return err
 		}
 		return recordInvoicePayment(ctx, tx, events.PaymentDeleted, m, &p, model.StatusPaid)
 	})
@@ -155,10 +156,22 @@ func addPayment(ctx context.Context, tx *gorm.DB, m *model.Invoice, paidOn strin
 		return nil, dbErr(err, "payment")
 	}
 	prev := m.Status
-	m.Payments = append(m.Payments, p)
-	applyPayments(m)
-	if err := tx.Omit(clause.Associations).Save(m).Error; err != nil {
-		return nil, dbErr(err, "invoice")
+	if err := refreshInvoicePayments(tx, m); err != nil {
+		return nil, err
 	}
 	return &p, recordInvoicePayment(ctx, tx, events.PaymentCreated, m, &p, prev)
+}
+
+// refreshInvoicePayments reloads m's payments (the source of truth),
+// recomputes paid_amount, status and paid_on and stores only these columns,
+// so a concurrent change of other fields is never overwritten. The caller
+// holds the row lock (loadInvoiceForUpdate).
+func refreshInvoicePayments(tx *gorm.DB, m *model.Invoice) error {
+	if err := tx.Where("invoice_id = ?", m.ID).Order("paid_on, id").Find(&m.Payments).Error; err != nil {
+		return dbErr(err, "payment")
+	}
+	applyPayments(m)
+	return dbErrOrNil(tx.Model(&model.Invoice{}).Where("id = ?", m.ID).UpdateColumns(map[string]any{
+		"paid_amount": m.PaidAmount, "status": m.Status, "paid_on": m.PaidOn, "updated_at": time.Now(),
+	}).Error, "invoice")
 }

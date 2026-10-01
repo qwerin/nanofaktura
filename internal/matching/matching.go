@@ -8,10 +8,7 @@ import (
 	"strings"
 	"unicode"
 
-	"golang.org/x/text/runes"
-	"golang.org/x/text/transform"
-	"golang.org/x/text/unicode/norm"
-
+	"github.com/qwerin/nanofaktura/internal/search"
 	"github.com/qwerin/nanofaktura/internal/spayd"
 )
 
@@ -185,12 +182,10 @@ var legalForms = map[string]bool{
 	"sp": true, "zoo": true, "ro": true,
 }
 
-var stripMarks = transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
-
 // NormalizeName lower-cases, removes diacritics and punctuation and drops
 // legal forms and titles ("Žluťoučký kůň s.r.o." → "zlutoucky kun").
 func NormalizeName(s string) string {
-	s, _, _ = transform.String(stripMarks, strings.ToLower(s))
+	s = search.StripMarks(strings.ToLower(s))
 	s = strings.Map(func(r rune) rune {
 		if unicode.IsLetter(r) || unicode.IsDigit(r) {
 			return r

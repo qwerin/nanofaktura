@@ -397,6 +397,21 @@ func loadInvoice(ctx context.Context, db *gorm.DB, id uint) (*model.Invoice, err
 	return &m, nil
 }
 
+// loadInvoiceForUpdate locks the invoice row (SELECT … FOR UPDATE on
+// PostgreSQL; SQLite serialises transactions on its single connection) and
+// then loads it. Every transaction that reads, modifies and writes an
+// invoice's money or status must load it this way, so concurrent payments,
+// PATCHes, actions and bank matches of the same document run one after
+// another and each sees the result of the previous one.
+func loadInvoiceForUpdate(ctx context.Context, tx *gorm.DB, id uint) (*model.Invoice, error) {
+	var row model.Invoice
+	if err := tx.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate}).Scopes(inAccount(ctx)).
+		Select("id").First(&row, id).Error; err != nil {
+		return nil, dbErr(err, "invoice")
+	}
+	return loadInvoice(ctx, tx, id)
+}
+
 // invoiceOut reloads the invoice (inside or after a transaction) and converts it.
 func (s *server) invoiceOut(ctx context.Context, db *gorm.DB, id uint) (*Out[Invoice], error) {
 	m, err := loadInvoice(ctx, db, id)
@@ -539,7 +554,7 @@ func (s *server) patchInvoice(ctx context.Context, in *struct {
 }) (*Out[Invoice], error) {
 	p := &in.Body
 	return s.mutateInvoice(ctx, func(tx *gorm.DB) (uint, error) {
-		m, err := loadInvoice(ctx, tx, in.ID)
+		m, err := loadInvoiceForUpdate(ctx, tx, in.ID)
 		if err != nil {
 			return 0, err
 		}
@@ -625,7 +640,7 @@ func (s *server) patchInvoice(ctx context.Context, in *struct {
 func (s *server) deleteInvoice(ctx context.Context, in *invoiceID) (*NoContent, error) {
 	var files []string
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		m, err := loadInvoice(ctx, tx, in.ID)
+		m, err := loadInvoiceForUpdate(ctx, tx, in.ID)
 		if err != nil {
 			return err
 		}

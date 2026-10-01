@@ -14,6 +14,10 @@ Pravidla (viz CLAUDE.md → „Novinky“):
 - **Nainstalovat aplikaci** — v menu *Více* (na počítači v menu pod vaším jménem) přidáte NanoFakturu na plochu telefonu. Pak se otevírá jako běžná aplikace přes celou obrazovku, bez adresního řádku prohlížeče. Na iPhonu ukáže krátký návod (Sdílet → Přidat na plochu).
 - **Označit jako uhrazené hromadně** — v seznamu faktur i nákladů je v menu „…“ akce *Označit jako uhrazené*. Uhradí najednou všechny neuhrazené doklady podle aktuálního filtru, třeba všechny staré faktury do konce loňského roku. Předem uvidíte, kolik dokladů a za kolik se označí; datum úhrady je ke dni splatnosti, nebo jedno zvolené datum. Odběratelům se přitom neposílá poděkování za úhradu.
 
+### Opravy plateb a DPH
+
+- **Žádné zdvojené platby** — dvojklik na „Přidat platbu“, souběh automatického párování z banky s ruční platbou nebo práce dvou lidí na jedné faktuře už nemůže zapsat platbu dvakrát ani rozhodit uhrazenou částku. Úprava položek faktury během zápisu platby se také neztratí.
+
 ## 2026-09-30 · Záloha účtu, dvoufázové ověření, vyšší zabezpečení a Novinky
 
 - **Zapomenuté heslo** — na přihlašovací stránce klikněte na „Zapomenuté heslo?“ a do e-mailu vám přijde odkaz, přes který si nastavíte nové heslo. Odkaz platí hodinu a po změně hesla se odhlásí všechna ostatní zařízení.

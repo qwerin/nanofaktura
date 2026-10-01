@@ -27,7 +27,7 @@ func (s *server) invoiceAction(ctx context.Context, in *struct {
 	Action string `path:"action" enum:"mark_as_sent,cancel,undo_cancel,mark_as_uncollectible,undo_uncollectible,lock,unlock"`
 }) (*Out[Invoice], error) {
 	return s.mutateInvoice(ctx, func(tx *gorm.DB) (uint, error) {
-		m, err := loadInvoice(ctx, tx, in.ID)
+		m, err := loadInvoiceForUpdate(ctx, tx, in.ID)
 		if err != nil {
 			return 0, err
 		}

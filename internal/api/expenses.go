@@ -331,6 +331,18 @@ func loadExpense(ctx context.Context, db *gorm.DB, id uint) (*model.Expense, err
 	return &m, nil
 }
 
+// loadExpenseForUpdate is loadInvoiceForUpdate for expenses: it locks the
+// expense row first; use it in every transaction that changes the expense's
+// money or status.
+func loadExpenseForUpdate(ctx context.Context, tx *gorm.DB, id uint) (*model.Expense, error) {
+	var row model.Expense
+	if err := tx.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate}).Scopes(inAccount(ctx)).
+		Select("id").First(&row, id).Error; err != nil {
+		return nil, dbErr(err, "expense")
+	}
+	return loadExpense(ctx, tx, id)
+}
+
 func (s *server) getExpense(ctx context.Context, in *expenseID) (*Out[Expense], error) {
 	m, err := loadExpense(ctx, s.db.WithContext(ctx), in.ID)
 	if err != nil {
@@ -448,7 +460,7 @@ func (s *server) patchExpense(ctx context.Context, in *struct {
 }) (*Out[Expense], error) {
 	p := &in.Body
 	return s.mutateExpense(ctx, func(tx *gorm.DB) (uint, error) {
-		m, err := loadExpense(ctx, tx, in.ID)
+		m, err := loadExpenseForUpdate(ctx, tx, in.ID)
 		if err != nil {
 			return 0, err
 		}
@@ -528,7 +540,7 @@ func (s *server) patchExpense(ctx context.Context, in *struct {
 func (s *server) deleteExpense(ctx context.Context, in *expenseID) (*NoContent, error) {
 	var files []string
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		m, err := loadExpense(ctx, tx, in.ID)
+		m, err := loadExpenseForUpdate(ctx, tx, in.ID)
 		if err != nil {
 			return err
 		}
@@ -564,7 +576,7 @@ func (s *server) expenseAction(ctx context.Context, in *struct {
 	Action string `path:"action" enum:"lock,unlock"`
 }) (*Out[Expense], error) {
 	return s.mutateExpense(ctx, func(tx *gorm.DB) (uint, error) {
-		m, err := loadExpense(ctx, tx, in.ID)
+		m, err := loadExpenseForUpdate(ctx, tx, in.ID)
 		if err != nil {
 			return 0, err
 		}
@@ -590,7 +602,7 @@ func (s *server) createExpensePayment(ctx context.Context, in *struct {
 }) (*Out[ExpensePaymentResult], error) {
 	var res ExpensePaymentResult
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		m, err := loadExpense(ctx, tx, in.ID)
+		m, err := loadExpenseForUpdate(ctx, tx, in.ID)
 		if err != nil {
 			return err
 		}
@@ -627,7 +639,10 @@ func (s *server) deleteExpensePayment(ctx context.Context, in *struct {
 	PaymentID uint `path:"payment_id"`
 }) (*NoContent, error) {
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		m, err := loadExpense(ctx, tx, in.ID)
+		if err := lockBankTxsOfPayment(ctx, tx, in.PaymentID); err != nil {
+			return err
+		}
+		m, err := loadExpenseForUpdate(ctx, tx, in.ID)
 		if err != nil {
 			return err
 		}
@@ -647,10 +662,8 @@ func (s *server) deleteExpensePayment(ctx context.Context, in *struct {
 			return err
 		}
 		p := m.Payments[idx]
-		m.Payments = append(m.Payments[:idx], m.Payments[idx+1:]...)
-		applyExpensePayments(m)
-		if err := tx.Omit(clause.Associations).Save(m).Error; err != nil {
-			return dbErr(err, "expense")
+		if err := refreshExpensePayments(tx, m); err != nil {
+			return err
 		}
 		return recordExpensePayment(ctx, tx, events.ExpensePaymentDeleted, m, &p, model.StatusPaid)
 	})
@@ -670,12 +683,21 @@ func addExpensePayment(ctx context.Context, tx *gorm.DB, m *model.Expense, paidO
 		return nil, dbErr(err, "payment")
 	}
 	prev := m.Status
-	m.Payments = append(m.Payments, p)
-	applyExpensePayments(m)
-	if err := tx.Omit(clause.Associations).Save(m).Error; err != nil {
-		return nil, dbErr(err, "expense")
+	if err := refreshExpensePayments(tx, m); err != nil {
+		return nil, err
 	}
 	return &p, recordExpensePayment(ctx, tx, events.ExpensePaymentCreated, m, &p, prev)
+}
+
+// refreshExpensePayments is refreshInvoicePayments for expenses.
+func refreshExpensePayments(tx *gorm.DB, m *model.Expense) error {
+	if err := tx.Where("expense_id = ?", m.ID).Order("paid_on, id").Find(&m.Payments).Error; err != nil {
+		return dbErr(err, "payment")
+	}
+	applyExpensePayments(m)
+	return dbErrOrNil(tx.Model(&model.Expense{}).Where("id = ?", m.ID).UpdateColumns(map[string]any{
+		"paid_amount": m.PaidAmount, "status": m.Status, "paid_on": m.PaidOn, "updated_at": time.Now(),
+	}).Error, "expense")
 }
 
 func snapshotSupplier(m *model.Expense, s *model.Subject) {

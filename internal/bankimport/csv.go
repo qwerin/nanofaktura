@@ -8,11 +8,8 @@ import (
 	"io"
 	"strconv"
 	"strings"
-	"unicode"
 
-	"golang.org/x/text/runes"
-	"golang.org/x/text/transform"
-	"golang.org/x/text/unicode/norm"
+	"github.com/qwerin/nanofaktura/internal/search"
 )
 
 // CSVMapping says which CSV column holds which Transaction field.
@@ -284,14 +281,9 @@ func countUnquoted(line string, d rune) int {
 	return n
 }
 
-var foldTransformer = transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
-
 // fold normalizes a header name: lower case, no diacritics, single spaces.
 func fold(s string) string {
-	out, _, err := transform.String(foldTransformer, s)
-	if err != nil {
-		out = s
-	}
+	out := search.StripMarks(s)
 	return strings.ToLower(squash(strings.Trim(squash(out), "\"'")))
 }
 

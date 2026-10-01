@@ -14,13 +14,21 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-var stripMarks = transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+// StripMarks removes diacritics ("Žluťoučký" → "Zlutoucky"). A transform
+// chain keeps internal buffers and must not be shared between goroutines,
+// so a fresh one is built per call (cheap).
+func StripMarks(s string) string {
+	out, _, err := transform.String(transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC), s)
+	if err != nil {
+		return s
+	}
+	return out
+}
 
 // Fold lower-cases s, removes diacritics and collapses whitespace
-// ("Žluťoučký  KŮŇ" → "zlutoucky kun").
+// ("Žluťoučký  KŮŇ" → "zlutoucky kun"). Safe for concurrent use.
 func Fold(s string) string {
-	s, _, _ = transform.String(stripMarks, strings.ToLower(s))
-	return strings.Join(strings.Fields(s), " ")
+	return strings.Join(strings.Fields(StripMarks(strings.ToLower(s))), " ")
 }
 
 // Text folds and joins the non-empty parts with " | " (the separator keeps

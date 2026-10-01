@@ -623,6 +623,17 @@ func (s *server) matchTransaction(ctx context.Context, tx *gorm.DB, mt *matchCan
 	r := matching.Match(matching.Tx{Amount: m.Amount, Currency: m.Currency, VS: m.VariableSymbol,
 		CounterpartyAccount: m.CounterpartyAccount, CounterpartyName: m.CounterpartyName}, cands)
 	if allowAuto && r.Auto != nil {
+		// re-read the transaction under lock: a concurrent rematch / sync may
+		// have matched (or the user ignored) it since the candidates were loaded
+		var cur model.BankTransaction
+		if err := tx.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate}).Scopes(inAccount(ctx)).
+			First(&cur, m.ID).Error; err != nil {
+			return false, dbErr(err, "bank transaction")
+		}
+		if cur.PaymentID != nil || cur.Ignored {
+			*m = cur
+			return false, nil
+		}
 		id := r.Auto.ID
 		var err error
 		if isInvoice {
@@ -630,15 +641,19 @@ func (s *server) matchTransaction(ctx context.Context, tx *gorm.DB, mt *matchCan
 		} else {
 			err = s.linkTransaction(ctx, tx, m, nil, &id, true, nil)
 		}
-		if err != nil {
+		switch {
+		case errors.Is(err, errAutoStale):
+			r.Auto = nil // the document changed meanwhile: keep it as a suggestion only
+		case err != nil:
 			return false, err
-		}
-		for i := range cands {
-			if cands[i].ID == id {
-				cands[i].Remaining -= abs64(m.Amount)
+		default:
+			for i := range cands {
+				if cands[i].ID == id {
+					cands[i].Remaining -= abs64(m.Amount)
+				}
 			}
+			return true, nil
 		}
-		return true, nil
 	}
 	m.Suggestions = make([]model.MatchSuggestion, 0, len(r.Suggestions))
 	for _, sg := range r.Suggestions {
@@ -666,6 +681,10 @@ func abs64(v int64) int64 {
 	return v
 }
 
+// errAutoStale: an auto-match candidate no longer has exactly the
+// transaction's amount left to pay (it was paid concurrently).
+var errAutoStale = errors.New("auto-match candidate changed")
+
 // linkTransaction creates the payment of m on the invoice or expense and
 // marks m matched. Invoice payments get the signed amount (refunds of
 // corrections are negative), expense payments the opposite sign. An invoice
@@ -683,7 +702,7 @@ func (s *server) linkTransaction(ctx context.Context, tx *gorm.DB, m *model.Bank
 	}
 	switch {
 	case invoiceID != nil:
-		inv, err := loadInvoice(ctx, tx, *invoiceID)
+		inv, err := loadInvoiceForUpdate(ctx, tx, *invoiceID)
 		if err != nil {
 			return refErr(err, "invoice_id", "invoice")
 		}
@@ -692,6 +711,9 @@ func (s *server) linkTransaction(ctx context.Context, tx *gorm.DB, m *model.Bank
 		}
 		if inv.Currency != m.Currency {
 			return invalid("invoice_id", "the invoice is in "+inv.Currency+", the transaction in "+m.Currency)
+		}
+		if auto && (inv.Total-inv.PaidAmount != m.Amount || (inv.Status != model.StatusOpen && inv.Status != model.StatusSent)) {
+			return errAutoStale
 		}
 		p, err := addPayment(ctx, tx, inv, m.BookedOn, m.Amount, note)
 		if err != nil {
@@ -702,12 +724,15 @@ func (s *server) linkTransaction(ctx context.Context, tx *gorm.DB, m *model.Bank
 			*paid = append(*paid, inv.ID)
 		}
 	case expenseID != nil:
-		exp, err := loadExpense(ctx, tx, *expenseID)
+		exp, err := loadExpenseForUpdate(ctx, tx, *expenseID)
 		if err != nil {
 			return refErr(err, "expense_id", "expense")
 		}
 		if exp.Currency != m.Currency {
 			return invalid("expense_id", "the expense is in "+exp.Currency+", the transaction in "+m.Currency)
+		}
+		if auto && (exp.Total-exp.PaidAmount != -m.Amount || exp.Status != model.StatusOpen) {
+			return errAutoStale
 		}
 		p, err := addExpensePayment(ctx, tx, exp, m.BookedOn, -m.Amount, note)
 		if err != nil {
@@ -746,6 +771,15 @@ func refErr(err error, field, what string) error {
 	return err
 }
 
+// lockBankTxsOfPayment locks the bank transactions matched to a payment
+// before the payment's document is locked — the same order as unmatch
+// (transaction, then document), so the two cannot deadlock.
+func lockBankTxsOfPayment(ctx context.Context, tx *gorm.DB, paymentID uint) error {
+	var ids []uint
+	return dbErrOrNil(tx.Model(&model.BankTransaction{}).Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate}).
+		Scopes(inAccount(ctx)).Where("payment_id = ?", paymentID).Pluck("id", &ids).Error, "bank transaction")
+}
+
 // unlinkBankPayment clears the match of transactions whose payment paymentID
 // (of the document in column matched_invoice_id / matched_expense_id) is
 // being deleted.
@@ -761,7 +795,10 @@ func unlinkBankPayment(tx *gorm.DB, column string, docID, paymentID uint) error 
 func (s *server) mutateBankTx(ctx context.Context, id uint, fn func(tx *gorm.DB, m *model.BankTransaction) error) (*Out[BankTransaction], error) {
 	var m model.BankTransaction
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Scopes(inAccount(ctx)).First(&m, id).Error; err != nil {
+		// lock the transaction first (then its document): concurrent match /
+		// unmatch / rematch of one transaction must not create two payments
+		if err := tx.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate}).Scopes(inAccount(ctx)).
+			First(&m, id).Error; err != nil {
 			return dbErr(err, "bank transaction")
 		}
 		return fn(tx, &m)
@@ -824,19 +861,17 @@ func (s *server) unmatchBankTransaction(ctx context.Context, in *bankTxID) (*Out
 // removeInvoicePayment deletes a payment of an invoice (if it still exists)
 // and recomputes the invoice's paid amount and status.
 func removeInvoicePayment(ctx context.Context, tx *gorm.DB, invoiceID, paymentID uint) error {
-	inv, err := loadInvoice(ctx, tx, invoiceID)
+	inv, err := loadInvoiceForUpdate(ctx, tx, invoiceID)
 	if err != nil {
 		return err
 	}
-	for i, p := range inv.Payments {
+	for _, p := range inv.Payments {
 		if p.ID == paymentID {
 			if err := tx.Delete(&model.Payment{}, paymentID).Error; err != nil {
 				return dbErr(err, "payment")
 			}
-			inv.Payments = append(inv.Payments[:i], inv.Payments[i+1:]...)
-			applyPayments(inv)
-			if err := tx.Omit(clause.Associations).Save(inv).Error; err != nil {
-				return dbErr(err, "invoice")
+			if err := refreshInvoicePayments(tx, inv); err != nil {
+				return err
 			}
 			return recordInvoicePayment(ctx, tx, events.PaymentDeleted, inv, &p, model.StatusPaid)
 		}
@@ -846,19 +881,17 @@ func removeInvoicePayment(ctx context.Context, tx *gorm.DB, invoiceID, paymentID
 
 // removeExpensePayment is removeInvoicePayment for expenses.
 func removeExpensePayment(ctx context.Context, tx *gorm.DB, expenseID, paymentID uint) error {
-	exp, err := loadExpense(ctx, tx, expenseID)
+	exp, err := loadExpenseForUpdate(ctx, tx, expenseID)
 	if err != nil {
 		return err
 	}
-	for i, p := range exp.Payments {
+	for _, p := range exp.Payments {
 		if p.ID == paymentID {
 			if err := tx.Delete(&model.ExpensePayment{}, paymentID).Error; err != nil {
 				return dbErr(err, "payment")
 			}
-			exp.Payments = append(exp.Payments[:i], exp.Payments[i+1:]...)
-			applyExpensePayments(exp)
-			if err := tx.Omit(clause.Associations).Save(exp).Error; err != nil {
-				return dbErr(err, "expense")
+			if err := refreshExpensePayments(tx, exp); err != nil {
+				return err
 			}
 			return recordExpensePayment(ctx, tx, events.ExpensePaymentDeleted, exp, &p, model.StatusPaid)
 		}

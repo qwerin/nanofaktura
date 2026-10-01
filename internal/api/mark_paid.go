@@ -92,9 +92,12 @@ func (s *server) markInvoicesPaid(ctx context.Context, in *struct {
 				Where("status IN ? AND total <> paid_amount", []string{model.StatusOpen, model.StatusSent})
 		},
 		func(tx *gorm.DB, id uint) error {
-			m, err := loadInvoice(ctx, tx, id)
+			m, err := loadInvoiceForUpdate(ctx, tx, id)
 			if err != nil {
 				return err
+			}
+			if (m.Status != model.StatusOpen && m.Status != model.StatusSent) || m.Total == m.PaidAmount {
+				return nil // paid or closed concurrently since the ids were selected
 			}
 			_, err = addPayment(ctx, tx, m, bulkPaidOn(in.Body.PaidOn, m.DueOn, m.IssuedOn, today), m.Total-m.PaidAmount, "")
 			return err
@@ -112,9 +115,12 @@ func (s *server) markExpensesPaid(ctx context.Context, in *struct {
 				Where("status = ? AND total <> paid_amount", model.StatusOpen)
 		},
 		func(tx *gorm.DB, id uint) error {
-			m, err := loadExpense(ctx, tx, id)
+			m, err := loadExpenseForUpdate(ctx, tx, id)
 			if err != nil {
 				return err
+			}
+			if m.Status != model.StatusOpen || m.Total == m.PaidAmount {
+				return nil
 			}
 			_, err = addExpensePayment(ctx, tx, m, bulkPaidOn(in.Body.PaidOn, m.DueOn, m.IssuedOn, today), m.Total-m.PaidAmount, "")
 			return err
