@@ -615,7 +615,14 @@ func TestExpenseRegistryWarnings(t *testing.T) {
 	if got := getExp(a, e.ID); len(got.Warnings) != 2 || !strings.Contains(got.Warnings[1], "123456789/0100 není zveřejněný") {
 		t.Fatalf("warnings: %v", got.Warnings)
 	}
-	// not registered, registry failure, foreign DIČ, no DIČ → no warnings
+	// not registered but charging VAT → no deduction (tax audit L-09)
+	e = mk("12345678", "123456789/0100")
+	if got := getExp(a, e.ID); len(got.Warnings) != 1 || !strings.Contains(got.Warnings[0], "není v registru plátců DPH, ale účtuje DPH") {
+		t.Fatalf("warnings: %v", got.Warnings)
+	}
+	// not registered without VAT, registry failure, foreign DIČ, no DIČ → no warnings
+	zero := int32(0)
+	lines = []api.InvoiceLineInput{line("X", "1", 100, &zero)}
 	for _, vat := range []string{"CZ12345678", "CZ11111111", "DE811907980", ""} {
 		e = mk(vat, "123456789/0100")
 		raw := a.mustDo(http.StatusOK, "GET", expURL(a, e.ID, ""), nil)

@@ -248,6 +248,9 @@ func (r *VatReport) AddSale(s Sale) {
 			r.Warn(WarnReverseChargeNoDIC, s.Number, nil, "reverse charge without the customer's CZ DIČ")
 		}
 		r.Control.A1 = append(r.Control.A1, A1Row{CustomerVatNo: dic, Number: s.Number, TaxPointDate: s.TaxPointDate, Base: base})
+		if base != 0 {
+			r.Warn(WarnRCSubjectCode, s.Number, nil, "complete the subject code of the § 92a supply (kod_pred_pl) in section A.1 of the control statement")
+		}
 		return
 	case s.ReverseCharge && slices.Contains(EUCountries, country):
 		if !hasCountryPrefix(vatNo) {

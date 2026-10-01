@@ -110,9 +110,10 @@ func TestVatReportMixed(t *testing.T) {
 	if len(c.B2) != 1 || c.B2[0].Number != "FA-778" || c.B3.Basic != (Pair{1_000_00, 210_00}) || c.B3.Reduced != (Pair{500_00, 60_00}) {
 		t.Errorf("B %+v %+v", c.B2, c.B3)
 	}
-	// INV-9: VAT from a supplier without CZ DIČ; NP-1: a CZ VAT payer charged no VAT (exempt, or § 92a self-assessment?)
-	if len(r.Warnings) != 2 || r.Warnings[0].Document != "INV-9" || r.Warnings[0].Code != WarnSupplierNoDIC ||
-		r.Warnings[1].Document != "NP-1" || r.Warnings[1].Code != WarnPossibleRC {
+	// 2026-0004: § 92a supply, subject code to complete; INV-9: VAT from a supplier without CZ DIČ;
+	// NP-1: a CZ VAT payer charged no VAT (exempt, or § 92a self-assessment?)
+	if len(r.Warnings) != 3 || r.Warnings[0].Code != WarnRCSubjectCode || r.Warnings[1].Document != "INV-9" ||
+		r.Warnings[1].Code != WarnSupplierNoDIC || r.Warnings[2].Document != "NP-1" || r.Warnings[2].Code != WarnPossibleRC {
 		t.Errorf("warnings %v", r.Warnings)
 	}
 

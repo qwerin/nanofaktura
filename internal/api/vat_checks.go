@@ -53,6 +53,9 @@ func (s *server) expenseWarnings(ctx context.Context, m *model.Expense) []string
 		}
 		out = append(out, w)
 	}
+	if !r.Registered && m.VatTotal != 0 {
+		out = append(out, "Dodavatel není v registru plátců DPH, ale účtuje DPH – odpočet z tohoto dokladu nelze uplatnit")
+	}
 	if r.Registered && (m.SupplierBankAccount != "" || m.SupplierIBAN != "") &&
 		!r.HasAccount(m.SupplierBankAccount) && !r.HasAccount(m.SupplierIBAN) {
 		acc := m.SupplierBankAccount
