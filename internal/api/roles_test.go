@@ -66,6 +66,7 @@ func TestRoleMatrix(t *testing.T) {
 		{"POST", "/invoices" + missing + "/regenerate-public-token", nil, editors},
 		{"POST", "/invoices" + missing + "/payments", map[string]any{}, editors},
 		{"DELETE", "/invoices" + missing + "/payments/1", nil, editors},
+		{"POST", "/invoices" + missing + "/final-invoice", map[string]any{}, editors},
 		{"POST", "/invoices/mark-paid", map[string]any{"dry_run": true}, editors},
 
 		{"GET", "/members", nil, all},

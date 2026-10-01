@@ -26,6 +26,17 @@ const (
 	DocInvoice    = "invoice"
 	DocProforma   = "proforma"
 	DocCorrection = "correction"
+	// DocTaxDocument is the tax document for a received payment (daňový
+	// doklad k přijaté platbě, § 28 ZDPH), issued automatically for every
+	// payment of a VAT payer's proforma.
+	DocTaxDocument = "tax_document"
+)
+
+// Supply types of a reverse-charge document to/from another EU member state
+// (Invoice.SupplyType, Expense.SupplyType; "" = services).
+const (
+	SupplyServices = "services" // § 9 odst. 1 / § 24 — "daň odvede zákazník"
+	SupplyGoods    = "goods"    // § 64 / § 25 — exempt intra-EU supply of goods
 )
 
 // Stored invoice statuses. "overdue" is derived on read, never stored.

@@ -16,9 +16,9 @@ import (
 
 type PaymentCreate struct {
 	PaidOn             string `json:"paid_on,omitempty" format:"date" doc:"Default today"`
-	Amount             *int64 `json:"amount,omitempty" doc:"Minor units, non-zero (negative = refund); default: remaining_amount"`
+	Amount             *int64 `json:"amount,omitempty" doc:"Minor units, non-zero (negative = refund), same sign as remaining_amount; default: remaining_amount"`
 	Note               string `json:"note,omitempty" maxLength:"500"`
-	CreateFinalInvoice bool   `json:"create_final_invoice,omitempty" doc:"Proforma only: also issue the final invoice, paid by the same payment"`
+	CreateFinalInvoice bool   `json:"create_final_invoice,omitempty" doc:"Proforma only: also issue the final invoice dated paid_on; it takes over all proforma payments (a partial payment leaves the rest due on the final invoice) and settles the proforma"`
 }
 
 // PaymentResult is the created payment, the updated invoice and, with
@@ -27,6 +27,7 @@ type PaymentResult struct {
 	Payment        Payment `json:"payment"`
 	Invoice        Invoice `json:"invoice"`
 	FinalInvoiceID *uint   `json:"final_invoice_id,omitempty"`
+	TaxDocumentID  *uint   `json:"tax_document_id,omitempty" doc:"Tax document issued for the received proforma payment (VAT payers)"`
 }
 
 func (s *server) registerPayments(g huma.API) {
@@ -38,6 +39,11 @@ func (s *server) createPayment(ctx context.Context, in *struct {
 	ID   uint `path:"id"`
 	Body PaymentCreate
 }) (*Out[PaymentResult], error) {
+	paidOn := defaultStr(in.Body.PaidOn, s.today())
+	if !billing.ValidDate(paidOn) {
+		return nil, invalid("paid_on", "invalid date")
+	}
+	ctx = s.withInvoiceRate(ctx, in.ID, paidOn) // tax document / final invoice of a foreign-currency proforma
 	var res PaymentResult
 	wasPaid := false
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -52,42 +58,28 @@ func (s *server) createPayment(ctx context.Context, in *struct {
 		if in.Body.CreateFinalInvoice && m.DocumentType != model.DocProforma {
 			return invalid("create_final_invoice", "a final invoice can only be created for a proforma")
 		}
-		paidOn := defaultStr(in.Body.PaidOn, s.today())
-		if !billing.ValidDate(paidOn) {
-			return invalid("paid_on", "invalid date")
-		}
-		amount := m.Total - m.PaidAmount
+		remaining := m.Total - m.PaidAmount
+		amount := remaining
 		if in.Body.Amount != nil {
 			if amount = *in.Body.Amount; amount == 0 {
 				return invalid("amount", "amount must not be zero")
+			}
+			if remaining != 0 && (amount > 0) != (remaining > 0) {
+				return invalid("amount", "the amount must have the same sign as the remaining amount (a refund of a credit note is negative)")
 			}
 		} else if amount == 0 {
 			return conflict(CodeNothingToPay, "nothing to pay: the remaining amount is 0")
 		}
 
-		p, err := addPayment(ctx, tx, m, paidOn, amount, in.Body.Note)
+		p, err := s.addPayment(ctx, tx, m, paidOn, amount, in.Body.Note)
 		if err != nil {
 			return err
 		}
-		res.Payment = toPayment(p)
+		res.Payment, res.TaxDocumentID = toPayment(p), p.TaxDocumentID
 
 		if in.Body.CreateFinalInvoice {
-			var n int64
-			if err := tx.Model(&model.Invoice{}).Scopes(inAccount(ctx)).
-				Where("related_id = ? AND document_type = ?", m.ID, model.DocInvoice).Count(&n).Error; err != nil {
-				return dbErr(err, "invoice")
-			}
-			if n > 0 {
-				return conflict(CodeFinalExists, "a final invoice for this proforma already exists")
-			}
-			body := copyInvoice(m, model.DocInvoice, true, false)
-			body.RelatedID, body.IssuedOn = &m.ID, paidOn
-			body.InvoiceSnapshotFields.YourVatMode = nil // the final invoice follows the current VAT mode
-			fin, err := s.createInvoiceTx(ctx, tx, &body)
+			fin, err := s.createFinalInvoice(ctx, tx, m, paidOn, paidOn, s.advanceRate(ctx, m, paidOn))
 			if err != nil {
-				return err
-			}
-			if _, err := addPayment(ctx, tx, fin, paidOn, amount, in.Body.Note); err != nil {
 				return err
 			}
 			res.FinalInvoiceID = &fin.ID
@@ -103,7 +95,8 @@ func (s *server) createPayment(ctx context.Context, in *struct {
 	if err != nil {
 		return nil, err
 	}
-	if !wasPaid && res.Invoice.Status == model.StatusPaid {
+	// a proforma settled by a partial payment is "paid" without being paid in full
+	if !wasPaid && res.Invoice.Status == model.StatusPaid && (res.FinalInvoiceID == nil || res.Invoice.RemainingAmount == 0) {
 		s.sendPaidThanks(ctx, res.Invoice.ID) // best effort, after commit
 	}
 	return &Out[PaymentResult]{Body: res}, nil
@@ -121,26 +114,11 @@ func (s *server) deletePayment(ctx context.Context, in *struct {
 		if err != nil {
 			return err
 		}
-		idx := -1
-		for i, p := range m.Payments {
-			if p.ID == in.PaymentID {
-				idx = i
-			}
-		}
-		if idx < 0 {
+		found, err := s.removePayment(ctx, tx, m, in.PaymentID)
+		if err == nil && !found {
 			return notFound("payment")
 		}
-		if err := tx.Delete(&model.Payment{}, in.PaymentID).Error; err != nil {
-			return dbErr(err, "payment")
-		}
-		if err := unlinkBankPayment(tx, "matched_invoice_id", m.ID, in.PaymentID); err != nil {
-			return err
-		}
-		p := m.Payments[idx]
-		if err := refreshInvoicePayments(tx, m); err != nil {
-			return err
-		}
-		return recordInvoicePayment(ctx, tx, events.PaymentDeleted, m, &p, model.StatusPaid)
+		return err
 	})
 	if err != nil {
 		return nil, err
@@ -148,12 +126,22 @@ func (s *server) deletePayment(ctx context.Context, in *struct {
 	return &NoContent{}, nil
 }
 
-// addPayment stores a payment of m, recomputes m's paid amount and status
-// and records payment.created (+ invoice.paid when it got fully paid).
-func addPayment(ctx context.Context, tx *gorm.DB, m *model.Invoice, paidOn string, amount int64, note string) (*model.Payment, error) {
+// addPayment stores a payment of m (locked), recomputes m's paid amount and
+// status and records payment.created (+ invoice.paid when it got fully
+// paid). A proforma payment of a VAT payer also issues its tax document;
+// a settled proforma (with a final invoice) takes no more payments.
+func (s *server) addPayment(ctx context.Context, tx *gorm.DB, m *model.Invoice, paidOn string, amount int64, note string) (*model.Payment, error) {
+	if err := checkNotSettled(ctx, tx, m); err != nil {
+		return nil, err
+	}
 	p := model.Payment{AccountID: m.AccountID, InvoiceID: m.ID, PaidOn: paidOn, Amount: amount, Note: note}
 	if err := tx.Create(&p).Error; err != nil {
 		return nil, dbErr(err, "payment")
+	}
+	if issuesTaxDocuments(m) {
+		if err := s.issueTaxDocument(ctx, tx, m, &p); err != nil {
+			return nil, err
+		}
 	}
 	prev := m.Status
 	if err := refreshInvoicePayments(tx, m); err != nil {

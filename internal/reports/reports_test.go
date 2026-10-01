@@ -72,12 +72,12 @@ func mixedReport() *VatReport {
 	r.AddSale(Sale{Number: "2026-0006", TaxPointDate: "2026-09-08", CustomerCountry: "US",
 		Recap: []RateAmount{{0, 20_000_00, 0}}, Total: 20_000_00})
 	// purchases: big → B.2, small → B.3, foreign → skipped, without VAT → ignored
-	r.AddPurchase(Purchase{Number: "FA-778", TaxPointDate: "2026-09-10", SupplierVatNo: "CZ27074358",
+	r.AddPurchase(Purchase{Deductible: true, Number: "FA-778", TaxPointDate: "2026-09-10", SupplierVatNo: "CZ27074358",
 		Recap: []RateAmount{{2100, 20_000_00, 4_200_00}}, Total: 24_200_00})
-	r.AddPurchase(Purchase{Number: "UCT-1", TaxPointDate: "2026-09-11", SupplierVatNo: "CZ27074358",
+	r.AddPurchase(Purchase{Deductible: true, Number: "UCT-1", TaxPointDate: "2026-09-11", SupplierVatNo: "CZ27074358",
 		Recap: []RateAmount{{2100, 1_000_00, 210_00}, {1200, 500_00, 60_00}}, Total: 1_770_00})
-	r.AddPurchase(Purchase{Number: "INV-9", SupplierVatNo: "DE811907980", Recap: []RateAmount{{2100, 100_00, 21_00}}, Total: 121_00})
-	r.AddPurchase(Purchase{Number: "NP-1", SupplierVatNo: "CZ12345678", Recap: []RateAmount{{0, 100_00, 0}}, Total: 100_00})
+	r.AddPurchase(Purchase{Deductible: true, Number: "INV-9", SupplierVatNo: "DE811907980", Recap: []RateAmount{{2100, 100_00, 21_00}}, Total: 121_00})
+	r.AddPurchase(Purchase{Deductible: true, Number: "NP-1", SupplierVatNo: "CZ12345678", Recap: []RateAmount{{0, 100_00, 0}}, Total: 100_00})
 	r.Finish()
 	return r
 }
@@ -110,14 +110,16 @@ func TestVatReportMixed(t *testing.T) {
 	if len(c.B2) != 1 || c.B2[0].Number != "FA-778" || c.B3.Basic != (Pair{1_000_00, 210_00}) || c.B3.Reduced != (Pair{500_00, 60_00}) {
 		t.Errorf("B %+v %+v", c.B2, c.B3)
 	}
-	if len(r.Warnings) != 1 || r.Warnings[0].Document != "INV-9" || r.Warnings[0].Code == "" {
+	// INV-9: VAT from a supplier without CZ DIČ; NP-1: a CZ VAT payer charged no VAT (exempt, or § 92a self-assessment?)
+	if len(r.Warnings) != 2 || r.Warnings[0].Document != "INV-9" || r.Warnings[0].Code != WarnSupplierNoDIC ||
+		r.Warnings[1].Document != "NP-1" || r.Warnings[1].Code != WarnPossibleRC {
 		t.Errorf("warnings %v", r.Warnings)
 	}
 
 	// excess deduction
 	p, _ := ParsePeriod("2026-Q1")
 	r2 := NewVatReport(p)
-	r2.AddPurchase(Purchase{Number: "X", SupplierVatNo: "CZ27074358", Recap: []RateAmount{{2100, 100_00, 21_00}, {1500, 100_00, 15_00}}, Total: 236_00})
+	r2.AddPurchase(Purchase{Deductible: true, Number: "X", SupplierVatNo: "CZ27074358", Recap: []RateAmount{{2100, 100_00, 21_00}, {1500, 100_00, 15_00}}, Total: 236_00})
 	r2.Finish()
 	if r2.Return.R65 != 21_00 || r2.Return.R64 != 0 || len(r2.Warnings) != 1 {
 		t.Errorf("excess deduction %+v %v", r2.Return, r2.Warnings)

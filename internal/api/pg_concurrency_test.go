@@ -180,3 +180,33 @@ func TestPGConcurrentRematch(t *testing.T) {
 		t.Errorf("dashboard: %v", d)
 	}
 }
+
+// Money C-01 + tax H-03: concurrent payments / bulk mark-paid of a VAT
+// payer's proforma create one payment and one tax document.
+func TestPGConcurrentProformaPayments(t *testing.T) {
+	ts := newPGTestServer(t)
+	a := ts.signup("a@example.cz", "Firma A")
+	setVatPayer(a)
+	acme := newSubject(a, api.SubjectCreate{Name: "ACME"})
+	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("X", "1", 100000, i32(2100))}})
+	parallel(8, func(i int) {
+		if i%2 == 0 {
+			a.do("POST", invURL(a, pro.ID, "/payments"), map[string]any{})
+		} else {
+			a.do("POST", a.acct("/invoices/mark-paid"), map[string]any{})
+		}
+	})
+	m := assertPaymentsConsistent(t, ts, pro.ID)
+	var tds int64
+	ts.db.Model(&model.Invoice{}).Where("related_id = ? AND document_type = ?", pro.ID, model.DocTaxDocument).Count(&tds)
+	if m.PaidAmount != 121000 || tds != 1 {
+		t.Fatalf("proforma paid %d, tax documents %d", m.PaidAmount, tds)
+	}
+	// the reports' SQL runs on PostgreSQL too
+	if o := overview(a); o.IncomeTax.Income != 100000 {
+		t.Fatalf("income %+v", o.IncomeTax)
+	}
+	if v := vatReport(a, "2026-03"); v.Return.R1.Vat != 21000 {
+		t.Fatalf("vat %+v", v.Return.R1)
+	}
+}

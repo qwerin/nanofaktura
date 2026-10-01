@@ -99,7 +99,7 @@ func (s *server) markInvoicesPaid(ctx context.Context, in *struct {
 			if (m.Status != model.StatusOpen && m.Status != model.StatusSent) || m.Total == m.PaidAmount {
 				return nil // paid or closed concurrently since the ids were selected
 			}
-			_, err = addPayment(ctx, tx, m, bulkPaidOn(in.Body.PaidOn, m.DueOn, m.IssuedOn, today), m.Total-m.PaidAmount, "")
+			_, err = s.addPayment(ctx, tx, m, bulkPaidOn(in.Body.PaidOn, m.DueOn, m.IssuedOn, today), m.Total-m.PaidAmount, "")
 			return err
 		})
 }

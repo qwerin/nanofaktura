@@ -54,7 +54,7 @@ func TestInvoicePDF(t *testing.T) {
 	assertError(t, res, body, http.StatusUnprocessableEntity, "template")
 
 	// correction refers to the original number
-	corr := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, inv.ID, "/correction"), nil)
+	corr := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, inv.ID, "/correction"), map[string]any{"correction_reason": "Vrácení zboží"})
 	res, body = a.do("GET", invURL(a, corr.ID, "/pdf"), nil)
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("correction pdf: %d %s", res.StatusCode, body)

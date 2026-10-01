@@ -70,6 +70,17 @@ const (
 	lPayCard              = "pay_card"
 	lPayCOD               = "pay_cod"
 	lPayPaypal            = "pay_paypal"
+	lTitleTaxDocument     = "title_tax_document"
+	lTitleTaxDocumentCorr = "title_tax_document_corr"
+	lSubAdvanceFor        = "sub_advance_for"
+	lExemptGoods          = "exempt_goods"
+	lCorrectionReason     = "correction_reason"
+	lCZKRecap             = "czk_recap"
+	lDeposits             = "deposits"
+	lVatAfterDeposits     = "vat_after_deposits"
+	lLocalVatNo           = "local_vat_no"
+	lRCRate               = "rc_rate"
+	lDocument             = "document"
 )
 
 // translations: key → language → text. Format verbs (%s) are filled by the caller.
@@ -128,6 +139,24 @@ var translations = map[string]map[string]string{
 	lPayCard:              {"cs": "Platební karta", "en": "Card", "sk": "Platobná karta", "de": "Karte"},
 	lPayCOD:               {"cs": "Dobírka", "en": "Cash on delivery", "sk": "Dobierka", "de": "Nachnahme"},
 	lPayPaypal:            {"cs": "PayPal", "en": "PayPal", "sk": "PayPal", "de": "PayPal"},
+	lTitleTaxDocument: {"cs": "Daňový doklad k přijaté platbě", "en": "Tax document for a received payment",
+		"sk": "Daňový doklad k prijatej platbe", "de": "Steuerbeleg über erhaltene Anzahlung"},
+	lTitleTaxDocumentCorr: {"cs": "Opravný daňový doklad k přijaté platbě", "en": "Corrective tax document for a received payment",
+		"sk": "Opravný daňový doklad k prijatej platbe", "de": "Korrektur des Steuerbelegs über erhaltene Anzahlung"},
+	lSubAdvanceFor: {"cs": "K zálohové faktuře č. %s", "en": "For proforma invoice No. %s", "sk": "K zálohovej faktúre č. %s",
+		"de": "Zur Vorauszahlungsrechnung Nr. %s"},
+	lExemptGoods: {"cs": "Osvobozeno od daně – dodání zboží do jiného členského státu (§ 64 zákona o DPH)",
+		"en": "VAT exempt intra-Community supply of goods (Art. 138 of Directive 2006/112/EC)",
+		"sk": "Oslobodené od dane – dodanie tovaru do iného členského štátu (čl. 138 smernice 2006/112/ES)",
+		"de": "Steuerfreie innergemeinschaftliche Lieferung (Art. 138 MwStSystRL)"},
+	lCorrectionReason: {"cs": "Důvod opravy: %s", "en": "Reason for the correction: %s", "sk": "Dôvod opravy: %s", "de": "Grund der Korrektur: %s"},
+	lCZKRecap: {"cs": "DPH v Kč (kurz ČNB 1 %s = %s Kč)", "en": "VAT in CZK (CNB rate 1 %s = %s CZK)",
+		"sk": "DPH v CZK (kurz ČNB 1 %s = %s CZK)", "de": "USt. in CZK (Kurs der ČNB 1 %s = %s CZK)"},
+	lDeposits:         {"cs": "Odpočet záloh", "en": "Advance payments deducted", "sk": "Odpočet záloh", "de": "Abzug der Anzahlungen"},
+	lVatAfterDeposits: {"cs": "DPH po odpočtu záloh", "en": "VAT after deducting advances", "sk": "DPH po odpočte záloh", "de": "USt. nach Abzug der Anzahlungen"},
+	lLocalVatNo:       {"cs": "IČ DPH", "en": "VAT ID", "sk": "IČ DPH", "de": "USt-IdNr. (SK)"},
+	lRCRate:           {"cs": "PDP", "en": "RC", "sk": "PDP", "de": "RC"},
+	lDocument:         {"cs": "Doklad", "en": "Document", "sk": "Doklad", "de": "Beleg"},
 }
 
 var countryNames = map[string]map[string]string{
@@ -266,6 +295,16 @@ func (l locale) quantity(milli int64) string {
 	th, dec := l.separators()
 	s := sign + groupDigits(intPart, th)
 	if frac != "" {
+		s += dec + frac
+	}
+	return s
+}
+
+// rate formats an exchange rate of billing.ParseRate ("24,355"; en "24.355").
+func (l locale) rate(r int64) string {
+	_, dec := l.separators()
+	s := strconv.FormatInt(r/billing.RateScale, 10)
+	if frac := strings.TrimRight(fmt.Sprintf("%06d", r%billing.RateScale), "0"); frac != "" {
 		s += dec + frac
 	}
 	return s

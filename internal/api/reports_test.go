@@ -25,7 +25,7 @@ func TestVatReport(t *testing.T) {
 	createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("Kniha", "1", 100_000, i32(1200))}})
 	createInv(a, api.InvoiceCreate{SubjectID: muller.ID, ReverseCharge: true, Lines: []api.InvoiceLineInput{line("Služby", "1", 5_000_000, i32(2100))}})
 	createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Currency: "EUR", ExchangeRate: "25", Lines: []api.InvoiceLineInput{line("Licence", "1", 100_000, i32(2100))}})
-	corr := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, inv1.ID, "/correction"), nil)
+	corr := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, inv1.ID, "/correction"), map[string]any{"correction_reason": "Vrácení zboží"})
 	a.mustDo(http.StatusOK, "PATCH", invURL(a, corr.ID, ""), map[string]any{
 		"lines": []api.InvoiceLineInput{line("Sleva", "-0.1", 10_000_000, i32(2100))}})
 	// excluded: cancelled, proforma, other period, other account
@@ -54,10 +54,11 @@ func TestVatReport(t *testing.T) {
 	if v.R21 != 5_000_000 || v.R25 != 0 || v.R26 != 0 {
 		t.Errorf("r21 %d r25 %d r26 %d", v.R21, v.R25, v.R26)
 	}
-	if v.R40 != (reports.Pair{Base: 2_100_000, Vat: 441_000}) || v.R41 != (reports.Pair{}) || v.R46 != 441_000 {
+	// UC-2 is not tax-deductible for income tax, but its VAT is deducted (vat_deductible defaults to true)
+	if v.R40 != (reports.Pair{Base: 2_100_000, Vat: 441_000}) || v.R41 != (reports.Pair{Base: 100_000, Vat: 12_000}) || v.R46 != 453_000 {
 		t.Errorf("r40 %+v r41 %+v", v.R40, v.R41)
 	}
-	if v.R62 != 2_427_000 || v.R63 != 441_000 || v.R64 != 1_986_000 || v.R65 != 0 {
+	if v.R62 != 2_427_000 || v.R63 != 453_000 || v.R64 != 1_974_000 || v.R65 != 0 {
 		t.Errorf("r62–65 %+v", v)
 	}
 	c := r.Control
@@ -109,7 +110,7 @@ func TestVatReport(t *testing.T) {
 		t.Fatalf("dphdp3: %d %v %s", res.StatusCode, res.Header, body)
 	}
 	for _, want := range []string{`<DPHDP3 verzePis="03.01.03">`, `obrat23="115000"`, `dan23="24150"`, `pln_sluzby="50000"`,
-		`c_ufo="451"`, `dic="12345678"`, `dano_da="19860"`, `mesic="3"`} {
+		`c_ufo="451"`, `dic="12345678"`, `dano_da="19740"`, `mesic="3"`} {
 		if !bytes.Contains(body, []byte(want)) {
 			t.Errorf("dphdp3 lacks %s:\n%s", want, body)
 		}

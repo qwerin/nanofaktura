@@ -241,6 +241,16 @@ var documentNames = map[string]map[string][2]string{ // type → lang → {lower
 		"sk": {"zálohová faktúra", "Zálohová faktúra"}, "de": {"Proformarechnung", "Proformarechnung"}},
 	model.DocCorrection: {"cs": {"opravný daňový doklad", "Opravný daňový doklad"}, "en": {"credit note", "Credit note"},
 		"sk": {"opravný daňový doklad", "Opravný daňový doklad"}, "de": {"Rechnungskorrektur", "Rechnungskorrektur"}},
+	model.DocTaxDocument: {"cs": {"daňový doklad k přijaté platbě", "Daňový doklad k přijaté platbě"},
+		"en": {"tax document for a received payment", "Tax document for a received payment"},
+		"sk": {"daňový doklad k prijatej platbe", "Daňový doklad k prijatej platbe"},
+		"de": {"Steuerbeleg über erhaltene Anzahlung", "Steuerbeleg über erhaltene Anzahlung"}},
+}
+
+// nonPayerCorrection: a non-payer's correction is an "opravná faktura" (no tax document).
+var nonPayerCorrection = map[string][2]string{
+	"cs": {"opravná faktura", "Opravná faktura"}, "sk": {"opravná faktúra", "Opravná faktúra"},
+	"en": {"credit note", "Credit note"}, "de": {"Gutschrift", "Gutschrift"},
 }
 
 // emailLang is the e-mail language of an invoice: the document language
@@ -258,6 +268,9 @@ func (s *server) emailVars(acc *model.Account, inv *model.Invoice, today string)
 	names := documentNames[inv.DocumentType][lang]
 	if names[0] == "" {
 		names = documentNames[model.DocInvoice][lang]
+	}
+	if inv.DocumentType == model.DocCorrection && inv.YourVatMode != model.VatModePayer {
+		names = nonPayerCorrection[lang]
 	}
 	overdue := 0
 	if inv.DueOn != "" && inv.DueOn < today {

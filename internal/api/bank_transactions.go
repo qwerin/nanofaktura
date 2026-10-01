@@ -265,6 +265,7 @@ func (s *server) importBankStatement(ctx context.Context, in *struct {
 		return nil, invalid("file", "cannot read the statement: "+err.Error())
 	}
 	var res BankImportResult
+	ctx = s.withStatementRates(ctx, &ba, st)
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		res, err = s.storeStatement(ctx, tx, &ba, st)
 		return err
@@ -321,6 +322,7 @@ func (s *server) syncBankAccount(ctx context.Context, ba *model.BankAccount, now
 		return BankImportResult{}, fioErr(err)
 	}
 	var res BankImportResult
+	ctx = s.withStatementRates(ctx, ba, st)
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if res, err = s.storeStatement(ctx, tx, ba, st); err != nil {
 			return err
@@ -715,7 +717,7 @@ func (s *server) linkTransaction(ctx context.Context, tx *gorm.DB, m *model.Bank
 		if auto && (inv.Total-inv.PaidAmount != m.Amount || (inv.Status != model.StatusOpen && inv.Status != model.StatusSent)) {
 			return errAutoStale
 		}
-		p, err := addPayment(ctx, tx, inv, m.BookedOn, m.Amount, note)
+		p, err := s.addPayment(ctx, tx, inv, m.BookedOn, m.Amount, note)
 		if err != nil {
 			return err
 		}
@@ -818,6 +820,10 @@ func (s *server) matchBankTransaction(ctx context.Context, in *struct {
 		return nil, invalid("invoice_id", "send exactly one of invoice_id and expense_id")
 	}
 	var paid []uint
+	var cur model.BankTransaction
+	if err := s.scoped(ctx).Select("id", "currency", "booked_on").First(&cur, in.ID).Error; err == nil {
+		ctx = s.withRates(ctx, fxKey{cur.Currency, cur.BookedOn})
+	}
 	out, err := s.mutateBankTx(ctx, in.ID, func(tx *gorm.DB, m *model.BankTransaction) error {
 		if m.PaymentID != nil {
 			return conflict(CodeAlreadyMatched, "the transaction is already matched; unmatch it first")
@@ -838,7 +844,7 @@ func (s *server) unmatchBankTransaction(ctx context.Context, in *bankTxID) (*Out
 		label := docLabel(ctx, tx, m.MatchedInvoiceID, m.MatchedExpenseID)
 		switch {
 		case m.MatchedInvoiceID != nil:
-			if err := removeInvoicePayment(ctx, tx, *m.MatchedInvoiceID, *m.PaymentID); err != nil {
+			if err := s.removeInvoicePayment(ctx, tx, *m.MatchedInvoiceID, *m.PaymentID); err != nil {
 				return err
 			}
 		case m.MatchedExpenseID != nil:
@@ -860,23 +866,13 @@ func (s *server) unmatchBankTransaction(ctx context.Context, in *bankTxID) (*Out
 
 // removeInvoicePayment deletes a payment of an invoice (if it still exists)
 // and recomputes the invoice's paid amount and status.
-func removeInvoicePayment(ctx context.Context, tx *gorm.DB, invoiceID, paymentID uint) error {
+func (s *server) removeInvoicePayment(ctx context.Context, tx *gorm.DB, invoiceID, paymentID uint) error {
 	inv, err := loadInvoiceForUpdate(ctx, tx, invoiceID)
 	if err != nil {
 		return err
 	}
-	for _, p := range inv.Payments {
-		if p.ID == paymentID {
-			if err := tx.Delete(&model.Payment{}, paymentID).Error; err != nil {
-				return dbErr(err, "payment")
-			}
-			if err := refreshInvoicePayments(tx, inv); err != nil {
-				return err
-			}
-			return recordInvoicePayment(ctx, tx, events.PaymentDeleted, inv, &p, model.StatusPaid)
-		}
-	}
-	return nil
+	_, err = s.removePayment(ctx, tx, inv, paymentID)
+	return err
 }
 
 // removeExpensePayment is removeInvoicePayment for expenses.
@@ -927,6 +923,7 @@ func (s *server) unignoreBankTransaction(ctx context.Context, in *bankTxID) (*Ou
 func (s *server) rematchBankTransactions(ctx context.Context, _ *struct{}) (*Out[RematchResult], error) {
 	var res RematchResult
 	var paid []uint
+	ctx = s.withUnmatchedRates(ctx)
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var txs []model.BankTransaction
 		if err := tx.Scopes(inAccount(ctx)).Where("payment_id IS NULL AND ignored = ?", false).

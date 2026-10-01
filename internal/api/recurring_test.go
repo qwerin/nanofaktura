@@ -180,7 +180,7 @@ func TestSaveAsTemplate(t *testing.T) {
 		t.Fatalf("total %d, want %d", again.Total, inv.Total)
 	}
 
-	corr := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, inv.ID, "/correction"), nil)
+	corr := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, inv.ID, "/correction"), map[string]any{"correction_reason": "Vrácení zboží"})
 	res, body := a.do("POST", invURL(a, corr.ID, "/save-as-template"), nil)
 	assertError(t, res, body, http.StatusConflict, "correction")
 	res, body = a.do("POST", invURL(a, 99999, "/save-as-template"), nil)

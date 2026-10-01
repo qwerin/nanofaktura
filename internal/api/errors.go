@@ -80,6 +80,12 @@ const (
 	CodeNotInstanceAdmin         = "not_instance_admin"
 	CodeVerificationExpired      = "verification_expired"
 	CodeEmailVerified            = "email_already_verified"
+	CodeProformaSettled          = "proforma_settled"
+	CodeAdvancePayment           = "advance_payment"
+	CodeTaxDocumentFixed         = "tax_document_fixed"
+	CodeCurrencyHasPayments      = "currency_has_payments"
+	CodeCorrectionRequired       = "correction_required"
+	CodeMonthlyControlStatement  = "monthly_control_statement"
 )
 
 // statusCodes are the generic codes of errors created without apiError.

@@ -138,37 +138,57 @@ func DPHDP3(r *VatReport, tp Taxpayer, opt EPOOptions) ([]byte, error) {
 	d.attrs.set("typ_platce", "P")
 	d.attrs.set("dapdph_forma", "B")
 	d.attrs.set("d_poddp", opt.Filed.Format("02.01.2006"))
+	v := r.Return
 	trans := "N"
-	if r.Return.R1.Base != 0 || r.Return.R2.Base != 0 || r.Return.R21 != 0 || r.Return.R25 != 0 || r.Return.R26 != 0 {
+	if v.R1.Base != 0 || v.R2.Base != 0 || v.R20 != 0 || v.R21 != 0 || v.R25 != 0 || v.R26 != 0 {
 		trans = "A"
 	}
 	d.attrs.set("trans", trans)
 
-	v := r.Return
 	vety := []veta{d, p}
 	v1 := veta{name: "Veta1"}
-	v1.attrs.setKc("obrat23", v.R1.Base)
-	v1.attrs.setKc("dan23", v.R1.Vat)
-	v1.attrs.setKc("obrat5", v.R2.Base)
-	v1.attrs.setKc("dan5", v.R2.Vat)
+	pair := func(base, vat string, x Pair) {
+		v1.attrs.setKc(base, x.Base)
+		v1.attrs.setKc(vat, x.Vat)
+	}
+	pair("obrat23", "dan23", v.R1)
+	pair("obrat5", "dan5", v.R2)
+	pair("p_zb23", "dan_pzb23", v.R3)
+	pair("p_zb5", "dan_pzb5", v.R4)
+	pair("p_sl23_e", "dan_psl23_e", v.R5)
+	pair("p_sl5_e", "dan_psl5_e", v.R6)
+	pair("rez_pren23", "dan_rpren23", v.R10)
+	pair("rez_pren5", "dan_rpren5", v.R11)
+	pair("p_sl23_z", "dan_psl23_z", v.R12)
+	pair("p_sl5_z", "dan_psl5_z", v.R13)
 	v2 := veta{name: "Veta2"}
+	v2.attrs.setKc("dod_zb", v.R20)
 	v2.attrs.setKc("pln_sluzby", v.R21)
 	v2.attrs.setKc("pln_rez_pren", v.R25)
 	v2.attrs.setKc("pln_ost", v.R26)
+	// Row 46 and 62–65 from the rounded rows, as the form computes them.
+	odp := roundKc(v.R40.Vat) + roundKc(v.R41.Vat) + roundKc(v.R43.Vat) + roundKc(v.R44.Vat)
 	v4 := veta{name: "Veta4"}
 	v4.attrs.setKc("pln23", v.R40.Base)
 	v4.attrs.setKc("odp_tuz23_nar", v.R40.Vat)
 	v4.attrs.setKc("pln5", v.R41.Base)
 	v4.attrs.setKc("odp_tuz5_nar", v.R41.Vat)
-	v4.attrs.setKc("odp_sum_nar", v.R46)
+	v4.attrs.setKc("nar_zdp23", v.R43.Base)
+	v4.attrs.setKc("od_zdp23", v.R43.Vat)
+	v4.attrs.setKc("nar_zdp5", v.R44.Base)
+	v4.attrs.setKc("od_zdp5", v.R44.Vat)
+	if odp != 0 {
+		v4.attrs.set("odp_sum_nar", strconv.FormatInt(odp, 10))
+	}
 	for _, x := range []veta{v1, v2, v4} {
 		if len(x.attrs) > 0 {
 			vety = append(vety, x)
 		}
 	}
-	// Row 62–65 from the rounded rows, as the form computes them.
-	dan := roundKc(v.R1.Vat) + roundKc(v.R2.Vat)
-	odp := roundKc(v.R40.Vat) + roundKc(v.R41.Vat)
+	var dan int64
+	for _, x := range []Pair{v.R1, v.R2, v.R3, v.R4, v.R5, v.R6, v.R10, v.R11, v.R12, v.R13} {
+		dan += roundKc(x.Vat)
+	}
 	v6 := veta{name: "Veta6"}
 	v6.attrs.set("dan_zocelk", strconv.FormatInt(dan, 10))
 	v6.attrs.set("odp_zocelk", strconv.FormatInt(odp, 10))
@@ -208,6 +228,16 @@ func DPHKH1(r *VatReport, tp Taxpayer, opt EPOOptions) ([]byte, error) {
 		v.attrs = append(v.attrs, xml.Attr{Name: xml.Name{Local: "kod_pred_pl"}, Value: ""})
 		vety = append(vety, v)
 	}
+	for i, a := range c.A2 {
+		v := veta{name: "VetaA2"}
+		v.attrs.set("c_radku", strconv.Itoa(i+1))
+		v.attrs.set("k_stat", a.Country)
+		v.attrs.set("vatid_dod", a.VatID)
+		v.attrs.set("c_evid_dd", a.Number)
+		v.attrs.set("dppd", epoDate(a.TaxPointDate))
+		v.attrs = append(v.attrs, sumsVeta("", a.RateSums).attrs...)
+		vety = append(vety, v)
+	}
 	for i, a := range c.A4 {
 		v := documentVeta("VetaA4", "dic_odb", i, a)
 		v.attrs.set("kod_rezim_pl", "0")
@@ -216,6 +246,17 @@ func DPHKH1(r *VatReport, tp Taxpayer, opt EPOOptions) ([]byte, error) {
 	}
 	if a5 := sumsVeta("VetaA5", c.A5); len(a5.attrs) > 0 {
 		vety = append(vety, a5)
+	}
+	for i, b := range c.B1 {
+		v := veta{name: "VetaB1"}
+		v.attrs.set("c_radku", strconv.Itoa(i+1))
+		v.attrs.set("dic_dod", b.SupplierVatNo)
+		v.attrs.set("c_evid_dd", b.Number)
+		v.attrs.set("duzp", epoDate(b.TaxPointDate))
+		v.attrs = append(v.attrs, sumsVeta("", b.RateSums).attrs...)
+		// the subject code of the § 92a supply is not recorded; complete it in the EPO form
+		v.attrs = append(v.attrs, xml.Attr{Name: xml.Name{Local: "kod_pred_pl"}, Value: ""})
+		vety = append(vety, v)
 	}
 	for i, b := range c.B2 {
 		v := documentVeta("VetaB2", "dic_dod", i, b)
@@ -244,12 +285,23 @@ func DPHKH1(r *VatReport, tp Taxpayer, opt EPOOptions) ([]byte, error) {
 	for _, a := range c.A1 {
 		rc += a.Base
 	}
+	var b1Basic, b1Reduced, a2 int64
+	for _, b := range c.B1 {
+		b1Basic += b.Basic.Base
+		b1Reduced += b.Reduced.Base
+	}
+	for _, a := range c.A2 {
+		a2 += a.Basic.Base + a.Reduced.Base
+	}
 	vc := veta{name: "VetaC"}
 	vc.attrs.setAmt("obrat23", outBasic)
 	vc.attrs.setAmt("obrat5", outReduced)
 	vc.attrs.setAmt("pln23", inBasic)
 	vc.attrs.setAmt("pln5", inReduced)
 	vc.attrs.setAmt("pln_rez_pren", rc)
+	vc.attrs.setAmt("rez_pren23", b1Basic)
+	vc.attrs.setAmt("rez_pren5", b1Reduced)
+	vc.attrs.setAmt("celk_zd_a2", a2)
 	if len(vc.attrs) > 0 {
 		vety = append(vety, vc)
 	}
@@ -276,6 +328,15 @@ func sumsVeta(name string, s RateSums) veta {
 }
 
 var buildingRe = regexp.MustCompile(`^(.*?)\s+(\d[\w/\-]*)$`)
+
+// LegalPerson reports whether a Czech DIČ belongs to a legal person (8
+// digits = IČO; natural persons have a 9–10 digit birth number). A legal
+// person files the control statement for every month, also with a
+// quarterly VAT period (§ 101e odst. 1 ZDPH).
+func LegalPerson(vatNo string) bool {
+	d := strings.TrimPrefix(normVatNo(vatNo), "CZ")
+	return len(d) == 8 && strings.Trim(d, "0123456789") == ""
+}
 
 // vetaP is the taxpayer header. The subject type is derived from the DIČ:
 // 8 digits = legal person (IČO), otherwise a natural person (birth number).

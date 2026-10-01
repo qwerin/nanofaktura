@@ -138,6 +138,7 @@ var defaultNumberFormats = []model.NumberFormat{
 	{DocumentType: model.DocProforma, Format: "Z{YYYY}-{NNNN}", IsDefault: true},
 	{DocumentType: model.DocCorrection, Format: "D{YYYY}-{NNNN}", IsDefault: true},
 	{DocumentType: model.DocExpense, Format: "N{YYYY}-{NNNN}", IsDefault: true},
+	{DocumentType: model.DocTaxDocument, Format: "ZD{YYYY}-{NNNN}", IsDefault: true},
 }
 
 // newAccount creates an account with default settings and number formats

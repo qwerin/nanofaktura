@@ -41,10 +41,12 @@ const LocalCurrency = "CZK"
 
 // ISDOC document types.
 const (
-	TypeInvoice    = 1
-	TypeCreditNote = 2
-	TypeDebitNote  = 3
-	TypeProforma   = 4
+	TypeInvoice              = 1
+	TypeCreditNote           = 2
+	TypeDebitNote            = 3
+	TypeProforma             = 4
+	TypeAdvanceTax           = 5 // daňový doklad při přijetí platby
+	TypeAdvanceTaxCorrection = 6 // opravný daňový doklad při přijetí platby
 )
 
 // uuidNamespace is the UUID v5 namespace of NanoFaktura documents.
@@ -73,6 +75,9 @@ type Options struct {
 	UUID          string   // document UUID; empty = DocumentUUID(inv.AccountID, inv.ID)
 	Related       *Related // optional
 	IssuingSystem string   // default "NanoFaktura"
+	// Deposits are the tax documents for received payments of the related
+	// proforma (with lines), deducted on a final invoice as TaxedDeposits.
+	Deposits []*model.Invoice
 }
 
 // DocumentType returns the ISDOC document type of inv.
@@ -80,6 +85,11 @@ func DocumentType(inv *model.Invoice) int {
 	switch inv.DocumentType {
 	case model.DocProforma:
 		return TypeProforma
+	case model.DocTaxDocument:
+		if inv.Total < 0 {
+			return TypeAdvanceTaxCorrection
+		}
+		return TypeAdvanceTax
 	case model.DocCorrection:
 		if inv.Total > 0 {
 			return TypeDebitNote
@@ -102,10 +112,12 @@ func Generate(inv *model.Invoice, acc *model.Account, opt Options) ([]byte, erro
 		rate = billing.RateScale
 	}
 	g := gen{inv: inv, rate: rate, foreign: foreign, sign: 1, docType: DocumentType(inv)}
-	if g.docType == TypeCreditNote {
+	if g.docType == TypeCreditNote || g.docType == TypeAdvanceTaxCorrection {
 		g.sign = -1
 	}
 	g.payer = inv.YourVatMode == model.VatModePayer
+	// an identified person's reverse-charge supply (EU services) is a tax document too
+	g.taxDoc = g.payer || (inv.YourVatMode == model.VatModeIdentifiedPerson && inv.ReverseCharge)
 	doc, err := g.build(acc, opt)
 	if err != nil {
 		return nil, err
@@ -126,6 +138,7 @@ type gen struct {
 	rate    int64 // billing.ParseRate scale
 	foreign bool
 	payer   bool
+	taxDoc  bool  // payer, or identified person with reverse charge
 	sign    int64 // -1 for credit notes (written in positive amounts)
 	docType int
 }
@@ -184,7 +197,7 @@ func (g *gen) build(acc *model.Account, opt Options) (*Invoice, error) {
 			ID:         inv.ClientRegistrationNo,
 			Name:       inv.ClientName,
 			Address:    address(inv.ClientStreet, inv.ClientCity, inv.ClientZip, inv.ClientCountry),
-			TaxSchemes: taxSchemes(inv.ClientVatNo),
+			TaxSchemes: customerTaxSchemes(inv.ClientVatNo, inv.ClientLocalVatNo),
 			Contact:    contact(inv.ClientFullName, "", inv.ClientEmail),
 		}},
 	}
@@ -193,7 +206,8 @@ func (g *gen) build(acc *model.Account, opt Options) (*Invoice, error) {
 	}
 	// TaxPointDate only on tax documents; for corrections the tax point is
 	// the delivery of the document (ISDOC A.5).
-	if g.docType == TypeInvoice && g.payer && inv.TaxableFulfillmentDue != "" {
+	if (g.docType == TypeInvoice || g.docType == TypeAdvanceTax || g.docType == TypeAdvanceTaxCorrection) &&
+		g.taxDoc && inv.TaxableFulfillmentDue != "" {
 		d.TaxPointDate = inv.TaxableFulfillmentDue
 	}
 	if g.foreign {
@@ -219,8 +233,51 @@ func (g *gen) build(acc *model.Account, opt Options) (*Invoice, error) {
 		return nil, err
 	}
 
+	// taxed deposits (final invoice of a VAT payer's proforma): the advances
+	// already taxed by tax documents, per document and rate; they are
+	// "already claimed" in the VAT summary of the same rate
+	isFinal := rel != nil && rel.DocumentType == model.DocProforma && g.docType == TypeInvoice
+	var claimedIncl, claimedInclCurr int64 // Σ taxed deposits incl. VAT
+	if isFinal && g.payer && len(opt.Deposits) > 0 {
+		td := &taxedDeposits{}
+		for _, dep := range opt.Deposits {
+			dsubs, err := depositSubTotals(dep, g)
+			if err != nil {
+				return nil, err
+			}
+			for _, ds := range dsubs {
+				td.Deposits = append(td.Deposits, TaxedDeposit{
+					ID: dep.Number, VariableSymbol: cmp.Or(dep.VariableSymbol, rel.VariableSymbol),
+					TaxableDepositAmountCurr: g.currRaw(ds.taxableCurr), TaxableDepositAmount: money(ds.taxable),
+					TaxInclusiveDepositAmountCurr: g.currRaw(ds.taxableCurr + ds.taxCurr), TaxInclusiveDepositAmount: money(ds.taxable + ds.tax),
+					TaxCategory: ClassifiedTaxCategory{Percent: bpsPercent(ds.pct), VATApplicable: true},
+				})
+				claimedIncl += ds.taxable + ds.tax
+				claimedInclCurr += ds.taxableCurr + ds.taxCurr
+				found := false
+				for i := range subs {
+					if subs[i].pct == ds.pct {
+						subs[i].claimedTaxable += ds.taxable
+						subs[i].claimedTax += ds.tax
+						subs[i].claimedTaxableCurr += ds.taxableCurr
+						subs[i].claimedTaxCurr += ds.taxCurr
+						found = true
+					}
+				}
+				if !found {
+					subs = append(subs, subTotal{pct: ds.pct, claimedTaxable: ds.taxable, claimedTax: ds.tax,
+						claimedTaxableCurr: ds.taxableCurr, claimedTaxCurr: ds.taxCurr})
+				}
+			}
+		}
+		if len(td.Deposits) > 0 {
+			d.TaxedDeposits = td
+		}
+	}
+
 	var taxable, tax, incl int64
 	var taxableCurr, taxCurr, inclCurr int64
+	var claimedTaxable, claimedTaxableCurr int64
 	for _, s := range subs {
 		taxable += s.taxable
 		tax += s.tax
@@ -228,38 +285,53 @@ func (g *gen) build(acc *model.Account, opt Options) (*Invoice, error) {
 		taxableCurr += s.taxableCurr
 		taxCurr += s.taxCurr
 		inclCurr += s.taxableCurr + s.taxCurr
+		claimedTaxable += s.claimedTaxable
+		claimedTaxableCurr += s.claimedTaxableCurr
 		d.TaxTotal.SubTotals = append(d.TaxTotal.SubTotals, s.xml(g))
 	}
-	d.TaxTotal.TaxAmount = money(tax)
-	d.TaxTotal.TaxAmountCurr = g.currRaw(taxCurr)
+	var claimedTax, claimedTaxCurr int64
+	for _, s := range subs {
+		claimedTax += s.claimedTax
+		claimedTaxCurr += s.claimedTaxCurr
+	}
+	d.TaxTotal.TaxAmount = money(tax - claimedTax)
+	d.TaxTotal.TaxAmountCurr = g.currRaw(taxCurr - claimedTaxCurr)
 
 	rounding := g.local(inv.Rounding)
+	// non-taxed deposits: the proforma payments not covered by tax documents
 	var deposits, depositsCurr int64
-	if rel != nil && rel.DocumentType == model.DocProforma && g.docType == TypeInvoice && rel.PaidAmount > 0 {
-		depositsCurr = min(rel.PaidAmount, inv.Total)
-		deposits = g.local(depositsCurr)
-		d.NonTaxedDeposits = &nonTaxedDeposits{Deposits: []NonTaxedDeposit{{
-			ID: rel.Number, VariableSymbol: rel.VariableSymbol, DepositAmountCurr: g.curr(depositsCurr), DepositAmount: money(deposits),
-		}}}
+	if isFinal && rel.PaidAmount > 0 {
+		depositsCurr = min(rel.PaidAmount, inv.Total) - claimedInclCurr
+		if !g.foreign {
+			depositsCurr = min(rel.PaidAmount, inv.Total) - claimedIncl
+		}
+		if depositsCurr > 0 {
+			deposits = g.local(depositsCurr)
+			d.NonTaxedDeposits = &nonTaxedDeposits{Deposits: []NonTaxedDeposit{{
+				ID: rel.Number, VariableSymbol: rel.VariableSymbol, DepositAmountCurr: g.curr(depositsCurr), DepositAmount: money(deposits),
+			}}}
+		} else {
+			depositsCurr = 0
+		}
 	}
-	payable := incl + rounding - deposits
+	payable := incl - claimedIncl + rounding - deposits
 	d.Totals = LegalMonetaryTotal{
 		TaxExclusiveAmount:                   money(taxable),
 		TaxExclusiveAmountCurr:               g.currRaw(taxableCurr),
 		TaxInclusiveAmount:                   money(incl),
 		TaxInclusiveAmountCurr:               g.currRaw(inclCurr),
-		AlreadyClaimedTaxExclusiveAmount:     "0",
-		AlreadyClaimedTaxInclusiveAmount:     "0",
-		DifferenceTaxExclusiveAmount:         money(taxable),
-		DifferenceTaxExclusiveAmountCurr:     g.currRaw(taxableCurr),
-		DifferenceTaxInclusiveAmount:         money(incl),
-		DifferenceTaxInclusiveAmountCurr:     g.currRaw(inclCurr),
+		AlreadyClaimedTaxExclusiveAmount:     money(claimedTaxable),
+		AlreadyClaimedTaxInclusiveAmount:     money(claimedIncl),
+		DifferenceTaxExclusiveAmount:         money(taxable - claimedTaxable),
+		DifferenceTaxExclusiveAmountCurr:     g.currRaw(taxableCurr - claimedTaxableCurr),
+		DifferenceTaxInclusiveAmount:         money(incl - claimedIncl),
+		DifferenceTaxInclusiveAmountCurr:     g.currRaw(inclCurr - claimedInclCurr),
 		PayableRoundingAmount:                money(rounding),
 		PaidDepositsAmount:                   money(deposits),
 		PayableAmount:                        money(payable),
-		PayableAmountCurr:                    g.currRaw(inclCurr + g.sign*inv.Rounding - g.sign*depositsCurr),
-		AlreadyClaimedTaxExclusiveAmountCurr: g.currRaw(0),
-		AlreadyClaimedTaxInclusiveAmountCurr: g.currRaw(0),
+		PayableAmountCurr:                    g.currRaw(inclCurr - claimedInclCurr + g.sign*inv.Rounding - g.sign*depositsCurr),
+		AlreadyClaimedTaxExclusiveAmountCurr: g.currRaw(claimedTaxableCurr),
+		AlreadyClaimedTaxInclusiveAmountCurr: g.currRaw(claimedInclCurr),
 		PayableRoundingAmountCurr:            g.currRaw(g.sign * inv.Rounding),
 		PaidDepositsAmountCurr:               g.currRaw(g.sign * depositsCurr),
 	}
@@ -284,11 +356,20 @@ func (g *gen) note() *Note {
 			parts = append(parts, p)
 		}
 	}
-	if g.inv.ReverseCharge {
+	switch {
+	case g.inv.ReverseCharge && g.inv.SupplyType == model.SupplyGoods:
+		parts = append(parts, "Osvobozeno od daně – dodání zboží do jiného členského státu (§ 64 zákona o DPH).")
+	case g.inv.ReverseCharge:
 		parts = append(parts, "Daň odvede zákazník (přenesená daňová povinnost).")
+	}
+	if r := strings.TrimSpace(g.inv.CorrectionReason); r != "" && g.inv.DocumentType == model.DocCorrection {
+		parts = append(parts, "Důvod opravy: "+r)
 	}
 	if g.inv.DocumentType == model.DocProforma {
 		parts = append(parts, "Nejedná se o daňový doklad.")
+	}
+	if g.inv.DocumentType == model.DocTaxDocument {
+		parts = append(parts, "Daňový doklad k přijaté platbě (§ 28 zákona o DPH).")
 	}
 	if len(parts) == 0 {
 		return nil
@@ -335,8 +416,12 @@ func (g *gen) lines() ([]InvoiceLine, error) {
 			},
 			Item: &Item{Description: l.Name},
 		}
-		if g.payer && inv.ReverseCharge {
-			line.VATNote = &Note{Text: "Daň odvede zákazník"}
+		if g.taxDoc && inv.ReverseCharge {
+			if inv.SupplyType == model.SupplyGoods {
+				line.VATNote = &Note{Text: "Osvobozeno dle § 64 zákona o DPH"}
+			} else {
+				line.VATNote = &Note{Text: "Daň odvede zákazník"}
+			}
 		}
 		out = append(out, line)
 	}
@@ -350,6 +435,9 @@ type subTotal struct {
 	pct                  int32
 	taxable, tax         int64 // local, signed
 	taxableCurr, taxCurr int64 // foreign, signed
+	// already claimed by taxed deposits (final invoices)
+	claimedTaxable, claimedTax         int64
+	claimedTaxableCurr, claimedTaxCurr int64
 }
 
 func (s subTotal) xml(g *gen) TaxSubTotal {
@@ -360,20 +448,34 @@ func (s subTotal) xml(g *gen) TaxSubTotal {
 		TaxAmount:                        money(s.tax),
 		TaxInclusiveAmountCurr:           g.currRaw(s.taxableCurr + s.taxCurr),
 		TaxInclusiveAmount:               money(s.taxable + s.tax),
-		AlreadyClaimedTaxableAmountCurr:  g.currRaw(0),
-		AlreadyClaimedTaxableAmount:      "0",
-		AlreadyClaimedTaxAmountCurr:      g.currRaw(0),
-		AlreadyClaimedTaxAmount:          "0",
-		AlreadyClaimedTaxInclusiveCurr:   g.currRaw(0),
-		AlreadyClaimedTaxInclusiveAmount: "0",
-		DifferenceTaxableAmountCurr:      g.currRaw(s.taxableCurr),
-		DifferenceTaxableAmount:          money(s.taxable),
-		DifferenceTaxAmountCurr:          g.currRaw(s.taxCurr),
-		DifferenceTaxAmount:              money(s.tax),
-		DifferenceTaxInclusiveCurr:       g.currRaw(s.taxableCurr + s.taxCurr),
-		DifferenceTaxInclusiveAmount:     money(s.taxable + s.tax),
+		AlreadyClaimedTaxableAmountCurr:  g.currRaw(s.claimedTaxableCurr),
+		AlreadyClaimedTaxableAmount:      money(s.claimedTaxable),
+		AlreadyClaimedTaxAmountCurr:      g.currRaw(s.claimedTaxCurr),
+		AlreadyClaimedTaxAmount:          money(s.claimedTax),
+		AlreadyClaimedTaxInclusiveCurr:   g.currRaw(s.claimedTaxableCurr + s.claimedTaxCurr),
+		AlreadyClaimedTaxInclusiveAmount: money(s.claimedTaxable + s.claimedTax),
+		DifferenceTaxableAmountCurr:      g.currRaw(s.taxableCurr - s.claimedTaxableCurr),
+		DifferenceTaxableAmount:          money(s.taxable - s.claimedTaxable),
+		DifferenceTaxAmountCurr:          g.currRaw(s.taxCurr - s.claimedTaxCurr),
+		DifferenceTaxAmount:              money(s.tax - s.claimedTax),
+		DifferenceTaxInclusiveCurr:       g.currRaw(s.taxableCurr + s.taxCurr - s.claimedTaxableCurr - s.claimedTaxCurr),
+		DifferenceTaxInclusiveAmount:     money(s.taxable + s.tax - s.claimedTaxable - s.claimedTax),
 		TaxCategory:                      TaxCategory{Percent: bpsPercent(s.pct), VATApplicable: g.payer},
 	}
+}
+
+// depositSubTotals is the VAT summary of a deducted tax document dep,
+// converted with its own exchange rate (the advance was taxed at it).
+func depositSubTotals(dep *model.Invoice, g *gen) ([]subTotal, error) {
+	rate, err := billing.ParseRate(dep.ExchangeRate)
+	if err != nil {
+		return nil, fmt.Errorf("isdoc: deposit %s: %w", dep.Number, err)
+	}
+	if !g.foreign {
+		rate = billing.RateScale
+	}
+	dg := gen{inv: dep, rate: rate, foreign: g.foreign, payer: true, taxDoc: true, sign: 1, docType: TypeAdvanceTax}
+	return dg.taxSubTotals()
 }
 
 // taxSubTotals is the VAT recap (billing rules) merged by shown percentage.
@@ -499,6 +601,20 @@ func countryName(code string) string {
 		return n
 	}
 	return code
+}
+
+// customerTaxSchemes: with a local VAT number (Slovak IČ DPH) that one is the
+// VAT ID and the DIČ is the tax number (TIN).
+func customerTaxSchemes(vatNo, localVatNo string) []PartyTaxScheme {
+	localVatNo = strings.TrimSpace(localVatNo)
+	if localVatNo == "" || localVatNo == strings.TrimSpace(vatNo) {
+		return taxSchemes(vatNo)
+	}
+	out := []PartyTaxScheme{{CompanyID: localVatNo, TaxScheme: "VAT"}}
+	if v := strings.TrimSpace(vatNo); v != "" {
+		out = append(out, PartyTaxScheme{CompanyID: v, TaxScheme: "TIN"})
+	}
+	return out
 }
 
 func taxSchemes(vatNo string) []PartyTaxScheme {

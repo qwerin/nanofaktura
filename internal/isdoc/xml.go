@@ -30,6 +30,7 @@ type Invoice struct {
 	OriginalDocumentReferences *originalDocumentReferences `xml:"OriginalDocumentReferences,omitempty"`
 	Lines                      invoiceLines                `xml:"InvoiceLines"`
 	NonTaxedDeposits           *nonTaxedDeposits           `xml:"NonTaxedDeposits,omitempty"`
+	TaxedDeposits              *taxedDeposits              `xml:"TaxedDeposits,omitempty"`
 	TaxTotal                   TaxTotal                    `xml:"TaxTotal"`
 	Totals                     LegalMonetaryTotal          `xml:"LegalMonetaryTotal"`
 	PaymentMeans               *PaymentMeans               `xml:"PaymentMeans,omitempty"`
@@ -137,6 +138,22 @@ type Item struct {
 
 type nonTaxedDeposits struct {
 	Deposits []NonTaxedDeposit `xml:"NonTaxedDeposit"`
+}
+
+type taxedDeposits struct {
+	Deposits []TaxedDeposit `xml:"TaxedDeposit"`
+}
+
+// TaxedDeposit is an advance already taxed by a tax document for a received
+// payment (one per document and rate), deducted on the final invoice.
+type TaxedDeposit struct {
+	ID                            string                `xml:"ID"`
+	VariableSymbol                string                `xml:"VariableSymbol"`
+	TaxableDepositAmountCurr      string                `xml:"TaxableDepositAmountCurr,omitempty"`
+	TaxableDepositAmount          string                `xml:"TaxableDepositAmount"`
+	TaxInclusiveDepositAmountCurr string                `xml:"TaxInclusiveDepositAmountCurr,omitempty"`
+	TaxInclusiveDepositAmount     string                `xml:"TaxInclusiveDepositAmount"`
+	TaxCategory                   ClassifiedTaxCategory `xml:"ClassifiedTaxCategory"`
 }
 
 type NonTaxedDeposit struct {

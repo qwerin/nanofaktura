@@ -9,7 +9,7 @@ Pravidla (viz CLAUDE.md → „Novinky“):
 - Podporováno: odstavce, `###`, odrážky, **tučně**, *zvýraznění* (např. cesta v menu), `kód`, [odkazy](https://…). Nic dalšího.
 -->
 
-## 2026-10-01 · Aplikace na plochu a hromadná úhrada
+## 2026-10-01 · Aplikace na plochu, hromadná úhrada, zálohy a přesnější DPH
 
 - **Nainstalovat aplikaci** — v menu *Více* (na počítači v menu pod vaším jménem) přidáte NanoFakturu na plochu telefonu. Pak se otevírá jako běžná aplikace přes celou obrazovku, bez adresního řádku prohlížeče. Na iPhonu ukáže krátký návod (Sdílet → Přidat na plochu).
 - **Označit jako uhrazené hromadně** — v seznamu faktur i nákladů je v menu „…“ akce *Označit jako uhrazené*. Uhradí najednou všechny neuhrazené doklady podle aktuálního filtru, třeba všechny staré faktury do konce loňského roku. Předem uvidíte, kolik dokladů a za kolik se označí; datum úhrady je ke dni splatnosti, nebo jedno zvolené datum. Odběratelům se přitom neposílá poděkování za úhradu.
@@ -17,6 +17,17 @@ Pravidla (viz CLAUDE.md → „Novinky“):
 ### Opravy plateb a DPH
 
 - **Žádné zdvojené platby** — dvojklik na „Přidat platbu“, souběh automatického párování z banky s ruční platbou nebo práce dvou lidí na jedné faktuře už nemůže zapsat platbu dvakrát ani rozhodit uhrazenou částku. Úprava položek faktury během zápisu platby se také neztratí.
+- **Daňové doklady k přijatým zálohám** — plátcům DPH se ke každé platbě zálohové faktury (i spárované z banky) sám vystaví daňový doklad k přijaté platbě s vlastní řadou čísel (`ZD2026-0001`), datem platby a DPH z přijaté částky. DPH ze zálohy se tak přizná ve správném měsíci.
+- **Vyúčtování zálohy** — u zálohové faktury je nová akce *Vystavit vyúčtování*, kde zadáte datum dodání. Vyúčtovací faktura převezme všechny přijaté zálohy, odečte daň už zaplacenou na daňových dokladech („Odpočet záloh“) a ukáže jen zbývající částku. Částečně zaplacená záloha se tak už nepočítá dvakrát jako dluh odběratele a doplatek se zapisuje na vyúčtovací fakturu.
+- **Přesnější DPH v cizí měně** — faktura plátce v eurech (a jiných měnách) nově uvádí DPH i v korunách a použitý kurz ČNB. Faktury ze šablon, pravidelné faktury, kopie dokladů i vyúčtování si samy doplní kurz ČNB ke dni plnění, místo aby převzaly kurz 1 nebo starý kurz. Nulový kurz už nejde zadat.
+- **Důvod opravy na opravném dokladu** — při vystavení dobropisu plátce zadáte důvod (třeba „Vrácení zboží“); vytiskne se na doklad i do ISDOC.
+- **Datum zdanitelného plnění je u plátce povinné** — doklad bez něj už nejde uložit a starší doklady bez data se v přehledu DPH objeví s upozorněním, aby z přiznání tiše nevypadly.
+- **Storno odeslané faktury plátce** — odeslaný daňový doklad už nejde stornovat, aplikace nabídne opravný doklad (dobropis). Neodeslané doklady a doklady neplátců stornovat můžete dál.
+- **Plnění do EU** — u faktury s přenesenou daňovou povinností vyberete, zda jde o službu, nebo o zboží. Zboží se vykáže na správném řádku přiznání a doklad nese text o osvobození podle § 64. Slovenským odběratelům se na doklad tiskne IČ DPH. Přehled DPH připomene podání souhrnného hlášení. Identifikovaná osoba vystavuje za služby do EU fakturu – daňový doklad s datem plnění a textem „Daň odvede zákazník“.
+- **Služby ze zahraničí a přenesená daň u nákladů** — u nákladu zaškrtnete *Daň přiznává odběratel* (reklama z Irska, stavební práce v tuzemsku…). Daň i odpočet se pak objeví v přiznání a kontrolním hlášení na správných řádcích. Náklady bez DPH od zahraničních dodavatelů přehled DPH označí k prověření.
+- **Odpočet DPH zvlášť od daňové uznatelnosti** — u nákladu je nově samostatná volba *Uplatnit odpočet DPH*, nezávislá na tom, zda je náklad daňově uznatelný pro daň z příjmů. Stávající náklady si zachovají dosavadní nastavení.
+- **Kontrolní hlášení s.r.o. měsíčně** — právnické osobě se čtvrtletním přiznáním aplikace kontrolní hlášení za čtvrtletí nevygeneruje a vyzve k měsíčnímu.
+- **Drobnosti** — neuhrazené částky v seznamu faktur už nesnižují přeplatky jiných faktur, dobropisy se na nástěnce nepočítají mezi neuhrazené pohledávky, platbu dobropisu je třeba zadat se znaménkem minus, měnu doklad s platbami nejde změnit, bankovní výpisy v jenech se načtou ve správné výši, QR platba se u částek nad 9 999 999,99 Kč nevytváří, e-mail neplátce nazývá dobropis „opravná faktura“ a obnova zálohy účtu opraví nesouhlasné součty dokladů.
 
 ## 2026-09-30 · Záloha účtu, dvoufázové ověření, vyšší zabezpečení a Novinky
 

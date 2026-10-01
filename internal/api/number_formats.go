@@ -17,7 +17,7 @@ import (
 // NumberFormat is a document numbering series (SPEC §4.3).
 type NumberFormat struct {
 	ID           uint      `json:"id"`
-	DocumentType string    `json:"document_type" enum:"invoice,proforma,correction,expense"`
+	DocumentType string    `json:"document_type" enum:"invoice,proforma,correction,tax_document,expense"`
 	Format       string    `json:"format" example:"{YYYY}-{NNNN}"`
 	IsDefault    bool      `json:"is_default"`
 	CreatedAt    time.Time `json:"created_at"`
@@ -25,7 +25,7 @@ type NumberFormat struct {
 }
 
 type NumberFormatCreate struct {
-	DocumentType string `json:"document_type" enum:"invoice,proforma,correction,expense"`
+	DocumentType string `json:"document_type" enum:"invoice,proforma,correction,tax_document,expense"`
 	Format       string `json:"format" minLength:"1" maxLength:"50" example:"{YYYY}-{NNNN}" doc:"Placeholders {YYYY}, {YY}, {MM}, {N}…{NNNNNN}; at least one {N…}"`
 	IsDefault    bool   `json:"is_default,omitempty" doc:"The first format of a document type is always default"`
 }
@@ -57,7 +57,7 @@ func (s *server) registerNumberFormats(g huma.API) {
 
 func (s *server) listNumberFormats(ctx context.Context, in *struct {
 	PageParams
-	DocumentType string `query:"document_type" enum:"invoice,proforma,correction,expense"`
+	DocumentType string `query:"document_type" enum:"invoice,proforma,correction,tax_document,expense"`
 }) (*Out[ListResponse[NumberFormat]], error) {
 	q := s.scoped(ctx).Model(&model.NumberFormat{}).Order("document_type, id")
 	if in.DocumentType != "" {

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -28,7 +29,7 @@ import (
 // (list items). Invoice extends it for the detail.
 type InvoiceSummary struct {
 	ID             uint   `json:"id"`
-	DocumentType   string `json:"document_type" enum:"invoice,proforma,correction"`
+	DocumentType   string `json:"document_type" enum:"invoice,proforma,correction,tax_document" doc:"tax_document = tax document for a received proforma payment (issued automatically for VAT payers)"`
 	Number         string `json:"number"`
 	VariableSymbol string `json:"variable_symbol"`
 	Status         string `json:"status" enum:"open,sent,overdue,paid,cancelled,uncollectible" doc:"Stored status, or overdue when open/sent and due_on < today"`
@@ -46,6 +47,7 @@ type InvoiceSummary struct {
 	ClientZip            string `json:"client_zip"`
 	ClientCountry        string `json:"client_country"`
 	ClientEmail          string `json:"client_email"`
+	ClientLocalVatNo     string `json:"client_local_vat_no" doc:"Customer's local VAT number (Slovak IČ DPH), printed next to the DIČ"`
 
 	YourName           string `json:"your_name"`
 	YourRegistrationNo string `json:"your_registration_no"`
@@ -86,6 +88,8 @@ type InvoiceSummary struct {
 	PricesIncludeVat bool     `json:"prices_include_vat"`
 	RoundTotal       bool     `json:"round_total"`
 	ReverseCharge    bool     `json:"reverse_charge"`
+	SupplyType       string   `json:"supply_type" enum:"services,goods" doc:"EU reverse charge: services (§ 9/1, 'daň odvede zákazník') or goods (§ 64, exempt supply of goods)"`
+	CorrectionReason string   `json:"correction_reason" doc:"Reason of a correction (§ 45 ZDPH); required for VAT payers"`
 
 	Subtotal        int64 `json:"subtotal" doc:"Sum of VAT bases"`
 	VatTotal        int64 `json:"vat_total"`
@@ -106,6 +110,30 @@ type Invoice struct {
 	VatRecap    []VatRecapItem `json:"vat_recap" nullable:"false"`
 	Warnings    []DocWarning   `json:"warnings" nullable:"false" doc:"Things the issuer should check (not errors)"`
 	Attachments []Attachment   `json:"attachments" nullable:"false"`
+	// RelatedDocuments are the documents referring to this one (corrections
+	// of an invoice; tax documents and the final invoice of a proforma).
+	RelatedDocuments []RelatedDocument `json:"related_documents" nullable:"false"`
+	// Deposits are the tax documents of the proforma deducted on a final
+	// invoice ("odpočet zálohy"), in the document currency.
+	Deposits []Deposit `json:"deposits" nullable:"false"`
+}
+
+// RelatedDocument is a document whose related_id points to the invoice.
+type RelatedDocument struct {
+	ID           uint   `json:"id"`
+	DocumentType string `json:"document_type" enum:"invoice,proforma,correction,tax_document"`
+	Number       string `json:"number"`
+	Status       string `json:"status"`
+	Total        int64  `json:"total"`
+}
+
+// Deposit is a tax document for a received advance deducted on the final invoice.
+type Deposit struct {
+	TaxDocumentID uint           `json:"tax_document_id"`
+	Number        string         `json:"number"`
+	TaxPointDate  string         `json:"taxable_fulfillment_due"`
+	VatRecap      []VatRecapItem `json:"vat_recap" nullable:"false"`
+	Total         int64          `json:"total"`
 }
 
 // DocWarning is a non-blocking problem of a document.
@@ -146,16 +174,19 @@ type VatRecapItem struct {
 }
 
 type Payment struct {
-	ID        uint      `json:"id"`
-	InvoiceID uint      `json:"invoice_id"`
-	PaidOn    string    `json:"paid_on"`
-	Amount    int64     `json:"amount"`
-	Note      string    `json:"note"`
-	CreatedAt time.Time `json:"created_at"`
+	ID              uint      `json:"id"`
+	InvoiceID       uint      `json:"invoice_id"`
+	PaidOn          string    `json:"paid_on"`
+	Amount          int64     `json:"amount"`
+	Note            string    `json:"note"`
+	TaxDocumentID   *uint     `json:"tax_document_id,omitempty" doc:"Proforma payment of a VAT payer: its tax document"`
+	SourcePaymentID *uint     `json:"source_payment_id,omitempty" doc:"Payment taken over from a proforma payment (final invoice, tax document); delete that one instead"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 
 func toPayment(p *model.Payment) Payment {
-	return Payment{ID: p.ID, InvoiceID: p.InvoiceID, PaidOn: p.PaidOn, Amount: p.Amount, Note: p.Note, CreatedAt: p.CreatedAt}
+	return Payment{ID: p.ID, InvoiceID: p.InvoiceID, PaidOn: p.PaidOn, Amount: p.Amount, Note: p.Note,
+		TaxDocumentID: p.TaxDocumentID, SourcePaymentID: p.SourcePaymentID, CreatedAt: p.CreatedAt}
 }
 
 func toInvoiceSummary(m *model.Invoice, today string) InvoiceSummary {
@@ -170,7 +201,7 @@ func toInvoiceSummary(m *model.Invoice, today string) InvoiceSummary {
 
 		ClientName: m.ClientName, ClientFullName: m.ClientFullName, ClientRegistrationNo: m.ClientRegistrationNo,
 		ClientVatNo: m.ClientVatNo, ClientStreet: m.ClientStreet, ClientCity: m.ClientCity, ClientZip: m.ClientZip,
-		ClientCountry: m.ClientCountry, ClientEmail: m.ClientEmail,
+		ClientCountry: m.ClientCountry, ClientEmail: m.ClientEmail, ClientLocalVatNo: m.ClientLocalVatNo,
 
 		YourName: m.YourName, YourRegistrationNo: m.YourRegistrationNo, YourVatNo: m.YourVatNo,
 		YourStreet: m.YourStreet, YourCity: m.YourCity, YourZip: m.YourZip, YourCountry: m.YourCountry,
@@ -186,6 +217,7 @@ func toInvoiceSummary(m *model.Invoice, today string) InvoiceSummary {
 
 		OrderNumber: m.OrderNumber, Note: m.Note, FooterNote: m.FooterNote, PrivateNote: m.PrivateNote, Tags: tags,
 		PricesIncludeVat: m.PricesIncludeVat, RoundTotal: m.RoundTotal, ReverseCharge: m.ReverseCharge,
+		SupplyType: defaultStr(m.SupplyType, model.SupplyServices), CorrectionReason: m.CorrectionReason,
 
 		Subtotal: m.Subtotal, VatTotal: m.VatTotal, Rounding: m.Rounding, Total: m.Total,
 		PaidAmount: m.PaidAmount, RemainingAmount: m.Total - m.PaidAmount,
@@ -196,12 +228,14 @@ func toInvoiceSummary(m *model.Invoice, today string) InvoiceSummary {
 // toInvoice converts an invoice loaded with Lines and Payments.
 func toInvoice(m *model.Invoice, today string) Invoice {
 	out := Invoice{
-		InvoiceSummary: toInvoiceSummary(m, today),
-		Lines:          make([]InvoiceLine, len(m.Lines)),
-		Payments:       make([]Payment, len(m.Payments)),
-		VatRecap:       []VatRecapItem{},
-		Warnings:       invoiceWarnings(m),
-		Attachments:    []Attachment{},
+		InvoiceSummary:   toInvoiceSummary(m, today),
+		Lines:            make([]InvoiceLine, len(m.Lines)),
+		Payments:         make([]Payment, len(m.Payments)),
+		VatRecap:         []VatRecapItem{},
+		Warnings:         invoiceWarnings(m),
+		Attachments:      []Attachment{},
+		RelatedDocuments: []RelatedDocument{},
+		Deposits:         []Deposit{},
 	}
 	for i, l := range m.Lines {
 		out.Lines[i] = InvoiceLine{
@@ -249,6 +283,7 @@ type InvoiceSnapshotFields struct {
 	ClientZip            *string `json:"client_zip,omitempty" maxLength:"20"`
 	ClientCountry        *string `json:"client_country,omitempty" maxLength:"2"`
 	ClientEmail          *string `json:"client_email,omitempty" maxLength:"254"`
+	ClientLocalVatNo     *string `json:"client_local_vat_no,omitempty" maxLength:"20"`
 
 	YourName           *string `json:"your_name,omitempty" maxLength:"200"`
 	YourRegistrationNo *string `json:"your_registration_no,omitempty" maxLength:"20"`
@@ -275,6 +310,7 @@ func (f *InvoiceSnapshotFields) applyTo(m *model.Invoice) {
 	apply(&m.ClientZip, f.ClientZip)
 	apply(&m.ClientCountry, f.ClientCountry)
 	apply(&m.ClientEmail, f.ClientEmail)
+	apply(&m.ClientLocalVatNo, f.ClientLocalVatNo)
 	apply(&m.YourName, f.YourName)
 	apply(&m.YourRegistrationNo, f.YourRegistrationNo)
 	apply(&m.YourVatNo, f.YourVatNo)
@@ -302,7 +338,7 @@ type InvoiceCreate struct {
 	DueDays               *int    `json:"due_days,omitempty" minimum:"0" maximum:"365" doc:"Default: subject due_days, then account default_due_days"`
 
 	Currency            string   `json:"currency,omitempty" pattern:"^[A-Z]{3}$" doc:"Default: account default_currency"`
-	ExchangeRate        string   `json:"exchange_rate,omitempty" pattern:"^[0-9]{1,6}([.][0-9]{1,6})?$" doc:"Default 1"`
+	ExchangeRate        string   `json:"exchange_rate,omitempty" pattern:"^[0-9]{1,6}([.][0-9]{1,6})?$" doc:"CZK per unit, > 0; default: ČNB rate of the DUZP (issue date) for a foreign currency, 1 for CZK"`
 	Language            string   `json:"language,omitempty" enum:"cs,en,sk,de"`
 	PaymentMethod       string   `json:"payment_method,omitempty" enum:"bank,cash,card,cod,paypal,custom"`
 	CustomPaymentMethod string   `json:"custom_payment_method,omitempty" maxLength:"100"`
@@ -315,6 +351,8 @@ type InvoiceCreate struct {
 	PricesIncludeVat    bool     `json:"prices_include_vat,omitempty"`
 	RoundTotal          *bool    `json:"round_total,omitempty" doc:"Default: account round_total"`
 	ReverseCharge       bool     `json:"reverse_charge,omitempty"`
+	SupplyType          string   `json:"supply_type,omitempty" enum:"services,goods" doc:"EU reverse charge: services (default) or goods (§ 64)"`
+	CorrectionReason    string   `json:"correction_reason,omitempty" maxLength:"500" doc:"Reason of a correction (required for VAT payers)"`
 
 	Lines []InvoiceLineInput `json:"lines" minItems:"1" maxItems:"500"`
 }
@@ -346,6 +384,8 @@ type InvoicePatch struct {
 	PricesIncludeVat    *bool    `json:"prices_include_vat,omitempty"`
 	RoundTotal          *bool    `json:"round_total,omitempty"`
 	ReverseCharge       *bool    `json:"reverse_charge,omitempty"`
+	SupplyType          *string  `json:"supply_type,omitempty" enum:"services,goods"`
+	CorrectionReason    *string  `json:"correction_reason,omitempty" maxLength:"500"`
 
 	Lines []InvoiceLineInput `json:"lines,omitempty" minItems:"1" maxItems:"500"`
 }
@@ -422,6 +462,14 @@ func (s *server) invoiceOut(ctx context.Context, db *gorm.DB, id uint) (*Out[Inv
 	if out.Attachments, err = ownerAttachments(ctx, db, model.OwnerInvoice, m.ID); err != nil {
 		return nil, err
 	}
+	if out.RelatedDocuments, err = relatedDocuments(ctx, db, m.ID); err != nil {
+		return nil, err
+	}
+	deps, err := invoiceDeposits(ctx, db, m)
+	if err != nil {
+		return nil, err
+	}
+	out.Deposits = toDeposits(deps)
 	return &Out[Invoice]{Body: out}, nil
 }
 
@@ -506,6 +554,13 @@ func (s *server) createInvoiceTx(ctx context.Context, tx *gorm.DB, in *InvoiceCr
 	m.Tags = normalizeTags(in.Tags)
 	m.PricesIncludeVat = in.PricesIncludeVat
 	m.ReverseCharge = in.ReverseCharge
+	m.SupplyType = in.SupplyType
+	m.CorrectionReason = strings.TrimSpace(in.CorrectionReason)
+	if in.ExchangeRate == "" && needsCNBRate(acc, m.Currency) {
+		// callers resolve the ČNB rate before the transaction (defaultExchangeRate);
+		// never fall back to 1 silently
+		return nil, invalid("exchange_rate", "exchange rate of "+m.Currency+" is missing; enter exchange_rate")
+	}
 
 	if err := snapshotBank(ctx, tx, m, in.BankAccountID); err != nil {
 		return nil, err
@@ -517,6 +572,9 @@ func (s *server) createInvoiceTx(ctx context.Context, tx *gorm.DB, in *InvoiceCr
 	}
 	if in.TaxableFulfillmentDue != nil {
 		m.TaxableFulfillmentDue = *in.TaxableFulfillmentDue
+	}
+	if err := checkTaxFields(m); err != nil {
+		return nil, err
 	}
 	if err := checkRelated(ctx, tx, m); err != nil {
 		return nil, err
@@ -538,6 +596,9 @@ func (s *server) createInvoiceTx(ctx context.Context, tx *gorm.DB, in *InvoiceCr
 	}
 	m.VariableSymbol = spayd.Digits(m.Number, 10)
 	apply(&m.VariableSymbol, in.VariableSymbol)
+	if err := checkTaxNumberUnique(ctx, tx, m); err != nil {
+		return nil, err
+	}
 
 	if err := tx.Create(m).Error; err != nil {
 		return nil, numberErr(err, m.Number)
@@ -561,6 +622,17 @@ func (s *server) patchInvoice(ctx context.Context, in *struct {
 		if err := editable(m); err != nil {
 			return 0, err
 		}
+		if err := checkNotSettled(ctx, tx, m); err != nil {
+			return 0, err
+		}
+		if m.DocumentType == model.DocTaxDocument && (p.Lines != nil || p.Currency != nil || p.ExchangeRate != nil ||
+			p.PricesIncludeVat != nil || p.RoundTotal != nil || p.ReverseCharge != nil || p.RelatedID != nil ||
+			p.YourVatMode != nil || p.TaxableFulfillmentDue != nil) {
+			return 0, conflict(CodeTaxDocumentFixed, "the amounts, currency and dates of a tax document follow its proforma payment; delete the payment instead")
+		}
+		if p.Currency != nil && *p.Currency != m.Currency && len(m.Payments) > 0 {
+			return 0, conflict(CodeCurrencyHasPayments, "the document has payments in "+m.Currency+"; delete them before changing the currency")
+		}
 		acc := auth.AccountFrom(ctx)
 
 		if p.SubjectID != nil && *p.SubjectID != m.SubjectID {
@@ -577,6 +649,9 @@ func (s *server) patchInvoice(ctx context.Context, in *struct {
 		if p.Number != nil {
 			if m.Number = strings.TrimSpace(*p.Number); m.Number == "" {
 				return 0, invalid("number", "number must not be empty")
+			}
+			if err := checkTaxNumberUnique(ctx, tx, m); err != nil {
+				return 0, err
 			}
 		}
 		apply(&m.VariableSymbol, p.VariableSymbol)
@@ -602,12 +677,19 @@ func (s *server) patchInvoice(ctx context.Context, in *struct {
 		apply(&m.PricesIncludeVat, p.PricesIncludeVat)
 		apply(&m.RoundTotal, p.RoundTotal)
 		apply(&m.ReverseCharge, p.ReverseCharge)
+		apply(&m.SupplyType, p.SupplyType)
+		if p.CorrectionReason != nil {
+			m.CorrectionReason = strings.TrimSpace(*p.CorrectionReason)
+		}
 		if p.BankAccountID != nil || currencyChanged {
 			if err := snapshotBank(ctx, tx, m, p.BankAccountID); err != nil {
 				return 0, err
 			}
 		}
 		p.InvoiceSnapshotFields.applyTo(m)
+		if err := checkTaxFields(m); err != nil {
+			return 0, err
+		}
 		if err := checkRelated(ctx, tx, m); err != nil {
 			return 0, err
 		}
@@ -647,7 +729,17 @@ func (s *server) deleteInvoice(ctx context.Context, in *invoiceID) (*NoContent, 
 		if m.LockedAt != nil {
 			return conflict(CodeLocked, "the invoice is locked; unlock it first")
 		}
-		if len(m.Payments) > 0 {
+		if m.DocumentType == model.DocTaxDocument {
+			return conflict(CodeTaxDocumentFixed, "a tax document is deleted together with its proforma payment")
+		}
+		// a final invoice may go with the payments it took over from its proforma
+		mirrored := 0
+		for _, p := range m.Payments {
+			if p.SourcePaymentID != nil {
+				mirrored++
+			}
+		}
+		if len(m.Payments) > mirrored {
 			return conflict(CodeHasPayments, "the invoice has payments; delete them first")
 		}
 		var ref model.Invoice
@@ -667,10 +759,26 @@ func (s *server) deleteInvoice(ctx context.Context, in *invoiceID) (*NoContent, 
 		if err := tx.Where("invoice_id = ?", m.ID).Delete(&model.InvoiceLine{}).Error; err != nil {
 			return dbErr(err, "invoice")
 		}
+		if err := tx.Where("invoice_id = ?", m.ID).Delete(&model.Payment{}).Error; err != nil {
+			return dbErr(err, "invoice")
+		}
 		if err := tx.Delete(m).Error; err != nil {
 			return dbErr(err, "invoice")
 		}
-		return recordInvoice(ctx, tx, events.InvoiceDeleted, m)
+		if err := recordInvoice(ctx, tx, events.InvoiceDeleted, m); err != nil {
+			return err
+		}
+		if m.DocumentType == model.DocInvoice && m.RelatedID != nil {
+			// deleting the final invoice reopens its proforma
+			pro, err := loadInvoiceForUpdate(ctx, tx, *m.RelatedID)
+			if err != nil {
+				return err
+			}
+			if pro.DocumentType == model.DocProforma && pro.Status == model.StatusPaid {
+				return refreshInvoicePayments(tx, pro)
+			}
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, err
@@ -725,14 +833,65 @@ func checkRelated(ctx context.Context, tx *gorm.DB, m *model.Invoice) error {
 	if m.DocumentType == model.DocCorrection && rel.DocumentType != model.DocInvoice {
 		return invalid("related_id", "a correction must relate to an invoice")
 	}
+	if m.DocumentType == model.DocTaxDocument && rel.DocumentType != model.DocProforma {
+		return invalid("related_id", "a tax document must relate to a proforma")
+	}
 	return nil
+}
+
+// isTaxDocument: m is a tax document of its issuer (DUZP and the VAT
+// wording are mandatory) — every non-proforma document of a VAT payer, and
+// reverse-charge documents of an identified person (EU services, § 28 odst. 2).
+func isTaxDocument(m *model.Invoice) bool {
+	if m.DocumentType == model.DocProforma {
+		return false
+	}
+	return m.YourVatMode == model.VatModePayer || (m.YourVatMode == model.VatModeIdentifiedPerson && m.ReverseCharge)
+}
+
+// checkTaxFields validates the data a tax document must carry.
+func checkTaxFields(m *model.Invoice) error {
+	if isTaxDocument(m) && m.TaxableFulfillmentDue == "" {
+		return invalid("taxable_fulfillment_due", "the date of the taxable supply (DUZP) is required on a tax document")
+	}
+	if m.DocumentType == model.DocCorrection && m.YourVatMode == model.VatModePayer && m.CorrectionReason == "" {
+		return invalid("correction_reason", "the reason of the correction is required on a corrective tax document (§ 45)")
+	}
+	return nil
+}
+
+// taxNumberTypes share one evidence-number space: tax documents must be
+// identified uniquely by their number (§ 29 odst. 1 písm. e ZDPH).
+var taxNumberTypes = []string{model.DocInvoice, model.DocCorrection, model.DocTaxDocument}
+
+// checkTaxNumberUnique answers 409 when another invoice, correction or tax
+// document of the account already has m's number.
+func checkTaxNumberUnique(ctx context.Context, tx *gorm.DB, m *model.Invoice) error {
+	if !slices.Contains(taxNumberTypes, m.DocumentType) {
+		return nil
+	}
+	var n int64
+	if err := tx.Model(&model.Invoice{}).Scopes(inAccount(ctx)).
+		Where("document_type IN ? AND number = ? AND id <> ?", taxNumberTypes, m.Number, m.ID).Count(&n).Error; err != nil {
+		return dbErr(err, "invoice")
+	}
+	if n > 0 {
+		return conflict(CodeAlreadyExists, "document number "+m.Number+" already exists")
+	}
+	return nil
+}
+
+// needsCNBRate: a document in currency needs an exchange rate (the ČNB
+// rate by default) — a foreign currency of an account keeping CZK.
+func needsCNBRate(acc *model.Account, currency string) bool {
+	return currency != "" && currency != acc.DefaultCurrency && acc.DefaultCurrency == "CZK"
 }
 
 func snapshotClient(m *model.Invoice, s *model.Subject) {
 	m.ClientName, m.ClientFullName = s.Name, s.FullName
 	m.ClientRegistrationNo, m.ClientVatNo = s.RegistrationNo, s.VatNo
 	m.ClientStreet, m.ClientCity, m.ClientZip, m.ClientCountry = s.Street, s.City, s.Zip, s.Country
-	m.ClientEmail = s.Email
+	m.ClientEmail, m.ClientLocalVatNo = s.Email, s.LocalVatNo
 }
 
 func snapshotYour(m *model.Invoice, a *model.Account) {
@@ -823,15 +982,26 @@ func recalc(m *model.Invoice) error {
 	if m.TaxableFulfillmentDue != "" && !billing.ValidDate(m.TaxableFulfillmentDue) {
 		return invalid("taxable_fulfillment_due", "invalid date")
 	}
+	if _, err := billing.ParseRate(m.ExchangeRate); err != nil {
+		return invalid("exchange_rate", "the exchange rate must be a positive number")
+	}
+	if m.SupplyType != "" && m.SupplyType != model.SupplyServices && m.SupplyType != model.SupplyGoods {
+		return invalid("supply_type", "supply_type must be services or goods")
+	}
 	due, err := billing.DueOn(m.IssuedOn, m.DueDays)
 	if err != nil {
 		return invalid("issued_on", "invalid date")
 	}
 	m.DueOn = due
 	opts := billingOptions(m)
+	since2024 := defaultStr(m.TaxableFulfillmentDue, m.IssuedOn) >= "2024-01-01"
 	for i := range m.Lines {
 		m.Lines[i].Position = i + 1
 		m.Lines[i].VatRateBps = billing.EffectiveRate(m.Lines[i].VatRateBps, opts)
+		if r := m.Lines[i].VatRateBps; m.YourVatMode == model.VatModePayer && since2024 && r != 0 && r != 1200 && r != 2100 {
+			// statutory rates since 1. 1. 2024 (older documents may keep 10/15 %)
+			return invalid(fmt.Sprintf("lines[%d].vat_rate_bps", i), "VAT rates since 2024 are 21 %, 12 % and 0 %")
+		}
 	}
 	t, err := billing.Calculate(billingLines(m.Lines), opts)
 	if err != nil {

@@ -67,6 +67,11 @@ type Invoice struct {
 	PricesIncludeVat bool
 	RoundTotal       bool
 	ReverseCharge    bool
+	SupplyType       string // EU reverse charge: services (default) | goods
+	// CorrectionReason is the reason of a correction (§ 45 ZDPH, required for VAT payers).
+	CorrectionReason string
+	// ClientLocalVatNo is the customer's local VAT number (Slovak IČ DPH) snapshot.
+	ClientLocalVatNo string
 
 	Subtotal   int64
 	VatTotal   int64
@@ -104,5 +109,10 @@ type Payment struct {
 	PaidOn    string `gorm:"not null"`
 	Amount    int64  `gorm:"not null"`
 	Note      string
-	CreatedAt time.Time
+	// TaxDocumentID: a proforma payment of a VAT payer → its tax document.
+	TaxDocumentID *uint `gorm:"index"`
+	// SourcePaymentID: a payment on a final invoice or tax document taken
+	// over from the proforma payment it mirrors (not deletable on its own).
+	SourcePaymentID *uint `gorm:"index"`
+	CreatedAt       time.Time
 }

@@ -82,6 +82,9 @@ func (s *server) vatReport(ctx context.Context, period string) (*reports.VatRepo
 		}
 	}
 	r := reports.NewVatReport(p)
+	if p.Quarterly() && reports.LegalPerson(acc.VatNo) {
+		r.Warn(reports.WarnMonthlyControl, "", nil, "a legal person files the control statement monthly: generate it for each month of the quarter")
+	}
 	from, to := p.Range()
 	for _, src := range []func(context.Context, *reports.VatReport, string, string) error{s.vatSales, s.vatPurchases} {
 		if err := src(ctx, r, from, to); err != nil {
@@ -92,33 +95,53 @@ func (s *server) vatReport(ctx context.Context, period string) (*reports.VatRepo
 	return r, nil
 }
 
-// vatSales adds issued invoices and corrections with DUZP in the period
-// (cancelled documents and documents issued as a non-payer excluded).
+// vatSales adds the tax documents issued as a VAT payer with DUZP in the
+// period: invoices, corrections and tax documents for received payments
+// (cancelled ones excluded). A final invoice is reported net of the tax
+// documents of its proforma (deposits already taxed when received).
+// Documents without a DUZP are reported by their issue date with a warning.
 func (s *server) vatSales(ctx context.Context, r *reports.VatReport, from, to string) error {
 	var invs []model.Invoice
 	err := s.scoped(ctx).Preload("Lines").
-		Where("document_type IN ? AND status <> ? AND your_vat_mode = ? AND taxable_fulfillment_due BETWEEN ? AND ?",
-			[]string{model.DocInvoice, model.DocCorrection}, model.StatusCancelled, model.VatModePayer, from, to).
+		Where("document_type IN ? AND status <> ? AND your_vat_mode = ?",
+			[]string{model.DocInvoice, model.DocCorrection, model.DocTaxDocument}, model.StatusCancelled, model.VatModePayer).
+		Where("taxable_fulfillment_due BETWEEN ? AND ? OR (taxable_fulfillment_due = '' AND issued_on BETWEEN ? AND ?)", from, to, from, to).
 		Order("taxable_fulfillment_due, number, id").Find(&invs).Error
 	if err != nil {
 		return dbErr(err, "invoices")
 	}
-	// Totals of corrected invoices decide A.4 / A.5 of their corrections.
+	// Totals of corrected invoices decide A.4 / A.5 of their corrections;
+	// related proformas of final invoices bring their deposits.
 	relIDs := []uint{}
 	for _, m := range invs {
-		if m.DocumentType == model.DocCorrection && m.RelatedID != nil {
+		if m.RelatedID != nil && m.DocumentType != model.DocTaxDocument {
 			relIDs = append(relIDs, *m.RelatedID)
 		}
 	}
-	related := map[uint]int64{}
+	type relInfo struct {
+		total     int64
+		cancelled bool
+		proforma  bool
+	}
+	related := map[uint]relInfo{}
+	var proformas []uint
 	if len(relIDs) > 0 {
 		var rels []model.Invoice
-		if err := s.scoped(ctx).Select("id", "total", "currency", "exchange_rate").Where("id IN ?", relIDs).Find(&rels).Error; err != nil {
+		if err := s.scoped(ctx).Select("id", "document_type", "status", "total", "currency", "exchange_rate").
+			Where("id IN ?", relIDs).Find(&rels).Error; err != nil {
 			return dbErr(err, "invoices")
 		}
 		for _, m := range rels {
-			related[m.ID] = toCZK(m.Total, m.Currency, m.ExchangeRate)
+			total, _ := toCZK(m.Total, m.Currency, m.ExchangeRate)
+			related[m.ID] = relInfo{total: total, cancelled: m.Status == model.StatusCancelled, proforma: m.DocumentType == model.DocProforma}
+			if m.DocumentType == model.DocProforma {
+				proformas = append(proformas, m.ID)
+			}
 		}
+	}
+	deposits, err := depositsOf(ctx, s.db.WithContext(ctx), proformas)
+	if err != nil {
+		return err
 	}
 	for i := range invs {
 		m := &invs[i]
@@ -127,25 +150,70 @@ func (s *server) vatSales(ctx context.Context, r *reports.VatReport, from, to st
 			r.Warn(reports.WarnCalculation, m.Number, nil, "%s", err.Error())
 			continue
 		}
-		sale := reports.Sale{
-			Number: m.Number, TaxPointDate: m.TaxableFulfillmentDue, CustomerVatNo: m.ClientVatNo,
-			CustomerCountry: m.ClientCountry, ReverseCharge: m.ReverseCharge, Recap: recap, Total: total,
+		duzp := m.TaxableFulfillmentDue
+		if duzp == "" {
+			duzp = m.IssuedOn
+			r.Warn(reports.WarnMissingTaxPointDate, m.Number, nil, "no DUZP: reported by the issue date %s; fill in the DUZP", m.IssuedOn)
 		}
-		if m.RelatedID != nil {
-			sale.ControlTotal = related[*m.RelatedID]
+		sale := reports.Sale{
+			Number: m.Number, TaxPointDate: duzp, CustomerVatNo: m.ClientVatNo, CustomerLocalVatNo: m.ClientLocalVatNo,
+			CustomerCountry: m.ClientCountry, ReverseCharge: m.ReverseCharge, SupplyType: m.SupplyType, Recap: recap, Total: total,
+		}
+		if m.RelatedID != nil && m.DocumentType != model.DocTaxDocument {
+			rel := related[*m.RelatedID]
+			switch {
+			case m.DocumentType == model.DocCorrection:
+				sale.ControlTotal = rel.total
+				if rel.cancelled {
+					r.Warn(reports.WarnCorrectionCancelled, m.Number, nil, "corrects a cancelled invoice: the original is not in the VAT return")
+				}
+			case rel.proforma:
+				for _, td := range deposits[*m.RelatedID] {
+					dr, dt, err := czkRecap(billingLines(td.Lines), billingOptions(&td), td.Currency, td.ExchangeRate)
+					if err != nil {
+						r.Warn(reports.WarnCalculation, td.Number, nil, "%s", err.Error())
+						continue
+					}
+					sale.Recap = subtractRecap(sale.Recap, dr)
+					sale.Total -= dt
+				}
+			}
 		}
 		r.AddSale(sale)
+	}
+	if r.Return.R20 != 0 || r.Return.R21 != 0 {
+		r.Warn(reports.WarnECSalesList, "", nil, "supplies to other EU member states (ř. 20/21) must also be filed in the EC Sales List (souhrnné hlášení)")
 	}
 	return nil
 }
 
-// vatPurchases adds tax-deductible expenses with DUZP (or, without it, the
-// issue date) in the period.
+// subtractRecap is a − b per VAT rate (rates only in b are added negated).
+func subtractRecap(a, b []reports.RateAmount) []reports.RateAmount {
+	out := append([]reports.RateAmount(nil), a...)
+	for _, x := range b {
+		found := false
+		for i := range out {
+			if out[i].RateBps == x.RateBps {
+				out[i].Base -= x.Base
+				out[i].Vat -= x.Vat
+				found = true
+			}
+		}
+		if !found {
+			out = append(out, reports.RateAmount{RateBps: x.RateBps, Base: -x.Base, Vat: -x.Vat})
+		}
+	}
+	return out
+}
+
+// vatPurchases adds expenses with DUZP (or, without it, the issue date) in
+// the period whose VAT is deducted (vat_deductible) or self-assessed
+// (reverse charge — the output VAT is due even without a deduction).
 func (s *server) vatPurchases(ctx context.Context, r *reports.VatReport, from, to string) error {
 	var exps []model.Expense
 	err := s.scoped(ctx).Preload("Lines").
-		Where("tax_deductible = ? AND (taxable_fulfillment_due BETWEEN ? AND ? OR (taxable_fulfillment_due = '' AND issued_on BETWEEN ? AND ?))",
-			true, from, to, from, to).
+		Where("vat_deductible = ? OR reverse_charge = ?", true, true).
+		Where("taxable_fulfillment_due BETWEEN ? AND ? OR (taxable_fulfillment_due = '' AND issued_on BETWEEN ? AND ?)", from, to, from, to).
 		Order("issued_on, number, id").Find(&exps).Error
 	if err != nil {
 		return dbErr(err, "expenses")
@@ -159,7 +227,8 @@ func (s *server) vatPurchases(ctx context.Context, r *reports.VatReport, from, t
 		}
 		r.AddPurchase(reports.Purchase{
 			Number: defaultStr(strings.TrimSpace(m.OriginalNumber), m.Number), TaxPointDate: defaultStr(m.TaxableFulfillmentDue, m.IssuedOn),
-			SupplierVatNo: m.SupplierVatNo, Recap: recap, Total: total,
+			SupplierVatNo: m.SupplierVatNo, SupplierCountry: m.SupplierCountry, Recap: recap, Total: total,
+			Deductible: m.VatDeductible, ReverseCharge: m.ReverseCharge, SupplyType: m.SupplyType,
 		})
 	}
 	return nil
@@ -192,13 +261,14 @@ func czkRate(currency, rate string) (int64, error) {
 	return billing.ParseRate(rate)
 }
 
-// toCZK converts an amount of a document to CZK (0 for an invalid rate).
-func toCZK(amount int64, currency, rate string) int64 {
+// toCZK converts an amount of a document to CZK; false for an invalid
+// exchange rate or an overflow (callers report the document, never a silent 0).
+func toCZK(amount int64, currency, rate string) (int64, bool) {
 	r, err := czkRate(currency, rate)
 	if err != nil {
-		return 0
+		return 0, false
 	}
-	return billing.ToLocal(amount, r)
+	return billing.MulDivRound(amount, r, billing.RateScale)
 }
 
 func toVatReport(r *reports.VatReport, acc *model.Account) VatReport {
@@ -259,6 +329,8 @@ func (s *server) getVatXML(ctx context.Context, in *vatReportInput, form string)
 	var b []byte
 	if form == "dphdp3" {
 		b, err = reports.DPHDP3(r, tp, opt)
+	} else if r.Period.Quarterly() && reports.LegalPerson(acc.VatNo) {
+		return nil, conflict(CodeMonthlyControlStatement, "a legal person files the control statement for each month (§ 101e); request period=YYYY-MM")
 	} else {
 		b, err = reports.DPHKH1(r, tp, opt)
 	}
@@ -291,6 +363,8 @@ type IncomeTax struct {
 	RealExpenses int64              `json:"real_expenses" doc:"Tax-deductible expenses paid in the year (without deductible VAT for VAT payers)"`
 	RealTaxBase  int64              `json:"real_tax_base" doc:"income − real_expenses"`
 	FlatRates    []reports.FlatRate `json:"flat_rates" nullable:"false" doc:"Flat-rate expense options (paušál) with statutory caps"`
+	InvalidRates int                `json:"invalid_rates" doc:"Payments left out: their document has an invalid exchange rate"`
+	RateBasis    string             `json:"rate_basis" enum:"document" doc:"Exchange rate used for foreign-currency payments: document = the rate of the paid document (ČNB rate of its DUZP); payments in another currency at the payment-day rate are not tracked separately"`
 }
 
 // Overview are the yearly statistics (CZK; foreign documents converted).
@@ -307,13 +381,16 @@ type Overview struct {
 	AverageDaysToPay *float64      `json:"average_days_to_pay" doc:"Mean of paid_on − issued_on of invoices issued in the year and paid; null without data"`
 	PaidCount        int           `json:"paid_count" doc:"Invoices in average_days_to_pay"`
 	IncomeTax        IncomeTax     `json:"income_tax"`
+	// InvalidRateDocuments could not be converted to CZK (invalid exchange
+	// rate) and are missing from the sums — fix their exchange rate.
+	InvalidRateDocuments []string `json:"invalid_rate_documents" nullable:"false"`
 }
 
 func (s *server) getOverview(ctx context.Context, in *struct {
 	Year int `query:"year" minimum:"2000" maximum:"2999" doc:"Default: current year"`
 }) (*Out[Overview], error) {
 	o := Overview{Year: in.Year, Currency: "CZK", RevenueByMonth: make([]int64, 12), ExpensesByMonth: make([]int64, 12),
-		ProfitByMonth: make([]int64, 12), TopCustomers: []TopCustomer{}}
+		ProfitByMonth: make([]int64, 12), TopCustomers: []TopCustomer{}, InvalidRateDocuments: []string{}}
 	if o.Year == 0 {
 		o.Year = s.deps.Now().Year()
 	}
@@ -322,7 +399,7 @@ func (s *server) getOverview(ctx context.Context, in *struct {
 
 	var invs []model.Invoice
 	err := s.scoped(ctx).
-		Select("id", "document_type", "status", "subject_id", "client_name", "issued_on", "paid_on", "currency", "exchange_rate", "total").
+		Select("id", "number", "document_type", "status", "subject_id", "client_name", "issued_on", "paid_on", "currency", "exchange_rate", "total").
 		Where("document_type IN ? AND status <> ? AND issued_on BETWEEN ? AND ?",
 			[]string{model.DocInvoice, model.DocCorrection}, model.StatusCancelled, from, to).
 		Order("issued_on, id").Find(&invs).Error
@@ -332,7 +409,10 @@ func (s *server) getOverview(ctx context.Context, in *struct {
 	customers := map[uint]*TopCustomer{}
 	var days, paid int
 	for _, m := range invs {
-		total := toCZK(m.Total, m.Currency, m.ExchangeRate)
+		total, ok := toCZK(m.Total, m.Currency, m.ExchangeRate)
+		if !ok {
+			o.InvalidRateDocuments = append(o.InvalidRateDocuments, m.Number)
+		}
 		o.RevenueByMonth[month(m.IssuedOn)] += total
 		c := customers[m.SubjectID]
 		if c == nil {
@@ -361,12 +441,16 @@ func (s *server) getOverview(ctx context.Context, in *struct {
 	}
 
 	var exps []model.Expense
-	if err := s.scoped(ctx).Select("id", "issued_on", "currency", "exchange_rate", "total").
+	if err := s.scoped(ctx).Select("id", "number", "issued_on", "currency", "exchange_rate", "total").
 		Where("issued_on BETWEEN ? AND ?", from, to).Find(&exps).Error; err != nil {
 		return nil, dbErr(err, "expenses")
 	}
 	for _, m := range exps {
-		o.ExpensesByMonth[month(m.IssuedOn)] += toCZK(m.Total, m.Currency, m.ExchangeRate)
+		v, ok := toCZK(m.Total, m.Currency, m.ExchangeRate)
+		if !ok {
+			o.InvalidRateDocuments = append(o.InvalidRateDocuments, m.Number)
+		}
+		o.ExpensesByMonth[month(m.IssuedOn)] += v
 	}
 	for i := range 12 {
 		o.ProfitByMonth[i] = o.RevenueByMonth[i] - o.ExpensesByMonth[i]
@@ -382,9 +466,13 @@ func (s *server) getOverview(ctx context.Context, in *struct {
 }
 
 // incomeTax: cash basis (daňová evidence) — payments received on invoices
-// and corrections (proforma payments are counted through their final
-// invoice) and payments of tax-deductible expenses, both without VAT when
-// the account is a VAT payer (VAT share of a payment = its share of the total).
+// and corrections, payments of proformas without a final invoice (once the
+// final invoice exists it carries them as taken-over payments with the same
+// date and amount) and payments of tax-deductible expenses, all without VAT
+// when the account is a VAT payer (VAT share of a payment = its share of
+// the total). Tax documents for received payments only mirror proforma
+// payments and are never counted. Foreign currencies are converted with the
+// document's exchange rate (RateBasis).
 func (s *server) incomeTax(ctx context.Context, from, to string, payer bool) (IncomeTax, error) {
 	type pay struct {
 		Amount       int64
@@ -393,21 +481,26 @@ func (s *server) incomeTax(ctx context.Context, from, to string, payer bool) (In
 		Subtotal     int64
 		Total        int64
 	}
+	var t IncomeTax
 	net := func(p pay) int64 {
-		amount := toCZK(p.Amount, p.Currency, p.ExchangeRate)
+		amount, ok := toCZK(p.Amount, p.Currency, p.ExchangeRate)
+		if !ok {
+			t.InvalidRates++
+		}
 		if payer && p.Total != 0 {
 			amount, _ = billing.MulDivRound(amount, p.Subtotal, p.Total)
 		}
 		return amount
 	}
 	accountID := auth.AccountFrom(ctx).ID
-	var t IncomeTax
 	var in []pay
 	err := s.db.WithContext(ctx).Table("payments").
 		Select("payments.amount, invoices.currency, invoices.exchange_rate, invoices.subtotal, invoices.total").
 		Joins("JOIN invoices ON invoices.id = payments.invoice_id").
-		Where("payments.account_id = ? AND invoices.account_id = ? AND invoices.document_type IN ? AND payments.paid_on BETWEEN ? AND ?",
-			accountID, accountID, []string{model.DocInvoice, model.DocCorrection}, from, to).
+		Where("payments.account_id = ? AND invoices.account_id = ? AND payments.paid_on BETWEEN ? AND ?", accountID, accountID, from, to).
+		Where(`invoices.document_type IN ? OR (invoices.document_type = ? AND NOT EXISTS
+			(SELECT 1 FROM invoices f WHERE f.related_id = invoices.id AND f.document_type = ? AND f.account_id = invoices.account_id))`,
+			[]string{model.DocInvoice, model.DocCorrection}, model.DocProforma, model.DocInvoice).
 		Scan(&in).Error
 	if err != nil {
 		return t, dbErr(err, "payments")
@@ -430,6 +523,7 @@ func (s *server) incomeTax(ctx context.Context, from, to string, payer bool) (In
 	}
 	t.RealTaxBase = t.Income - t.RealExpenses
 	t.FlatRates = reports.FlatRates(t.Income)
+	t.RateBasis = "document"
 	return t, nil
 }
 

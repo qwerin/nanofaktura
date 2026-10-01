@@ -636,7 +636,7 @@ func TestPayments(t *testing.T) {
 	assertError(t, res, body, http.StatusConflict, "uncollectible")
 
 	// refund on a correction: negative total is paid by a negative payment
-	corr := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, inv2.ID, "/correction"), nil)
+	corr := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, inv2.ID, "/correction"), map[string]any{"correction_reason": "Vrácení zboží"})
 	r = pay(a, corr.ID, api.PaymentCreate{})
 	if r.Payment.Amount != -500 || r.Invoice.Status != "paid" {
 		t.Fatalf("refund: %+v", r)
@@ -667,9 +667,9 @@ func TestPaymentCreateFinalInvoice(t *testing.T) {
 		t.Fatalf("final invoice: %+v lines %+v", fin.InvoiceSummary, fin.Lines)
 	}
 
-	// only once; the rejected request leaves no payment behind
+	// only once: the settled proforma takes no more payments; the rejected request leaves no payment behind
 	res, body := a.do("POST", invURL(a, pro.ID, "/payments"), api.PaymentCreate{Amount: i64(1), CreateFinalInvoice: true})
-	assertError(t, res, body, http.StatusConflict, "already exists")
+	assertCode(t, res, body, http.StatusConflict, "proforma_settled")
 	if g := getInv(a, pro.ID); len(g.Payments) != 1 {
 		t.Fatalf("payments after conflict: %+v", g.Payments)
 	}
@@ -689,7 +689,7 @@ func TestCorrectionAndDuplicate(t *testing.T) {
 	// the subject changes later; the correction keeps the invoice's snapshot
 	a.mustDo(http.StatusOK, "PATCH", subjectURL(a, subj.ID), map[string]any{"name": "ACME Nová"})
 
-	corr := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, inv.ID, "/correction"), nil)
+	corr := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, inv.ID, "/correction"), map[string]any{"correction_reason": "Vrácení zboží"})
 	if corr.DocumentType != "correction" || corr.Number != "D2026-0001" || corr.RelatedID == nil || *corr.RelatedID != inv.ID ||
 		corr.Status != "open" || corr.SentAt != nil || corr.ClientName != "ACME" || corr.Total != -inv.Total ||
 		corr.Lines[0].Quantity != "-2" || corr.Lines[1].Quantity != "-1.5" || corr.Lines[1].VatRateBps != 1200 ||
@@ -703,10 +703,10 @@ func TestCorrectionAndDuplicate(t *testing.T) {
 	if p.Total != -1210 {
 		t.Fatalf("patched correction: %+v", p.InvoiceSummary)
 	}
-	res, body := a.do("POST", invURL(a, corr.ID, "/correction"), nil)
+	res, body := a.do("POST", invURL(a, corr.ID, "/correction"), map[string]any{"correction_reason": "Vrácení zboží"})
 	assertError(t, res, body, http.StatusConflict, "only be issued for an invoice")
 	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("X", "1", 1, nil)}})
-	res, body = a.do("POST", invURL(a, pro.ID, "/correction"), nil)
+	res, body = a.do("POST", invURL(a, pro.ID, "/correction"), map[string]any{"correction_reason": "Vrácení zboží"})
 	assertError(t, res, body, http.StatusConflict, "proforma")
 
 	// duplicate: new number, today, open, fresh snapshot, same lines
@@ -754,7 +754,7 @@ func TestDashboard(t *testing.T) {
 	jan := mk("", "2026-01-05", "", 1000, nil)
 	pay(a, jan.ID, api.PaymentCreate{})
 	mar := mk("", "2026-03-10", "", 2000, nil)        // open, due 03-24
-	mk("correction", "2026-02-10", "", -300, &jan.ID) // open, due 02-24 → overdue
+	mk("correction", "2026-02-10", "", -300, &jan.ID) // open, due 02-24: a refund owed, not a receivable
 	mk("proforma", "2026-03-11", "", 700, nil)        // not revenue, unpaid
 	mk("", "2026-03-12", "EUR", 9999, nil)            // other currency
 	mk("", "2025-12-20", "", 400, nil)                // other year, overdue
@@ -766,7 +766,7 @@ func TestDashboard(t *testing.T) {
 	d := doJSON[api.Dashboard](a, http.StatusOK, "GET", a.acct("/dashboard"), nil)
 	want := api.Dashboard{
 		Year: 2026, Currency: "CZK", RevenueByMonth: []int64{1000, -300, 2050, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		RevenueTotal: 2750, UnpaidTotal: 2800, UnpaidCount: 4, OverdueTotal: 100, OverdueCount: 2,
+		RevenueTotal: 2750, UnpaidTotal: 3100, UnpaidCount: 3, OverdueTotal: 400, OverdueCount: 1,
 		ExpensesByMonth: make([]int64, 12), ProfitTotal: 2750,
 	}
 	if !reflect.DeepEqual(d, want) {
@@ -774,7 +774,7 @@ func TestDashboard(t *testing.T) {
 	}
 	pay(a, mar.ID, api.PaymentCreate{Amount: i64(500)})
 	d = doJSON[api.Dashboard](a, http.StatusOK, "GET", a.acct("/dashboard?year=2025"), nil)
-	if d.Year != 2025 || d.RevenueByMonth[11] != 400 || d.RevenueTotal != 400 || d.UnpaidTotal != 2300 {
+	if d.Year != 2025 || d.RevenueByMonth[11] != 400 || d.RevenueTotal != 400 || d.UnpaidTotal != 2600 {
 		t.Fatalf("2025: %+v", d)
 	}
 	res, body := a.do("GET", a.acct("/dashboard?year=12"), nil)

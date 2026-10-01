@@ -51,7 +51,7 @@ type PublicInvoiceLine struct {
 // PublicInvoice is what the client sees behind the public link: the
 // content of the PDF, without internal data (ids, private note, tags…).
 type PublicInvoice struct {
-	DocumentType   string `json:"document_type" enum:"invoice,proforma,correction"`
+	DocumentType   string `json:"document_type" enum:"invoice,proforma,correction,tax_document"`
 	Number         string `json:"number"`
 	VariableSymbol string `json:"variable_symbol"`
 	Status         string `json:"status" enum:"open,sent,overdue,paid,cancelled,uncollectible"`

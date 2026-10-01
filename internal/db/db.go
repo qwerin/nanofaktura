@@ -110,8 +110,16 @@ func sqliteDSN(dsn string) string {
 // Migrate creates/updates the schema for all models and backfills derived
 // columns (search_text of rows written before it existed).
 func Migrate(db *gorm.DB) error {
+	// expenses.vat_deductible (VAT deduction) was split from tax_deductible
+	// (income tax): existing expenses keep their previous VAT behaviour.
+	newVatDeductible := db.Migrator().HasTable(&model.Expense{}) && !db.Migrator().HasColumn(&model.Expense{}, "VatDeductible")
 	if err := db.AutoMigrate(model.All()...); err != nil {
 		return err
+	}
+	if newVatDeductible {
+		if err := db.Exec("UPDATE expenses SET vat_deductible = tax_deductible").Error; err != nil {
+			return fmt.Errorf("backfill vat_deductible: %w", err)
+		}
 	}
 	return backfillSearchText(db)
 }

@@ -59,9 +59,12 @@ type ExpenseSummary struct {
 	Description      string   `json:"description"`
 	PrivateNote      string   `json:"private_note"`
 	Tags             []string `json:"tags" nullable:"false"`
-	TaxDeductible    bool     `json:"tax_deductible"`
+	TaxDeductible    bool     `json:"tax_deductible" doc:"Income tax: counts as a tax-deductible expense"`
+	VatDeductible    bool     `json:"vat_deductible" doc:"VAT: the VAT deduction is claimed in the VAT return (independent of tax_deductible)"`
 	PricesIncludeVat bool     `json:"prices_include_vat"`
 	RoundTotal       bool     `json:"round_total"`
+	ReverseCharge    bool     `json:"reverse_charge" doc:"The supplier charged no VAT and the recipient self-assesses it (EU, § 92a, services from outside the EU); line rates are the recipient's"`
+	SupplyType       string   `json:"supply_type" enum:"services,goods" doc:"Reverse charge from the EU: services or goods"`
 
 	Subtotal        int64 `json:"subtotal"`
 	VatTotal        int64 `json:"vat_total"`
@@ -131,7 +134,8 @@ func toExpenseSummary(m *model.Expense, today string) ExpenseSummary {
 
 		Currency: m.Currency, ExchangeRate: m.ExchangeRate, PaymentMethod: m.PaymentMethod, Category: m.Category,
 		Description: m.Description, PrivateNote: m.PrivateNote, Tags: tags, TaxDeductible: m.TaxDeductible,
-		PricesIncludeVat: m.PricesIncludeVat, RoundTotal: m.RoundTotal,
+		VatDeductible: m.VatDeductible, PricesIncludeVat: m.PricesIncludeVat, RoundTotal: m.RoundTotal,
+		ReverseCharge: m.ReverseCharge, SupplyType: defaultStr(m.SupplyType, model.SupplyServices),
 
 		Subtotal: m.Subtotal, VatTotal: m.VatTotal, Rounding: m.Rounding, Total: m.Total,
 		PaidAmount: m.PaidAmount, RemainingAmount: m.Total - m.PaidAmount,
@@ -210,15 +214,18 @@ type ExpenseCreate struct {
 	DueDays               *int    `json:"due_days,omitempty" minimum:"0" maximum:"365" doc:"Used when due_on is empty; default: the supplier's due_days, else the account's default_due_days"`
 
 	Currency         string   `json:"currency,omitempty" pattern:"^[A-Z]{3}$" doc:"Default: account default_currency"`
-	ExchangeRate     string   `json:"exchange_rate,omitempty" pattern:"^[0-9]{1,6}([.][0-9]{1,6})?$" doc:"Default 1"`
+	ExchangeRate     string   `json:"exchange_rate,omitempty" pattern:"^[0-9]{1,6}([.][0-9]{1,6})?$" doc:"CZK per unit, > 0; default: ČNB rate of the DUZP for a foreign currency, 1 for CZK"`
 	PaymentMethod    string   `json:"payment_method,omitempty" enum:"bank,cash,card,cod,paypal,custom" doc:"Default: account default_payment_method"`
 	Category         string   `json:"category,omitempty" maxLength:"100"`
 	Description      string   `json:"description,omitempty" maxLength:"5000"`
 	PrivateNote      string   `json:"private_note,omitempty" maxLength:"5000"`
 	Tags             []string `json:"tags,omitempty" maxItems:"50"`
 	TaxDeductible    *bool    `json:"tax_deductible,omitempty" doc:"Default true"`
+	VatDeductible    *bool    `json:"vat_deductible,omitempty" doc:"Default true"`
 	PricesIncludeVat bool     `json:"prices_include_vat,omitempty"`
 	RoundTotal       bool     `json:"round_total,omitempty"`
+	ReverseCharge    bool     `json:"reverse_charge,omitempty"`
+	SupplyType       string   `json:"supply_type,omitempty" enum:"services,goods"`
 
 	Lines []InvoiceLineInput `json:"lines" minItems:"1" maxItems:"500"`
 }
@@ -245,8 +252,11 @@ type ExpensePatch struct {
 	PrivateNote      *string  `json:"private_note,omitempty" maxLength:"5000"`
 	Tags             []string `json:"tags,omitempty" maxItems:"50" doc:"Replaces all tags; [] clears"`
 	TaxDeductible    *bool    `json:"tax_deductible,omitempty"`
+	VatDeductible    *bool    `json:"vat_deductible,omitempty"`
 	PricesIncludeVat *bool    `json:"prices_include_vat,omitempty"`
 	RoundTotal       *bool    `json:"round_total,omitempty"`
+	ReverseCharge    *bool    `json:"reverse_charge,omitempty"`
+	SupplyType       *string  `json:"supply_type,omitempty" enum:"services,goods"`
 
 	Lines []InvoiceLineInput `json:"lines,omitempty" minItems:"1" maxItems:"500"`
 }
@@ -392,9 +402,11 @@ func (s *server) createExpense(ctx context.Context, in *struct{ Body ExpenseCrea
 			Currency: defaultStr(b.Currency, acc.DefaultCurrency), ExchangeRate: defaultStr(b.ExchangeRate, "1"),
 			PaymentMethod: defaultStr(b.PaymentMethod, acc.DefaultPaymentMethod),
 			Category:      strings.TrimSpace(b.Category), Description: b.Description, PrivateNote: b.PrivateNote,
-			Tags: normalizeTags(b.Tags), TaxDeductible: true, PricesIncludeVat: b.PricesIncludeVat, RoundTotal: b.RoundTotal,
+			Tags: normalizeTags(b.Tags), TaxDeductible: true, VatDeductible: true, PricesIncludeVat: b.PricesIncludeVat,
+			RoundTotal: b.RoundTotal, ReverseCharge: b.ReverseCharge, SupplyType: b.SupplyType,
 		}
 		apply(&m.TaxDeductible, b.TaxDeductible)
+		apply(&m.VatDeductible, b.VatDeductible)
 		if b.SubjectID != nil {
 			subj, err := findSubject(ctx, tx, *b.SubjectID)
 			if err != nil {
@@ -497,6 +509,9 @@ func (s *server) patchExpense(ctx context.Context, in *struct {
 		}
 		apply(&m.TaxableFulfillmentDue, p.TaxableFulfillmentDue)
 		apply(&m.DueOn, p.DueOn)
+		if p.Currency != nil && *p.Currency != m.Currency && len(m.Payments) > 0 {
+			return 0, conflict(CodeCurrencyHasPayments, "the expense has payments in "+m.Currency+"; delete them before changing the currency")
+		}
 		apply(&m.Currency, p.Currency)
 		apply(&m.ExchangeRate, p.ExchangeRate)
 		apply(&m.PaymentMethod, p.PaymentMethod)
@@ -509,8 +524,11 @@ func (s *server) patchExpense(ctx context.Context, in *struct {
 			m.Tags = normalizeTags(p.Tags)
 		}
 		apply(&m.TaxDeductible, p.TaxDeductible)
+		apply(&m.VatDeductible, p.VatDeductible)
 		apply(&m.PricesIncludeVat, p.PricesIncludeVat)
 		apply(&m.RoundTotal, p.RoundTotal)
+		apply(&m.ReverseCharge, p.ReverseCharge)
+		apply(&m.SupplyType, p.SupplyType)
 		if p.Lines != nil {
 			if err := checkPriceItems(ctx, tx, p.Lines); err != nil {
 				return 0, err
@@ -755,13 +773,16 @@ func expenseBillingLines(lines []model.ExpenseLine) []billing.Line {
 // expenseOptions: the supplier's VAT is recorded as charged, regardless of
 // the account's own VAT mode.
 func expenseOptions(m *model.Expense) billing.Options {
-	return billing.Options{PricesIncludeVAT: m.PricesIncludeVat, RoundTotal: m.RoundTotal}
+	return billing.Options{PricesIncludeVAT: m.PricesIncludeVat, RoundTotal: m.RoundTotal, ReverseCharge: m.ReverseCharge}
 }
 
 // recalcExpense validates dates and recomputes positions and all totals.
 func recalcExpense(m *model.Expense) error {
 	if m.TaxableFulfillmentDue != "" && !billing.ValidDate(m.TaxableFulfillmentDue) {
 		return invalid("taxable_fulfillment_due", "invalid date")
+	}
+	if _, err := billing.ParseRate(m.ExchangeRate); err != nil {
+		return invalid("exchange_rate", "the exchange rate must be a positive number")
 	}
 	if !billing.ValidDate(m.DueOn) {
 		return invalid("due_on", "invalid date")

@@ -44,6 +44,9 @@ func (r *renderer) build() error {
 	if b := r.bottom(); b != nil {
 		r.keep(6, full(b))
 	}
+	for _, n := range r.d.notes {
+		r.keep(5, full(r.paragraph(n, 8.5, r.th.strong)))
+	}
 	if fn := strings.TrimSpace(r.d.inv.FooterNote); fn != "" {
 		r.keep(7, full(r.paragraph(fn, 8, r.th.muted)))
 	}
@@ -253,6 +256,10 @@ func (r *renderer) partyBox(heading string, p party) *box {
 		st.add(txt{s: r.t(lVatNo) + ": " + p.vatNo, size: 8.5, color: th.ink}, gap)
 		gap = 1
 	}
+	if p.localVatNo != "" && p.localVatNo != p.vatNo {
+		st.add(txt{s: r.t(lLocalVatNo) + ": " + p.localVatNo, size: 8.5, color: th.ink}, gap)
+		gap = 1
+	}
 	st.add(txt{s: p.vatNote, size: 8, ital: true, color: th.muted}, gap)
 
 	switch th.name {
@@ -325,7 +332,7 @@ func (r *renderer) dateKVs() []kv {
 }
 
 func (r *renderer) showTaxable() bool {
-	return r.d.payer && r.d.inv.DocumentType != model.DocProforma && r.d.inv.TaxableFulfillmentDue != ""
+	return r.d.taxDoc && r.d.inv.TaxableFulfillmentDue != ""
 }
 
 func (r *renderer) kvBlock(heading string, items []kv, boldKey string, keyPct float64) *box {
@@ -453,7 +460,7 @@ func (r *renderer) cells(ln model.InvoiceLine) []string {
 		qty += nbsp + ln.UnitName
 	}
 	if r.d.payer {
-		return []string{ln.Name, qty, l.amount(ln.UnitPrice), l.vatRate(ln.VatRateBps), l.amount(ln.Base), l.amount(ln.Total)}
+		return []string{ln.Name, qty, l.amount(ln.UnitPrice), r.rateLabel(ln.VatRateBps), l.amount(ln.Base), l.amount(ln.Total)}
 	}
 	total := ln.Total
 	if total == 0 && ln.Base != 0 {
@@ -605,6 +612,15 @@ func (r *renderer) qr() *box {
 	return qrBox(r.d.qr, 30, txt{s: r.t(lQR), size: 7.5, bold: true, color: r.th.muted, align: align.Center})
 }
 
+// rateLabel is the VAT rate column: "PDP"/"RC" under reverse charge (the
+// customer applies its own rate, § 29 odst. 3).
+func (r *renderer) rateLabel(bps int32) string {
+	if r.d.inv.ReverseCharge {
+		return r.t(lRCRate)
+	}
+	return r.d.l.vatRate(bps)
+}
+
 func (r *renderer) recapBox() *box {
 	th, l := r.th, r.d.l
 	hc := th.accent
@@ -614,19 +630,56 @@ func (r *renderer) recapBox() *box {
 	right := func(s string, bold bool) txt {
 		return txt{s: s, size: 8, color: th.ink, align: align.Right, bold: bold}
 	}
-	g := &grid{cols: []float64{0.19, 0.27, 0.27, 0.27}, rule: th.rule, padV: 1.6}
 	hdr := func(s string, a align.Type) txt { return txt{s: s, size: 7, bold: true, color: th.muted, align: a} }
-	g.header = []txt{hdr(r.t(lRate), align.Left), hdr(r.t(lBase), align.Right), hdr(r.t(lVat), align.Right), hdr(r.t(lLineTotal), align.Right)}
-	for _, rr := range r.d.recap {
-		g.rows = append(g.rows, []txt{
-			{s: l.vatRate(rr.rate), size: 8, color: th.ink},
-			right(l.amount(rr.base), false), right(l.amount(rr.vat), false), right(l.amount(rr.total), false),
-		})
+	heading := func(s string) *box {
+		return (&stack{}).add(txt{s: strings.ToUpper(s), size: 7, bold: true, color: hc}, 0).box()
 	}
-	head := (&stack{}).add(txt{s: strings.ToUpper(r.t(lVatRecap)), size: 7, bold: true, color: hc}, 0).box()
-	parts := []*box{head, g.box()}
-	if r.d.inv.ReverseCharge {
+	table := func(rows []recapRow, amount func(int64) string, first func(recapRow) string) *box {
+		g := &grid{cols: []float64{0.19, 0.27, 0.27, 0.27}, rule: th.rule, padV: 1.6}
+		g.header = []txt{hdr(r.t(lRate), align.Left), hdr(r.t(lBase), align.Right), hdr(r.t(lVat), align.Right), hdr(r.t(lLineTotal), align.Right)}
+		for _, rr := range rows {
+			g.rows = append(g.rows, []txt{
+				{s: first(rr), size: 8, color: th.ink},
+				right(amount(rr.base), false), right(amount(rr.vat), false), right(amount(rr.total), false),
+			})
+		}
+		return g.box()
+	}
+	rateOf := func(rr recapRow) string { return r.rateLabel(rr.rate) }
+	parts := []*box{heading(r.t(lVatRecap)), table(r.d.recap, l.amount, rateOf)}
+	if r.d.inv.ReverseCharge && r.d.inv.SupplyType != model.SupplyGoods {
 		parts = append(parts, (&stack{}).add(txt{s: r.t(lReverseCharge), size: 8, bold: true, color: th.strong}, 0).box())
+	}
+	if len(r.d.deposits) > 0 {
+		// the advances already taxed by tax documents, and the VAT of this document after them
+		g := &grid{cols: []float64{0.31, 0.15, 0.27, 0.27}, rule: th.rule, padV: 1.6}
+		g.header = []txt{hdr(r.t(lDocument), align.Left), hdr(r.t(lRate), align.Left), hdr(r.t(lBase), align.Right), hdr(r.t(lVat), align.Right)}
+		net := map[int32]recapRow{}
+		order := []int32{}
+		for _, rr := range r.d.recap {
+			net[rr.rate] = rr
+			order = append(order, rr.rate)
+		}
+		for _, dr := range r.d.deposits {
+			g.rows = append(g.rows, []txt{{s: dr.number, size: 8, color: th.ink}, {s: l.vatRate(dr.rate), size: 8, color: th.ink},
+				right(l.amount(-dr.base), false), right(l.amount(-dr.vat), false)})
+			n, ok := net[dr.rate]
+			if !ok {
+				order = append(order, dr.rate)
+				n.rate = dr.rate
+			}
+			n.base, n.vat, n.total = n.base-dr.base, n.vat-dr.vat, n.total-dr.total
+			net[dr.rate] = n
+		}
+		rows := make([]recapRow, len(order))
+		for i, rate := range order {
+			rows[i] = net[rate]
+		}
+		parts = append(parts, heading(r.t(lDeposits)), g.box(), heading(r.t(lVatAfterDeposits)), table(rows, l.amount, rateOf))
+	}
+	if len(r.d.czk) > 0 {
+		czk := func(v int64) string { return l.money(v, "CZK") }
+		parts = append(parts, heading(r.t(lCZKRecap, strings.ToUpper(r.d.currency), r.d.czkRate)), table(r.d.czk, czk, rateOf))
 	}
 	return vstack(2, parts...)
 }

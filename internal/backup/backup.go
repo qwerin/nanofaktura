@@ -122,7 +122,13 @@ func conv(dst, src reflect.Value) {
 			}
 		}
 	case reflect.Pointer:
-		if src.Kind() != reflect.Pointer || src.IsNil() {
+		if src.Kind() != reflect.Pointer { // value → optional DTO field
+			n := reflect.New(dst.Type().Elem())
+			conv(n.Elem(), src)
+			dst.Set(n)
+			return
+		}
+		if src.IsNil() {
 			dst.Set(reflect.Zero(dst.Type()))
 			return
 		}
@@ -155,6 +161,12 @@ func conv(dst, src reflect.Value) {
 		}
 		dst.Set(m)
 	default:
+		if src.Kind() == reflect.Pointer { // optional DTO field → value (nil = zero)
+			if !src.IsNil() {
+				conv(dst, src.Elem())
+			}
+			return
+		}
 		if src.Type().ConvertibleTo(dst.Type()) {
 			dst.Set(src.Convert(dst.Type()))
 		}

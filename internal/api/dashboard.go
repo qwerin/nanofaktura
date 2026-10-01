@@ -66,7 +66,9 @@ func (s *server) getDashboard(ctx context.Context, in *struct {
 		var a agg
 		q := s.scoped(ctx).Model(&model.Invoice{}).
 			Select("COUNT(*) AS count, CAST(COALESCE(SUM(total - paid_amount), 0) AS BIGINT) AS sum").
-			Where("currency = ? AND status IN ?", d.Currency, []string{model.StatusOpen, model.StatusSent})
+			// receivables only: credit notes to refund (negative remaining) and
+			// fully paid zero-total documents are not "unpaid"
+			Where("currency = ? AND status IN ? AND total > paid_amount", d.Currency, []string{model.StatusOpen, model.StatusSent})
 		if extra != "" {
 			q = q.Where(extra, args...)
 		}

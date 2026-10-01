@@ -60,6 +60,10 @@ type Options struct {
 	// RelatedNumber is the number of the document referenced by RelatedID
 	// (the corrected invoice for a correction, the proforma for a final invoice).
 	RelatedNumber string
+
+	// Deposits are the tax documents for received advance payments deducted
+	// on a final invoice ("odpočet zálohy"; loaded with lines).
+	Deposits []*model.Invoice
 }
 
 //go:embed fonts/DejaVuSans.ttf
@@ -171,8 +175,14 @@ func Render(inv *model.Invoice, acc *model.Account, opt Options) ([]byte, error)
 // party is a formatted supplier/customer block.
 type party struct {
 	name, fullName, street, cityLine, country string
-	regNo, vatNo                              string
+	regNo, vatNo, localVatNo                  string
 	vatNote                                   string
+}
+
+// depositRow is one VAT rate of a deducted tax document (final invoice).
+type depositRow struct {
+	number string
+	recapRow
 }
 
 // recapRow is one VAT rate in the VAT recapitulation.
@@ -186,7 +196,12 @@ type doc struct {
 	inv      *model.Invoice
 	acc      *model.Account
 	l        locale
-	payer    bool // supplier is a VAT payer → VAT columns, DUZP, recap
+	payer    bool       // supplier is a VAT payer → VAT columns, DUZP, recap
+	taxDoc   bool       // a tax document (payer, or identified person with reverse charge) → DUZP, tax wording
+	czk      []recapRow // payer in a foreign currency: the recap converted to CZK (§ 29 odst. 1 písm. l)
+	czkRate  string     // the rate used for czk ("24,355")
+	deposits []depositRow
+	notes    []string // legal notices under the totals (reverse charge / exemption, correction reason)
 	title    string
 	subtitle string
 	supplier party
@@ -217,12 +232,22 @@ func newDoc(inv *model.Invoice, acc *model.Account, opt Options) *doc {
 		vatMode = acc.VatMode
 	}
 	d.payer = vatMode == model.VatModePayer
+	d.taxDoc = inv.DocumentType != model.DocProforma &&
+		(d.payer || (vatMode == model.VatModeIdentifiedPerson && inv.ReverseCharge))
 
 	// Title and subtitle per document type.
 	switch inv.DocumentType {
 	case model.DocProforma:
 		d.title = d.l.t(lTitleProforma)
 		d.subtitle = d.l.t(lSubNotTaxDoc)
+	case model.DocTaxDocument:
+		d.title = d.l.t(lTitleTaxDocument)
+		if inv.Total < 0 {
+			d.title = d.l.t(lTitleTaxDocumentCorr)
+		}
+		if opt.RelatedNumber != "" {
+			d.subtitle = d.l.t(lSubAdvanceFor, opt.RelatedNumber)
+		}
 	case model.DocCorrection:
 		d.title = d.l.t(lTitleCorrection)
 		if d.payer {
@@ -233,7 +258,7 @@ func newDoc(inv *model.Invoice, acc *model.Account, opt Options) *doc {
 		}
 	default:
 		d.title = d.l.t(lTitleInvoice)
-		if d.payer {
+		if d.taxDoc {
 			d.title = d.l.t(lTitleInvoicePayer)
 		}
 		if opt.RelatedNumber != "" {
@@ -261,7 +286,7 @@ func newDoc(inv *model.Invoice, acc *model.Account, opt Options) *doc {
 	cli := party{
 		name: inv.ClientName, fullName: inv.ClientFullName, street: inv.ClientStreet,
 		cityLine: joinNonEmpty(" ", inv.ClientZip, inv.ClientCity),
-		regNo:    inv.ClientRegistrationNo, vatNo: inv.ClientVatNo,
+		regNo:    inv.ClientRegistrationNo, vatNo: inv.ClientVatNo, localVatNo: inv.ClientLocalVatNo,
 	}
 	if !strings.EqualFold(supCountry, cliCountry) {
 		sup.country = d.l.country(supCountry)
@@ -280,6 +305,30 @@ func newDoc(inv *model.Invoice, acc *model.Account, opt Options) *doc {
 
 	if d.payer {
 		d.recap = vatRecap(inv)
+		if !strings.EqualFold(d.currency, "CZK") {
+			if rate, err := billing.ParseRate(inv.ExchangeRate); err == nil {
+				// converted per rate like the VAT return (internal/api czkRecap)
+				for _, r := range d.recap {
+					base, vat := billing.ToLocal(r.base, rate), billing.ToLocal(r.vat, rate)
+					d.czk = append(d.czk, recapRow{rate: r.rate, base: base, vat: vat, total: base + vat})
+				}
+				d.czkRate = d.l.rate(rate)
+			}
+		}
+		for _, td := range opt.Deposits {
+			for _, r := range vatRecap(td) {
+				d.deposits = append(d.deposits, depositRow{number: td.Number, recapRow: r})
+			}
+		}
+	}
+	switch {
+	case inv.ReverseCharge && inv.SupplyType == model.SupplyGoods:
+		d.notes = append(d.notes, d.l.t(lExemptGoods))
+	case inv.ReverseCharge && !d.payer:
+		d.notes = append(d.notes, d.l.t(lReverseCharge)) // payers have it in the VAT recap
+	}
+	if reason := strings.TrimSpace(inv.CorrectionReason); reason != "" && inv.DocumentType == model.DocCorrection {
+		d.notes = append(d.notes, d.l.t(lCorrectionReason, reason))
 	}
 
 	if len(opt.Logo) > 0 {

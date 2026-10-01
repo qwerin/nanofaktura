@@ -40,9 +40,15 @@ type Expense struct {
 	Description      string
 	PrivateNote      string
 	Tags             []string `gorm:"serializer:json"`
-	TaxDeductible    bool
+	TaxDeductible    bool     // income tax: a tax-deductible expense (§ 24 ZDP)
+	VatDeductible    bool     // VAT: deduction claimed in the VAT return (§ 72 ZDPH); independent of TaxDeductible
 	PricesIncludeVat bool
 	RoundTotal       bool
+	// ReverseCharge: the supplier charged no VAT and the recipient self-assesses
+	// it (services/goods from another EU state, domestic § 92a, services from
+	// outside the EU); line rates are the recipient's rates.
+	ReverseCharge bool
+	SupplyType    string // services (default) | goods — acquisitions from the EU
 
 	Subtotal   int64
 	VatTotal   int64

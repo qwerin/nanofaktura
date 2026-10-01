@@ -87,7 +87,7 @@ func richFixture(t *testing.T, ts *testServer, a *client) (webhookSecret string)
 	inv1 := createInv(a, api.InvoiceCreate{SubjectID: cust.ID, Lines: []api.InvoiceLineInput{pl, line("Práce", "1.25", 80000, i32(1200))},
 		Tags: []string{"web"}, OrderNumber: "OBJ-1", BankAccountID: &czk.ID})
 	pay(a, inv1.ID, api.PaymentCreate{Note: "převodem"})
-	corr := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, inv1.ID, "/correction"), nil)
+	corr := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, inv1.ID, "/correction"), map[string]any{"correction_reason": "Vrácení zboží"})
 	_ = corr
 	proforma := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: cust.ID, Lines: []api.InvoiceLineInput{line("Záloha", "", 50000, nil)}})
 	pay(a, proforma.ID, api.PaymentCreate{CreateFinalInvoice: true})
@@ -237,7 +237,8 @@ func dumpAccount(t *testing.T, ts *testServer, accID uint) map[string][]string {
 	refs := map[string]string{"SubjectID": "subjects", "RelatedID": "invoices", "RecurringID": "recurring", "BankAccountID": "bank_accounts",
 		"PriceItemID": "price_items", "InvoiceID": "invoices", "ExpenseID": "expenses", "TemplateID": "templates",
 		"LastInvoiceID": "invoices", "MatchedInvoiceID": "invoices", "MatchedExpenseID": "expenses",
-		"LogoAttachmentID": "attachments", "StampAttachmentID": "attachments", "NumberFormatID": "number_formats"}
+		"LogoAttachmentID": "attachments", "StampAttachmentID": "attachments", "NumberFormatID": "number_formats",
+		"TaxDocumentID": "invoices", "SourcePaymentID": "payments"}
 	out := map[string][]string{}
 	for table, rows := range tables {
 		for _, r := range rows {
@@ -371,7 +372,7 @@ func TestBackupRoundtrip(t *testing.T) {
 		codes[w.Code] = w.Count
 	}
 	for code, n := range map[string]int{"recurring_deactivated": 1, "reminders_disabled": 0, "paid_thanks_disabled": 0,
-		"webhooks_inactive": 1, "bank_tokens_removed": 1, "public_links_regenerated": 7, "members_not_imported": 1} {
+		"webhooks_inactive": 1, "bank_tokens_removed": 1, "public_links_regenerated": 8, "members_not_imported": 1} {
 		if got, ok := codes[code]; !ok || got != n {
 			t.Errorf("warning %s: %d (present %v), want %d; all %+v", code, got, ok, n, out.Warnings)
 		}
@@ -405,7 +406,7 @@ func TestBackupRoundtrip(t *testing.T) {
 			t.Errorf("%s differs after roundtrip:\nbefore: %v\nafter:  %v", table, before[table], after[table])
 		}
 	}
-	if len(before["invoices"]) != 7 || len(before["attachments"]) != 4 || len(before["bank_transactions"]) != 3 {
+	if len(before["invoices"]) != 8 || len(before["attachments"]) != 4 || len(before["bank_transactions"]) != 3 {
 		t.Fatalf("fixture too small: %d invoices, %d attachments", len(before["invoices"]), len(before["attachments"]))
 	}
 

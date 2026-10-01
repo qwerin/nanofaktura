@@ -72,6 +72,13 @@ func (s *server) renderISDOC(ctx context.Context, inv *model.Invoice) ([]byte, e
 			}
 		}
 	}
+	deps, err := invoiceDeposits(ctx, s.db.WithContext(ctx), inv)
+	if err != nil {
+		return nil, err
+	}
+	for i := range deps {
+		opt.Deposits = append(opt.Deposits, &deps[i])
+	}
 	b, err := isdoc.Generate(inv, acc, opt)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("isdoc generation failed", err)

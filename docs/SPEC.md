@@ -210,7 +210,8 @@ Smazání subjektu s fakturami → 409 (faktury mají snapshot, ale nechceme sir
 `GET /api/ares/{ico}` (auth) → `{registration_no, vat_no, name, street, city, zip, country}`; 404 nenalezeno, 502 ARES nedostupný. IČO validovat (8 číslic, kontrolní součet) → 422.
 
 ### 4.5 Invoice
-`document_type`: `invoice` (faktura), `proforma` (zálohová), `correction` (opravný daňový doklad / dobropis).
+`document_type`: `invoice` (faktura), `proforma` (zálohová), `correction` (opravný daňový doklad / dobropis),
+`tax_document` (daňový doklad k přijaté platbě — vzniká automaticky z platby proformy plátce, viz „Zálohy“ níže; ručně ho vytvořit nelze).
 
 Pole (model i output):
 ```
@@ -224,7 +225,9 @@ currency, exchange_rate, language, payment_method (bank|cash|card|cod|paypal|cus
 bank_account_id, bank_account, iban, swift_bic,
 order_number, note (text nad položkami), footer_note, private_note, tags ([]string, v DB JSON),
 prices_include_vat (bool), round_total (bool), reverse_charge (bool, přenesená daňová povinnost),
-lines[], payments[],
+supply_type (services|goods — u RC do EU: služba § 9/1 „daň odvede zákazník“, nebo zboží § 64 „osvobozeno“),
+correction_reason (důvod opravy, u plátce povinný pro correction), client_local_vat_no (IČ DPH odběratele, snapshot `subjects.local_vat_no`),
+lines[], payments[] (+ `tax_document_id`, `source_payment_id`), related_documents[], deposits[],
 subtotal (základ), vat_total, rounding, total, paid_amount, remaining_amount,
 vat_recap: [{vat_rate_bps, base, vat, total}],
 created_at, updated_at
@@ -276,13 +279,23 @@ Platba na cancelled/uncollectible → 409.
 `{paid_on?, dry_run?}` → 200 `{count, sums}`: každý neuhrazený doklad filtru (faktury `open|sent`, náklady `open`; `total ≠ paid_amount`)
 dostane platbu zbývající částky, v jedné transakci. Datum: `paid_on`, jinak splatnost (bez ní vystavení), nejpozději dnes.
 `dry_run` jen spočítá (`sums[].sum_remaining` = částka k úhradě). Poděkování za úhradu se neposílá (staré doklady zadané zpětně).
-`create_final_invoice` u proformy vytvoří `invoice` se stejnými řádky, `related_id=proforma.id`, rovnou zaplacenou (platba se stejným datem a částkou);
-id nové faktury vrátit v odpovědi (`final_invoice_id`).
+`create_final_invoice` u proformy vytvoří vyúčtovací `invoice` se stejnými řádky, `related_id=proforma.id`, s datem platby, a převezme
+**všechny** platby proformy (kopie se `source_payment_id`) — při částečné platbě tedy zbytek dluží vyúčtovací faktura; proforma se tím
+**vyúčtuje** (status `paid`, další platby/úpravy → 409 `proforma_settled`). id nové faktury vrátit v odpovědi (`final_invoice_id`).
+Samostatně: `POST …/invoices/{id}/final-invoice {issued_on?, taxable_fulfillment_due?}` → 201 vyúčtovací faktura (DUZP = datum dodání).
 
-**Dobropis**: `POST …/invoices/{id}/correction` → vytvoří `correction` k faktuře s řádky zkopírovanými a zápornými množstvími
-(klient ho pak upraví přes PATCH). Vrací novou fakturu.
+**Zálohy a daňové doklady k přijaté platbě (§ 21, § 28 ZDPH)**: každá platba proformy plátce (bez přenesení daňové povinnosti)
+vytvoří `tax_document`: vlastní řada (výchozí `ZD{YYYY}-{NNNN}`), vystavení = DUZP = datum platby, řádky „Přijatá platba k zálohové faktuře č. …“
+s cenou vč. DPH rozdělenou poměrem sazeb proformy (DPH koeficientem z přijaté částky), kurz ČNB ke dni platby; doklad je „zaplacen“ kopií
+platby (`source_payment_id`), není pohledávkou a nejde upravit částkou/měnou/daty ani smazat (409 `tax_document_fixed`) — maže se
+spolu s platbou proformy. Platí i pro platby z bankovního párování a hromadné úhrady. DPH vyúčtovací faktury se v přiznání/KH
+snižuje o daňové doklady její proformy (`deposits`, PDF „Odpočet záloh“, ISDOC `TaxedDeposits`). Kopie plateb nejdou smazat samostatně
+(409 `advance_payment`); smazání vyúčtovací faktury, která má jen převzaté platby, proformu znovu otevře.
 
-**Duplikace**: `POST …/invoices/{id}/duplicate` → nová faktura (open, nové číslo, dnešní datum, stejné řádky a subjekt).
+**Dobropis**: `POST …/invoices/{id}/correction {correction_reason?}` → vytvoří `correction` k faktuře s řádky zkopírovanými a zápornými množstvími
+(klient ho pak upraví přes PATCH). U plátce je důvod opravy povinný (422 `body.correction_reason`). Vrací novou fakturu.
+
+**Duplikace**: `POST …/invoices/{id}/duplicate` → nová faktura (open, nové číslo, dnešní datum, stejné řádky a subjekt; cizí měna → kurz ČNB nového data).
 
 **Seznam** `GET …/invoices`: filtry `status` (vč. `overdue`), `document_type`, `subject_id`, `since`/`until` (issued_on),
 `query` (číslo, client_name, VS), `sort` (`-issued_on` default, `issued_on`, `-number`, `due_on`, `-total`). Položky seznamu bez `lines`/`payments`.
@@ -383,7 +396,9 @@ stock_quantity (string, jen při track_stock), min_stock (string), archived_at, 
 `Expense`: `id, account_id, number (interní, vlastní řada document_type=expense `N{YYYY}-{NNNN}`), original_number (číslo dokladu dodavatele),
 variable_symbol, subject_id (dodavatel), supplier_* snapshot, issued_on, taxable_fulfillment_due, due_on, paid_on, status (open|paid|overdue odvozené),
 currency, exchange_rate, payment_method, category (text, našeptávání z existujících), description, private_note, tags,
-tax_deductible (bool, default true), prices_include_vat, lines (stejná struktura a výpočet jako InvoiceLine, sdílený kód v billing),
+tax_deductible (bool, default true — daň z příjmů), vat_deductible (bool, default true — odpočet DPH, nezávislý na tax_deductible),
+reverse_charge (bool, příjemce přiznává daň: služby/zboží z EU, § 92a, služby ze třetích zemí), supply_type (services|goods),
+prices_include_vat, lines (stejná struktura a výpočet jako InvoiceLine, sdílený kód v billing),
 totals jako Invoice, attachments[], created_at…`.
 CRUD `/expenses` + filtry (status, category, subject_id, since/until, query), platby `POST/DELETE /expenses/{id}/payments`,
 akce `lock/unlock`. Přílohy viz 7.12. Dashboard doplnit o `expenses_by_month`, `profit_total`.
@@ -422,7 +437,9 @@ Endpointy `/bank-accounts/{id}/sync`, `/bank-accounts/{id}/import` (multipart), 
 
 ### 7.7 Měny a kurzy ČNB
 `GET /api/exchange-rates?date=&currency=` → kurz ČNB (denní kurzovní lístek, cache v DB `ExchangeRate(date, currency, rate, amount)`).
-Při vytvoření dokladu v cizí měně a nezadaném kurzu se použije kurz ČNB ke dni DUZP (resp. vystavení). Klient za interfacem.
+Při vytvoření dokladu v cizí měně a nezadaném kurzu se použije kurz ČNB ke dni DUZP (resp. vystavení) — i u faktur ze šablony,
+pravidelných faktur, duplikátů, vyúčtovacích faktur (kurz jejich DUZP) a daňových dokladů k platbě (kurz dne platby). Kurz musí být > 0 (422).
+Klient za interfacem.
 PDF u plátce v cizí měně zobrazí rekapitulaci DPH i v CZK.
 
 ### 7.8 Ověřování subjektů
@@ -447,7 +464,7 @@ CRUD `/webhooks`, `POST /webhooks/{id}/test`, `GET /webhooks/{id}/deliveries`.
 - **ISDOC 6.0.2** XML pro faktury (`GET /invoices/{id}/isdoc`), volitelně přílohou e-mailu; hromadně ZIP.
 - **CSV/XLSX export** seznamů faktur, nákladů, kontaktů (se stejnými filtry jako seznam) `GET /exports/{kind}.csv|.xlsx`.
 - **Hromadný ZIP PDF** za období (pro účetní) `GET /exports/pdf.zip?since=&until=`.
-- **DPH (jen plátci)**: `GET /reports/vat?period=2026-09|2026-Q3` → podklad přiznání (řádky 1–2, 40–41, 46…) a **kontrolní hlášení** (A.4/A.5/B.2/B.3)
+- **DPH (jen plátci)**: `GET /reports/vat?period=2026-09|2026-Q3` → podklad přiznání (řádky 1–6, 10–13, 20–26, 40–46…) a **kontrolní hlášení** (A.1/A.2/A.4/A.5/B.1/B.2/B.3)
   + export XML ve formátu EPO (DPHDP3, DPHKH1). Periodicita v nastavení účtu (`vat_period: month|quarter`).
 - **Přehledy**: tržby/náklady/zisk po měsících, top odběratelé, průměrná doba úhrady, přehled pro daňové přiznání OSVČ (příjmy, výdaje, paušál 60/40/80/30 %).
 
@@ -504,6 +521,45 @@ EET (zrušeno), účetnictví (podvojné), mzdy, OCR účtenek (jen příprava: 
 ## Otevřené otázky
 (sem zapisují implementátoři odchylky a nejasnosti)
 
+**Peníze a DPH (2026-10-01, opravy z auditu) — rozhodnutí a odchylky:**
+- Souběh: každá transakce, která čte a mění platby/součty/stav dokladu (platby, PATCH, akce, smazání, hromadná úhrada, párování,
+  vyúčtování), nejdřív zamkne řádek dokladu (`loadInvoiceForUpdate` / `loadExpenseForUpdate`, `SELECT … FOR UPDATE`); bankovní
+  transakce se zamyká před dokladem. `paid_amount`/`status`/`paid_on` se počítají ze součtu uložených plateb a zapisují samostatnými
+  sloupci (`refreshInvoicePayments`). Auto-párování po zamčení znovu ověří, že transakce není spárovaná a zbývá přesně její částka.
+  Testy souběhu běží na PostgreSQL s `NANOFAKTURA_TEST_PG_DSN` (jinak se přeskočí).
+- Zálohy (viz §4.5 „Zálohy“): přijatá platba proformy je peníz (daň z příjmů ji počítá, dokud proforma nemá vyúčtovací fakturu; pak
+  ji nese převzatá platba vyúčtovací faktury se stejným datem a částkou). Daňové doklady k platbě nejsou tržba ani pohledávka a do
+  daně z příjmů nevstupují. Daňový doklad se nevytváří u proformy s přenesením daňové povinnosti (zálohy na plnění do EU řeší
+  uživatel ručně) ani u neplátce/identifikované osoby; záporná platba proformy vytvoří opravný daňový doklad k přijaté platbě
+  (záporné částky). Odeslaný daňový doklad k platbě se smaže spolu s platbou (zamčený → 409). Kurz chybějící v cache ČNB → kurz proformy.
+- Vyúčtovaná proforma má `status=paid` i při částečné úhradě (zbytek je na vyúčtovací faktuře); dashboard, seznamy, upomínky
+  a párování ji tak nepočítají jako pohledávku. Starší data: proformy, ke kterým existuje vyúčtovací faktura vytvořená dříve
+  z částečné platby, zůstávají `open` — nová logika je nezmění (viz poznámka k produkci v popisu opravy).
+- DPH: DUZP je u daňového dokladu plátce (a RC dokladu identifikované osoby) povinné (422); staré doklady bez DUZP vstupují do
+  přiznání podle data vystavení s varováním `missing_taxable_date`. Sazby plátce od 2024 jen 0/12/21 % (starší DUZP smí 10/15 %).
+  Důvod opravy (`correction_reason`) je u opravného dokladu plátce povinný. Odeslaný (nebo klientem zobrazený) daňový doklad nelze
+  stornovat → 409 `correction_required` (neplátce a neodeslané doklady ano). Evidenční čísla faktur, dobropisů a daňových dokladů
+  k platbě jsou unikátní společně (409 `already_exists`).
+- Přenesená daňová povinnost na výstupu: `supply_type=goods` → ř. 20 a text „Osvobozeno … § 64“, jinak služba ř. 21 a „Daň odvede
+  zákazník“; u EU RC se vyžaduje VAT ID s prefixem státu (slovenské IČ DPH z `local_vat_no` má přednost) a report připomene souhrnné
+  hlášení (`ec_sales_list`) — export DPHSHV zatím není. Identifikovaná osoba: RC doklad = „Faktura – daňový doklad“ s DUZP.
+- Náklady: `vat_deductible` (odpočet DPH) je oddělený od `tax_deductible` (daň z příjmů); při migraci se převezme z `tax_deductible`.
+  `reverse_charge` na nákladu = samovyměření: dodavatel z EU → ř. 3/4 (zboží) nebo 5/6 (služby) + KH A.2; CZ dodavatel → ř. 10/11 + KH B.1
+  (kód předmětu plnění `kod_pred_pl` je nutné doplnit v EPO, varování); mimo EU → ř. 12/13 + A.2 (zboží mimo EU = dovoz, nevykazuje se,
+  varování); s odpočtem ř. 43/44. Nulová DPH od zahraničního dodavatele nebo CZ plátce bez RC → varování `possible_reverse_charge`.
+- KH: právnická osoba (DIČ = 8 číslic) podává KH měsíčně — `dphkh1.xml` za čtvrtletí → 409 `monthly_control_statement`, JSON report varuje.
+  DP3 ř. 46 i 62–65 se sčítají ze zaokrouhlených řádků.
+- PDF plátce v cizí měně ukazuje „DPH v Kč (kurz ČNB …)“ přepočtenou po sazbách stejně jako přiznání; u RC je ve sloupci sazby „PDP“.
+  Veřejný odkaz (JSON) rekapitulaci v Kč zatím neukazuje (PDF ke stažení ano).
+- Ostatní: změna měny dokladu s platbami → 409 `currency_has_payments`; ruční platba se znaménkem opačným k zbývající částce → 422;
+  `sum_remaining` v seznamech jen z otevřených dokladů (přeplatky se nesčítají); dashboard „neuhrazeno“ jen kladné pohledávky
+  (dobropisy k vrácení ne). Bankovní import vždy v setinách (i JPY/BHD; třetí nenulové desetinné místo → chyba). QR Platba nad
+  9 999 999,99 se negeneruje. Import zálohy přepočítá součty dokladů z řádků a plateb (varování `totals_recomputed`).
+  Daň z příjmů v cizí měně počítá kurzem dokladu (`income_tax.rate_basis = document`); doklady s neplatným kurzem jsou v
+  `invalid_rate_documents` / `invalid_rates`, nikdy tiše jako 0.
+- Neřešeno (zdůvodnění v popisu opravy): export souhrnného hlášení DPHSHV, kód předmětu plnění § 92a na dokladu, `c_okec` a
+  jméno/příjmení FO v EPO, VS proforem odlišný od faktur, kontrola plátcovství odběratele (A.4 vs A.5), zjednodušený daňový doklad.
+
 **Zabezpečení (2026-09-30) — rozhodnutí:**
 - Odkaz pozvánky (`invite_url`) vidí jen ten, kdo smí danou roli udělit (owner pozvánky jen owner). Pozvánka propadá (410
   `invitation_revoked`), pokud pozvávající už není členem s právem roli udělit (kontrola při náhledu, registraci i přijetí).
@@ -556,7 +612,7 @@ EET (zrušeno), účetnictví (podvojné), mzdy, OCR účtenek (jen příprava: 
 - PATCH: `document_type` měnit nelze. Změna `currency` bez `bank_account_id` znovu vybere výchozí bankovní účet nové měny. Změna `issued_on` nepřepočítává DUZP. Po PATCH se přepočítá i stav z plateb (zaplacená faktura s vyšší částkou → zpět `open`/`sent`). `tags` nahrazují seznam (trim, bez duplicit).
 - Akce vrací 200 + fakturu, neznámá akce → 422 (enum v cestě). Zámek blokuje jen PATCH/DELETE (akce a platby na zamčené faktuře jsou povolené).
 - Platby: `POST` → 201 `{payment, invoice, final_invoice_id?}`, `DELETE` → 204. `amount: 0` → 422; bez `amount` při nulovém zůstatku → 409. `paid` vyžaduje aspoň jednu platbu (faktura s total 0 bez plateb zůstává open). U `uncollectible` lze platby mazat, stav se nemění.
-- `create_final_invoice`: jen proforma (jinak 422) a jen jednou (už existuje `invoice` s `related_id` = proforma → 409, vrátí se celá transakce vč. platby). Finální faktura: `issued_on` (a DUZP u plátce) = datum platby, `client_*` z proformy, `your_*` z aktuálního účtu, řádky/měna/poznámky z proformy.
+- `create_final_invoice`: jen proforma (jinak 422) a jen jednou (vyúčtovaná proforma → 409 `proforma_settled`, existující vyúčtování → 409 `final_exists`; vrátí se celá transakce vč. platby). Finální faktura: `issued_on` (a DUZP u plátce) = datum platby, `client_*` z proformy, `your_*` z aktuálního účtu, řádky/měna/poznámky z proformy.
 - Dobropis (`/correction`) jen k dokladu typu `invoice` (jinak 409), kopíruje `client_*` i `your_*` originálu, datum dnes. Duplikace zachová typ dokladu (dobropis i s `related_id`), snapshoty bere znovu ze subjektu a účtu.
 - Smazat lze i zrušenou fakturu bez plateb. Smazání dokladu, na který ukazuje cizí `related_id`, zatím blokované není (otevřené).
 - Dashboard: `revenue_by_month` obsahuje i `uncollectible` (vyřazen je jen `cancelled`) a dobropisy záporně. `unpaid_*`/`overdue_*` = doklady open/sent všech typů (vč. proforem) ve výchozí měně bez ohledu na `year`, částka `total − paid_amount`. `year` 2000–2999, default aktuální rok.
@@ -605,7 +661,7 @@ EET (zrušeno), účetnictví (podvojné), mzdy, OCR účtenek (jen příprava: 
 - Náklady s řádky na ceníkovou položku s `track_stock` zboží přijímají (`in`, záporné množství `out`); `StockMove.expense_id` se tak už používá.
 - `price_item_id` na řádcích faktur i nákladů musí patřit účtu (jinak 422 `lines[i].price_item_id`); archivovaná položka je povolená. Smazání položky ceníku smaže její pohyby a u řádků dokladů `price_item_id` vynuluje (řádky zůstanou).
 - Náklady `/expenses`: `subject_id` je volitelné (účtenky bez kontaktu), ale pak je povinné `supplier_name` (422). Snapshot `supplier_*` (name, full_name, registration_no, vat_no, street, city, zip, country, bank_account, iban, swift_bic) ze subjektu při create a při změně `subject_id`; poslaná pole mají přednost. Defaulty: `issued_on` dnes, `taxable_fulfillment_due = issued_on`, `due_on = issued_on + default_due_days účtu` (náklad nemá `due_days`), měna/platba z účtu, `exchange_rate` 1, `tax_deductible` true, `variable_symbol` = číslice z `original_number` (max 10). Číslo z řady `expense` (`numbering.Next`), vlastní `number` smí; duplicita → 409.
-- Řádky nákladů mají stejný vstup jako řádky faktur (`InvoiceLineInput`, stejná pravidla PATCH), výpočet `billing.Calculate` s `prices_include_vat` a `round_total` (nové pole nákladu, default false). DPH dodavatele se počítá vždy — nezávisle na tom, zda je účet plátce (sazby se nenulují); `reverse_charge` náklady zatím nemají.
+- Řádky nákladů mají stejný vstup jako řádky faktur (`InvoiceLineInput`, stejná pravidla PATCH), výpočet `billing.Calculate` s `prices_include_vat` a `round_total` (nové pole nákladu, default false). DPH dodavatele se počítá vždy — nezávisle na tom, zda je účet plátce (sazby se nenulují); `reverse_charge` u nákladů = samovyměření DPH příjemcem (viz „Peníze a DPH (2026-10-01)“).
 - Stav nákladu: uloženo `open|paid` (`billing.PaymentStatus`), výstup `overdue` pro `open` po splatnosti; filtr `status=open` vrací jen náklady, které nejsou po splatnosti. Zrušení nákladů neexistuje (smazat). Platby: samostatný model `ExpensePayment` (zrcadlí `Payment`), `POST /expenses/{id}/payments` → 201 `{payment, expense}`, `DELETE …/payments/{payment_id}` → 204; stejné chování jako u faktur (0 → 422, bez částky a nulový zůstatek → 409, platby i na zamčeném nákladu).
 - Akce nákladu `POST /expenses/{id}/actions/{lock|unlock}` → 200 + náklad; zámek blokuje PATCH/DELETE (409). Smazání s platbami → 409.
 - List nákladů: filtry `status`, `category` (přesná shoda), `subject_id`, `since`/`until` (issued_on), `query` (number, original_number, supplier_name, variable_symbol, description), `sort` jako u faktur. `GET /expenses/categories?query=` → `{items: [...]}` (distinct neprázdné kategorie, abecedně, max 200, bez stránkování).
@@ -683,7 +739,7 @@ EET (zrušeno), účetnictví (podvojné), mzdy, OCR účtenek (jen příprava: 
 - Globální hledání `GET /search?q=&limit=5` → `{invoices, expenses, subjects, price_items}` s `{type, id, title, subtitle, status, url_hint}` (`/a/{slug}/invoices/{id}` …). Bez ohledu na velikost písmen a diakritiku na SQLite i Postgres přes sloupec `search_text` (normalizovaný text, plní GORM hook `BeforeSave`, existující řádky doplní `db.Migrate`); hledání `LIKE %…%` v rámci indexu `account_id` (bez fulltextu).
 
 **Úklidová vlna backlogu (backend) — rozhodnutí a odchylky:**
-- Kódy chyb viz §2. VAT report: `warnings` jsou objekty `{code, document, message, params}` (`unsupported_rate` {rate}, `reverse_charge_no_dic`, `eu_reverse_charge_no_vat`, `zero_rate_not_reported` {amount}, `supplier_no_dic`, `calculation_error`); DIČ v `control.a1/a4/b2` JSONu je s prefixem `CZ` (EPO XML bez něj).
+- Kódy chyb viz §2. VAT report: `warnings` jsou objekty `{code, document, message, params}` (`unsupported_rate` {rate}, `missing_taxable_date`, `possible_reverse_charge`, `reverse_charge_import`, `reverse_charge_subject_code`, `ec_sales_list`, `correction_of_cancelled`, `control_statement_monthly`, `reverse_charge_no_dic`, `eu_reverse_charge_no_vat`, `zero_rate_not_reported` {amount}, `supplier_no_dic`, `calculation_error`); DIČ v `control.a1/a4/b2` JSONu je s prefixem `CZ` (EPO XML bez něj).
 - **Identifikovaná osoba** účtuje tuzemská plnění bez DPH: sazby se vynutí na 0 jako u neplátce (`billing.ChargesNoVAT(vatMode, reverseCharge)`, zrcadlo `chargesNoVat` ve `web/src/components/invoice/calc.ts`); u přenesené daňové povinnosti (služby do EU) sazby zůstávají pro zobrazení, DPH je 0. Platí i pro ISDOC a součty šablon.
 - Faktura v měně bez bankovního účtu v té měně (a bez `bank_account_id`) zůstává **bez platebních údajů** (žádný fallback na účet v jiné měně — číslo účtu v jiné měně by klienta mátlo). `Invoice.warnings[]` (detail i odpověď create/patch) pak obsahuje `{code: "no_bank_account"}` (jen `payment_method=bank`, ne u dobropisu); frontend po vystavení ukáže varování.
 - Mazání: faktura, na kterou odkazuje jiný doklad přes `related_id` (dobropis, vyúčtování zálohy) → 409 `referenced`. Kontakt použitý v šabloně → 409 `used_by_template`; náklady kontaktu se při smazání odpojí (`subject_id` → null, snapshot dodavatele zůstává). Smazání faktury/nákladu/kontaktu smaže jeho přílohy: řádky v transakci, soubory až po commitu (best-effort, chyba jen log).

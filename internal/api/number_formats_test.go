@@ -23,7 +23,7 @@ func TestNumberFormatsListAndGet(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 
 	list := doJSON[api.ListResponse[api.NumberFormat]](a, http.StatusOK, "GET", a.acct("/number-formats"), nil)
-	if list.Total != 4 || len(list.Items) != 4 {
+	if list.Total != 5 || len(list.Items) != 5 {
 		t.Fatalf("list: %+v", list)
 	}
 	inv := formatsByType(t, a, "invoice")

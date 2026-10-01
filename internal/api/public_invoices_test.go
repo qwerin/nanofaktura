@@ -123,7 +123,7 @@ func TestInvoiceISDOC(t *testing.T) {
 		t.Error("isdoc is not deterministic (UUID must be stable)")
 	}
 
-	corr := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, inv.ID, "/correction"), nil)
+	corr := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, inv.ID, "/correction"), map[string]any{"correction_reason": "Vrácení zboží"})
 	_, body = a.do("GET", invURL(a, corr.ID, "/isdoc"), nil)
 	for _, want := range []string{"<DocumentType>2</DocumentType>", "<OriginalDocumentReference id=\"1\">",
 		"<ID>" + inv.Number + "</ID>", "<TaxInclusiveAmount>1210.00</TaxInclusiveAmount>"} {

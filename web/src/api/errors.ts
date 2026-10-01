@@ -61,6 +61,17 @@ export const codeMessages: Record<string, string> = {
   not_payable: 'K dokladu v tomto stavu nelze přidat platbu.',
   nothing_to_pay: 'Doklad je už celý uhrazený.',
   final_exists: 'Vyúčtování této zálohy už existuje.',
+  proforma_settled:
+    'Záloha je už vyúčtovaná konečnou fakturou. Platby a změny zapisujte na tu fakturu (nebo ji nejdřív smažte).',
+  advance_payment:
+    'Tato platba je převzatá ze zálohové faktury. Smažte ji na zálohové faktuře, odsud zmizí sama.',
+  tax_document_fixed:
+    'Daňový doklad k přijaté platbě odpovídá platbě zálohy — částky ani měnu nelze měnit. Při chybě smažte platbu na zálohové faktuře.',
+  currency_has_payments: 'Doklad už má platby, měnu nelze změnit. Nejdřív platby smažte.',
+  correction_required:
+    'Odeslaný daňový doklad nelze stornovat. Vystavte k němu opravný daňový doklad (dobropis).',
+  monthly_control_statement:
+    'Právnická osoba podává kontrolní hlášení vždy za měsíc, i při čtvrtletním přiznání. Vyberte měsíc.',
   correction_invoice_only: 'Dobropis lze vystavit jen k faktuře.',
   correction_template: 'Dobropis nelze uložit jako šablonu.',
   sync_not_configured: 'Automatické stahování není pro tento účet nastavené.',

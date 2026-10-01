@@ -76,6 +76,11 @@ func (s *server) renderInvoicePDF(ctx context.Context, inv *model.Invoice, opt p
 			opt.RelatedNumber = rel.Number
 		}
 	}
+	if deps, err := invoiceDeposits(ctx, s.db.WithContext(ctx), inv); err == nil {
+		for i := range deps {
+			opt.Deposits = append(opt.Deposits, &deps[i])
+		}
+	}
 	opt.Logo = s.attachmentBytes(ctx, acc.LogoAttachmentID)
 	opt.Stamp = s.attachmentBytes(ctx, acc.StampAttachmentID)
 	// bounded parallelism: public links and exports cannot pile up renders

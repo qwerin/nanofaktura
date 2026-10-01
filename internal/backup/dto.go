@@ -209,6 +209,9 @@ type Invoice struct {
 	PricesIncludeVat bool     `json:"prices_include_vat"`
 	RoundTotal       bool     `json:"round_total"`
 	ReverseCharge    bool     `json:"reverse_charge"`
+	SupplyType       string   `json:"supply_type,omitempty"`
+	CorrectionReason string   `json:"correction_reason,omitempty"`
+	ClientLocalVatNo string   `json:"client_local_vat_no,omitempty"`
 
 	Subtotal   int64 `json:"subtotal"`
 	VatTotal   int64 `json:"vat_total"`
@@ -240,11 +243,15 @@ type Line struct {
 
 // Payment is a payment of an invoice or an expense.
 type Payment struct {
-	ID        uint      `json:"id"`
-	PaidOn    string    `json:"paid_on"`
-	Amount    int64     `json:"amount"`
-	Note      string    `json:"note"`
-	CreatedAt time.Time `json:"created_at"`
+	ID     uint   `json:"id"`
+	PaidOn string `json:"paid_on"`
+	Amount int64  `json:"amount"`
+	Note   string `json:"note"`
+	// invoice payments only: the tax document of a proforma payment and the
+	// proforma payment a mirrored payment comes from (ids of the backup)
+	TaxDocumentID   *uint     `json:"tax_document_id,omitempty"`
+	SourcePaymentID *uint     `json:"source_payment_id,omitempty"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 
 type Expense struct {
@@ -281,8 +288,11 @@ type Expense struct {
 	PrivateNote      string   `json:"private_note"`
 	Tags             []string `json:"tags"`
 	TaxDeductible    bool     `json:"tax_deductible"`
+	VatDeductible    *bool    `json:"vat_deductible,omitempty" doc:"missing in older backups = tax_deductible"`
 	PricesIncludeVat bool     `json:"prices_include_vat"`
 	RoundTotal       bool     `json:"round_total"`
+	ReverseCharge    bool     `json:"reverse_charge,omitempty"`
+	SupplyType       string   `json:"supply_type,omitempty"`
 
 	Subtotal   int64 `json:"subtotal"`
 	VatTotal   int64 `json:"vat_total"`

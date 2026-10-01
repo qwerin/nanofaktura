@@ -31,6 +31,10 @@ func (s *server) invoiceAction(ctx context.Context, in *struct {
 		if err != nil {
 			return 0, err
 		}
+		if in.Action == billing.ActionCancel && isTaxDocument(m) && (m.SentAt != nil || m.PublicViewedAt != nil) {
+			// a tax document delivered to the customer is corrected, not withdrawn (§ 42, § 45 ZDPH)
+			return 0, conflict(CodeCorrectionRequired, "a tax document that was sent to the customer cannot be cancelled; issue a correction instead")
+		}
 		st, err := billing.ApplyAction(billing.State{
 			Status: m.Status, SentAt: m.SentAt, CancelledAt: m.CancelledAt,
 			UncollectibleAt: m.UncollectibleAt, LockedAt: m.LockedAt, HasPayments: len(m.Payments) > 0,
@@ -57,9 +61,17 @@ func (s *server) invoiceAction(ctx context.Context, in *struct {
 	})
 }
 
+// CorrectionCreate is the optional body of POST /invoices/{id}/correction.
+type CorrectionCreate struct {
+	CorrectionReason string `json:"correction_reason,omitempty" maxLength:"500" doc:"Reason of the correction (§ 45 ZDPH), e.g. 'Vrácení zboží'; required for VAT payers"`
+}
+
 // createCorrection creates a correction of an invoice with the lines copied
 // and quantities negated (SPEC §4.5 "Dobropis").
-func (s *server) createCorrection(ctx context.Context, in *invoiceID) (*Out[Invoice], error) {
+func (s *server) createCorrection(ctx context.Context, in *struct {
+	ID   uint `path:"id"`
+	Body *CorrectionCreate
+}) (*Out[Invoice], error) {
 	return s.mutateInvoice(ctx, func(tx *gorm.DB) (uint, error) {
 		src, err := loadInvoice(ctx, tx, in.ID)
 		if err != nil {
@@ -70,6 +82,9 @@ func (s *server) createCorrection(ctx context.Context, in *invoiceID) (*Out[Invo
 		}
 		body := copyInvoice(src, model.DocCorrection, true, true)
 		body.RelatedID = &src.ID
+		if in.Body != nil {
+			body.CorrectionReason = in.Body.CorrectionReason
+		}
 		m, err := s.createInvoiceTx(ctx, tx, &body)
 		if err != nil {
 			return 0, err
@@ -81,15 +96,27 @@ func (s *server) createCorrection(ctx context.Context, in *invoiceID) (*Out[Invo
 // duplicateInvoice creates a new open document of the same type with the same
 // subject and lines, a new number and today's date; snapshots are taken anew.
 func (s *server) duplicateInvoice(ctx context.Context, in *invoiceID) (*Out[Invoice], error) {
+	src, err := loadInvoice(ctx, s.db.WithContext(ctx), in.ID)
+	if err != nil {
+		return nil, err
+	}
+	if src.DocumentType == model.DocTaxDocument {
+		return nil, conflict(CodeTaxDocumentFixed, "a tax document for a received payment cannot be duplicated")
+	}
+	body := copyInvoice(src, src.DocumentType, false, false)
+	if src.DocumentType == model.DocCorrection {
+		body.RelatedID = src.RelatedID
+		body.CorrectionReason = src.CorrectionReason
+	} else {
+		// a new supply: the ČNB rate of the new DUZP, not the old document's (§ 38 ZDPH)
+		if body.ExchangeRate, err = s.defaultExchangeRate(ctx, body.Currency, "", s.today()); err != nil {
+			return nil, err
+		}
+		if body.ExchangeRate == "" {
+			body.ExchangeRate = src.ExchangeRate
+		}
+	}
 	return s.mutateInvoice(ctx, func(tx *gorm.DB) (uint, error) {
-		src, err := loadInvoice(ctx, tx, in.ID)
-		if err != nil {
-			return 0, err
-		}
-		body := copyInvoice(src, src.DocumentType, false, false)
-		if src.DocumentType == model.DocCorrection {
-			body.RelatedID = src.RelatedID
-		}
 		m, err := s.createInvoiceTx(ctx, tx, &body)
 		if err != nil {
 			return 0, err
@@ -124,7 +151,8 @@ func copyInvoice(src *model.Invoice, docType string, copySnapshots, negate bool)
 		PaymentMethod: src.PaymentMethod, CustomPaymentMethod: src.CustomPaymentMethod,
 		OrderNumber: src.OrderNumber, Note: &note, FooterNote: &footer, PrivateNote: src.PrivateNote,
 		Tags: src.Tags, PricesIncludeVat: src.PricesIncludeVat, RoundTotal: &round, ReverseCharge: src.ReverseCharge,
-		Lines: make([]InvoiceLineInput, len(src.Lines)),
+		SupplyType: src.SupplyType,
+		Lines:      make([]InvoiceLineInput, len(src.Lines)),
 	}
 	for i, l := range src.Lines {
 		q, rate := l.QuantityMilli, l.VatRateBps
@@ -141,7 +169,7 @@ func copyInvoice(src *model.Invoice, docType string, copySnapshots, negate bool)
 		body.InvoiceSnapshotFields = InvoiceSnapshotFields{
 			ClientName: &c.ClientName, ClientFullName: &c.ClientFullName, ClientRegistrationNo: &c.ClientRegistrationNo,
 			ClientVatNo: &c.ClientVatNo, ClientStreet: &c.ClientStreet, ClientCity: &c.ClientCity,
-			ClientZip: &c.ClientZip, ClientCountry: &c.ClientCountry, ClientEmail: &c.ClientEmail,
+			ClientZip: &c.ClientZip, ClientCountry: &c.ClientCountry, ClientEmail: &c.ClientEmail, ClientLocalVatNo: &c.ClientLocalVatNo,
 			YourName: &c.YourName, YourRegistrationNo: &c.YourRegistrationNo, YourVatNo: &c.YourVatNo,
 			YourStreet: &c.YourStreet, YourCity: &c.YourCity, YourZip: &c.YourZip, YourCountry: &c.YourCountry,
 			YourRegisteredBy: &c.YourRegisteredBy, YourVatMode: &c.YourVatMode,

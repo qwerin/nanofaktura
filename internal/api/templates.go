@@ -310,18 +310,29 @@ func (s *server) createInvoiceFromTemplate(ctx context.Context, in *struct {
 		b = *in.Body
 	}
 	issuedOn := defaultStr(b.IssuedOn, s.today())
+	t, err := s.loadTemplate(ctx, s.db.WithContext(ctx), in.ID)
+	if err != nil {
+		return nil, err
+	}
+	body := templateInvoice(ctx, t, defaultStr(b.DocumentType, t.DocumentType), issuedOn)
+	if body.ExchangeRate, err = s.templateRate(ctx, t, issuedOn); err != nil {
+		return nil, err
+	}
 	return s.mutateInvoice(ctx, func(tx *gorm.DB) (uint, error) {
-		t, err := s.loadTemplate(ctx, tx, in.ID)
-		if err != nil {
-			return 0, err
-		}
-		body := templateInvoice(ctx, t, defaultStr(b.DocumentType, t.DocumentType), issuedOn)
 		m, err := s.createInvoiceTx(ctx, tx, &body)
 		if err != nil {
 			return 0, err
 		}
 		return m.ID, nil
 	})
+}
+
+// templateRate is the exchange rate of an invoice issued from template t on
+// issuedOn: the template's rate when set (an explicit fixed rate), else the
+// ČNB rate of the issue date (= DUZP) for a foreign currency. It calls the
+// ČNB client, so it must run outside a transaction.
+func (s *server) templateRate(ctx context.Context, t *model.InvoiceTemplate, issuedOn string) (string, error) {
+	return s.defaultExchangeRate(ctx, defaultStr(t.Currency, auth.AccountFrom(ctx).DefaultCurrency), t.ExchangeRate, issuedOn)
 }
 
 func (s *server) saveAsTemplate(ctx context.Context, in *struct {

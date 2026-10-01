@@ -18,6 +18,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"github.com/qwerin/nanofaktura/internal/billing"
 	"github.com/qwerin/nanofaktura/internal/events"
 	"github.com/qwerin/nanofaktura/internal/model"
 	"github.com/qwerin/nanofaktura/internal/slug"
@@ -51,6 +52,9 @@ const (
 	WarnMembersNotImported     = "members_not_imported"
 	WarnAttachmentsMissing     = "attachments_missing"
 	WarnOrphansSkipped         = "orphans_skipped"
+	// WarnTotalsRecomputed: stored totals or paid amounts of documents did not
+	// match their lines / payments (an edited or older backup) and were recomputed.
+	WarnTotalsRecomputed = "totals_recomputed"
 )
 
 // archive is a validated backup: parsed JSON files + attachment entries.
@@ -282,10 +286,40 @@ func (m idMap) opt(id *uint) *uint {
 	return nil
 }
 
+// recompute sets the document totals (and the line amounts) from the lines
+// with the billing rules and paid from the payments; it reports whether a
+// stored value differed. Lines that cannot be computed are left as stored.
+func recompute(lines []Line, payments []Payment, opt billing.Options, subtotal, vat, rounding, total, paid *int64) bool {
+	bl := make([]billing.Line, len(lines))
+	for i, l := range lines {
+		bl[i] = billing.Line{QuantityMilli: l.QuantityMilli, UnitPrice: l.UnitPrice, VatRateBps: billing.EffectiveRate(l.VatRateBps, opt)}
+	}
+	changed := false
+	if t, err := billing.Calculate(bl, opt); err == nil {
+		for i, la := range t.Lines {
+			l := &lines[i]
+			if l.Base != la.Base || l.Vat != la.Vat || l.Total != la.Total {
+				l.Base, l.Vat, l.Total, changed = la.Base, la.Vat, la.Total, true
+			}
+		}
+		if *subtotal != t.Subtotal || *vat != t.VatTotal || *rounding != t.Rounding || *total != t.Total {
+			*subtotal, *vat, *rounding, *total, changed = t.Subtotal, t.VatTotal, t.Rounding, t.Total, true
+		}
+	}
+	var sum int64
+	for _, p := range payments {
+		sum += p.Amount
+	}
+	if *paid != sum {
+		*paid, changed = sum, true
+	}
+	return changed
+}
+
 // defaultFormats are added for document types the backup has no series for.
 var defaultFormats = map[string]string{
 	model.DocInvoice: "{YYYY}-{NNNN}", model.DocProforma: "Z{YYYY}-{NNNN}",
-	model.DocCorrection: "D{YYYY}-{NNNN}", model.DocExpense: "N{YYYY}-{NNNN}",
+	model.DocCorrection: "D{YYYY}-{NNNN}", model.DocExpense: "N{YYYY}-{NNNN}", model.DocTaxDocument: "ZD{YYYY}-{NNNN}",
 }
 
 // Import validates the backup ZIP r and creates a NEW account from it in one
@@ -419,7 +453,7 @@ func (im *importer) run(tx *gorm.DB) error {
 			}
 		}
 	}
-	for _, typ := range []string{model.DocInvoice, model.DocProforma, model.DocCorrection, model.DocExpense} {
+	for _, typ := range []string{model.DocInvoice, model.DocProforma, model.DocCorrection, model.DocExpense, model.DocTaxDocument} {
 		if !have[typ] {
 			if err := tx.Create(&model.NumberFormat{AccountID: accID, DocumentType: typ, Format: defaultFormats[typ], IsDefault: true}).Error; err != nil {
 				return fmt.Errorf("import number format: %w", err)
@@ -448,6 +482,7 @@ func (im *importer) run(tx *gorm.DB) error {
 		im.priceItems[d.ID] = m.ID
 	}
 
+	recomputed := 0
 	// invoices: related_id / recurring_id are set in a second pass
 	for i := range a.invoices {
 		d := &a.invoices[i]
@@ -461,6 +496,11 @@ func (im *importer) run(tx *gorm.DB) error {
 		m.BankAccountID = im.bankAccounts.opt(d.BankAccountID)
 		m.PublicToken = newPublicToken()
 		m.Lines, m.Payments = nil, nil
+		if recompute(d.Lines, d.Payments, billing.Options{PricesIncludeVAT: m.PricesIncludeVat, ReverseCharge: m.ReverseCharge,
+			RoundTotal: m.RoundTotal, NonVATPayer: billing.ChargesNoVAT(m.YourVatMode, m.ReverseCharge)},
+			&m.Subtotal, &m.VatTotal, &m.Rounding, &m.Total, &m.PaidAmount) {
+			recomputed++
+		}
 		if err := tx.Omit(clause.Associations).Create(&m).Error; err != nil {
 			return fmt.Errorf("import invoice %d: %w", d.ID, err)
 		}
@@ -477,6 +517,7 @@ func (im *importer) run(tx *gorm.DB) error {
 			pm := model.Payment{}
 			convert(&pm, &p)
 			pm.ID, pm.AccountID, pm.InvoiceID = 0, accID, m.ID
+			pm.TaxDocumentID, pm.SourcePaymentID = nil, nil // second pass
 			if err := tx.Create(&pm).Error; err != nil {
 				return fmt.Errorf("import invoice %d payment: %w", d.ID, err)
 			}
@@ -491,8 +532,15 @@ func (im *importer) run(tx *gorm.DB) error {
 		d := &a.expenses[i]
 		m := model.Expense{}
 		convert(&m, d)
+		if d.VatDeductible == nil { // backups from before the VAT / income-tax split
+			m.VatDeductible = d.TaxDeductible
+		}
 		m.ID, m.AccountID, m.SubjectID = 0, accID, im.subjects.opt(d.SubjectID)
 		m.Lines, m.Payments = nil, nil
+		if recompute(d.Lines, d.Payments, billing.Options{PricesIncludeVAT: m.PricesIncludeVat, ReverseCharge: m.ReverseCharge,
+			RoundTotal: m.RoundTotal}, &m.Subtotal, &m.VatTotal, &m.Rounding, &m.Total, &m.PaidAmount) {
+			recomputed++
+		}
 		if err := tx.Omit(clause.Associations).Create(&m).Error; err != nil {
 			return fmt.Errorf("import expense %d: %w", d.ID, err)
 		}
@@ -514,6 +562,10 @@ func (im *importer) run(tx *gorm.DB) error {
 			}
 			im.expensePayments[p.ID] = pm.ID
 		}
+	}
+
+	if recomputed > 0 {
+		im.warn(WarnTotalsRecomputed, "totals or paid amounts of documents did not match their lines and payments; they were recomputed", recomputed)
 	}
 
 	for i := range a.templates {
@@ -568,6 +620,20 @@ func (im *importer) run(tx *gorm.DB) error {
 		}
 		if id := im.recurring.opt(d.RecurringID); id != nil {
 			upd["recurring_id"] = *id
+		}
+		for _, p := range d.Payments {
+			pu := map[string]any{}
+			if id := im.invoices.opt(p.TaxDocumentID); id != nil {
+				pu["tax_document_id"] = *id
+			}
+			if id := im.payments.opt(p.SourcePaymentID); id != nil {
+				pu["source_payment_id"] = *id
+			}
+			if len(pu) > 0 {
+				if err := tx.Model(&model.Payment{}).Where("id = ?", im.payments[p.ID]).UpdateColumns(pu).Error; err != nil {
+					return fmt.Errorf("import invoice %d payment references: %w", d.ID, err)
+				}
+			}
 		}
 		if len(upd) > 0 {
 			if err := tx.Model(&model.Invoice{}).Where("id = ?", im.invoices[d.ID]).UpdateColumns(upd).Error; err != nil {

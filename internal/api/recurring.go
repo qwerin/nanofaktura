@@ -310,6 +310,23 @@ func (s *server) checkRecurring(ctx context.Context, db *gorm.DB, m *model.Recur
 func (s *server) issueRecurring(ctx context.Context, id uint, today string, force bool) (*model.Invoice, *model.Recurring, error) {
 	var inv *model.Invoice
 	var r model.Recurring
+	// the ČNB rate of the occurrence is fetched before the transaction; the
+	// locked re-read below must still agree with it (else the run fails and
+	// is retried)
+	rateFor, rate := "", ""
+	if err := s.scoped(ctx).First(&r, id).Error; err == nil {
+		var t model.InvoiceTemplate
+		if err := s.scoped(ctx).First(&t, r.TemplateID).Error; err == nil {
+			rateFor = r.NextOccurrenceOn
+			if force {
+				rateFor = today
+			}
+			var err error
+			if rate, err = s.templateRate(ctx, &t, rateFor); err != nil {
+				return nil, nil, err
+			}
+		}
+	}
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate}).
 			Scopes(inAccount(ctx)).First(&r, id).Error; err != nil {
@@ -330,6 +347,9 @@ func (s *server) issueRecurring(ctx context.Context, id uint, today string, forc
 			return dbErr(err, "template")
 		}
 		body := templateInvoice(ctx, &t, r.IssueAs, issuedOn)
+		if body.ExchangeRate == "" && issuedOn == rateFor {
+			body.ExchangeRate = rate
+		}
 		m, err := s.createInvoiceTx(ctx, tx, &body)
 		if err != nil {
 			return err

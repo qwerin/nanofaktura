@@ -334,7 +334,7 @@ func TestInvoiceStock(t *testing.T) {
 	assertStock(t, a, tracked.ID, "8")
 
 	// correction (negative quantities) returns the goods
-	corr := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, inv.ID, "/correction"), nil)
+	corr := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, inv.ID, "/correction"), map[string]any{"correction_reason": "Vrácení zboží"})
 	if corr.Lines[0].Quantity != "-2" || corr.Lines[0].PriceItemID == nil {
 		t.Fatalf("correction lines: %+v", corr.Lines)
 	}
