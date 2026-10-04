@@ -2198,6 +2198,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/oauth-grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API auth oauth grants */
+        get: operations["get-api-auth-oauth-grants"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/oauth-grants/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete API auth oauth grants by ID */
+        delete: operations["delete-api-auth-oauth-grants-by-id"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/password-reset": {
         parameters: {
             query?: never;
@@ -2381,6 +2415,24 @@ export interface paths {
         put?: never;
         /** Post API invitations by token accept */
         post: operations["post-api-invitations-by-token-accept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/oauth/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API oauth authorize */
+        get: operations["get-api-oauth-authorize"];
+        put?: never;
+        /** Post API oauth authorize */
+        post: operations["post-api-oauth-authorize"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4299,6 +4351,15 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        ListResponseOAuthGrantOut: {
+            items: components["schemas"]["OAuthGrantOut"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            per_page: number;
+            /** Format: int64 */
+            total: number;
+        };
         ListResponsePriceItem: {
             items: components["schemas"]["PriceItem"][];
             /** Format: int64 */
@@ -4487,6 +4548,36 @@ export interface components {
         NumberPreview: {
             /** @example 2026-0001 */
             number: string;
+        };
+        OAuthConsent: {
+            /** @description Name the client registered itself with (not verified) */
+            client_name: string;
+            /** @description Where the user returns: host of the redirect URI, or its app scheme */
+            redirect_host: string;
+            resource: string;
+        };
+        OAuthDecision: {
+            approve: boolean;
+            client_id: string;
+            code_challenge: string;
+            code_challenge_method: string;
+            redirect_uri: string;
+            resource?: string;
+            response_type: string;
+            scope?: string;
+            state?: string;
+        };
+        OAuthGrantOut: {
+            client_name: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: int64 */
+            id: number;
+            /** Format: date-time */
+            last_used_at?: string;
+        };
+        OAuthRedirect: {
+            redirect_to: string;
         };
         Overview: {
             /**
@@ -10937,6 +11028,64 @@ export interface operations {
             };
         };
     };
+    "get-api-auth-oauth-grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListResponseOAuthGrantOut"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-api-auth-oauth-grants-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "post-api-auth-password-reset": {
         parameters: {
             query?: never;
@@ -11361,6 +11510,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeAccount"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-oauth-authorize": {
+        parameters: {
+            query?: {
+                client_id?: string;
+                redirect_uri?: string;
+                response_type?: string;
+                state?: string;
+                code_challenge?: string;
+                code_challenge_method?: string;
+                scope?: string;
+                resource?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthConsent"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-oauth-authorize": {
+        parameters: {
+            query?: never;
+            header?: {
+                Authorization?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OAuthDecision"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthRedirect"];
                 };
             };
             /** @description Error */

@@ -1,14 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { BotIcon, KeyRoundIcon, PlusIcon, Trash2Icon, TriangleAlertIcon } from 'lucide-react'
+import { BotIcon, KeyRoundIcon, PlugIcon, PlusIcon, Trash2Icon, TriangleAlertIcon, UnplugIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { applyProblemToForm, errorMessage } from '@/api/errors'
-import { authQueries, useCreateToken, useRevokeToken } from '@/api/queries/auth'
-import type { ApiToken, ApiTokenCreated } from '@/api/types'
+import { authQueries, useCreateToken, useRevokeOAuthGrant, useRevokeToken } from '@/api/queries/auth'
+import type { ApiToken, ApiTokenCreated, OAuthGrant } from '@/api/types'
 import { CopyButton } from '@/components/copy-button'
 import { EmptyState } from '@/components/empty-state'
 import { SelectField, TextField } from '@/components/form/fields'
@@ -23,7 +23,11 @@ import { Spinner } from '@/components/ui/spinner'
 import { formatDateTime } from '@/lib/date'
 
 export const Route = createFileRoute('/a/$slug/settings/tokens')({
-  loader: ({ context }) => context.queryClient.prefetchQuery(authQueries.tokens()),
+  loader: ({ context }) =>
+    Promise.all([
+      context.queryClient.prefetchQuery(authQueries.tokens()),
+      context.queryClient.prefetchQuery(authQueries.oauthGrants()),
+    ]),
   head: () => ({ meta: [{ title: 'API tokeny · NanoFaktura' }] }),
   component: TokensPage,
 })
@@ -131,6 +135,7 @@ function TokensPage() {
       )}
 
       <McpCard />
+      <ConnectedApps />
 
       <CreateTokenDialog open={createOpen} onOpenChange={setCreateOpen} />
       <RevokeTokenDialog token={revoking} onClose={() => setRevoking(null)} />
@@ -162,8 +167,8 @@ function McpCard() {
         </CardTitle>
         <CardDescription>
           Připojte AI asistenta (např. Claude) přes protokol MCP. Asistent pak umí hledat a číst faktury, náklady a kontakty,
-          vystavit fakturu, zapsat náklad nebo úhradu. Nic neodesílá e-mailem, nic nemaže a nemění nastavení. Přihlašuje se
-          API tokenem a má stejná oprávnění jako vy.
+          připravit fakturu, zapsat náklad nebo úhradu. Nic neodesílá e-mailem, nic nemaže a nemění nastavení. Má stejná
+          oprávnění jako vy.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -173,8 +178,9 @@ function McpCard() {
           <CopyButton value={mcpCommand('nf_…')} label="Příkaz pro Claude Code" />
         </div>
         <p className="text-xs text-muted-foreground">
-          Token posílá asistent v hlavičce <code className="font-mono">Authorization: Bearer nf_…</code>. Po vytvoření nového
-          tokenu nabídneme příkaz i s tokenem.
+          <strong className="font-medium text-foreground">claude.ai:</strong> přidejte NanoFakturu jako vlastní konektor s touto
+          adresou a přihlaste se — token není potřeba. <strong className="font-medium text-foreground">Claude Code</strong> a
+          další klienti se přihlašují API tokenem; po vytvoření nového tokenu nabídneme příkaz i s ním.
         </p>
       </CardContent>
     </Card>
@@ -283,6 +289,122 @@ function CreateTokenDialog({ open, onOpenChange }: { open: boolean; onOpenChange
         />
       </form>
     </ResponsiveDialog>
+  )
+}
+
+/** Aplikace připojené přes OAuth (např. konektor v claude.ai) — mají přístup za uživatele bez API tokenu. */
+function ConnectedApps() {
+  const grants = useQuery(authQueries.oauthGrants())
+  const [revoking, setRevoking] = useState<OAuthGrant | null>(null)
+  const disconnect = (g: OAuthGrant) => (
+    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setRevoking(g)}>
+      Odpojit
+    </Button>
+  )
+
+  return (
+    <section className="mt-8 flex flex-col gap-3" aria-labelledby="connected-apps">
+      <div className="flex flex-col gap-1">
+        <h2 id="connected-apps" className="font-semibold">
+          Připojené aplikace
+        </h2>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          Aplikace, kterým jste povolili přístup přihlášením (např. Claude). Mají stejná oprávnění jako vy. Po odpojení
+          přístup okamžitě ztratí.
+        </p>
+      </div>
+      {grants.isError ? (
+        <PageError error={grants.error} reset={() => void grants.refetch()} />
+      ) : (
+        <ResponsiveList
+          items={grants.data}
+          isLoading={grants.isPending}
+          getKey={(g) => g.id}
+          empty={
+            <EmptyState
+              icon={PlugIcon}
+              title="Žádné připojené aplikace"
+              description="Až aplikaci povolíte přístup, uvidíte ji tady."
+              className="py-8"
+            />
+          }
+          columns={[
+            { id: 'name', header: 'Aplikace', cell: (g) => <span className="font-medium">{g.client_name}</span> },
+            { id: 'created', header: 'Připojena', cell: (g) => formatDateTime(g.created_at) },
+            {
+              id: 'used',
+              header: 'Naposledy použita',
+              cell: (g) => (g.last_used_at ? formatDateTime(g.last_used_at) : <span className="text-muted-foreground">Nikdy</span>),
+            },
+            { id: 'actions', header: <span className="sr-only">Akce</span>, align: 'right', cell: disconnect },
+          ]}
+          renderCard={(g) => (
+            <div className="flex items-start gap-3">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <span className="truncate font-medium">{g.client_name}</span>
+                <span className="text-xs text-muted-foreground">
+                  Připojena {formatDateTime(g.created_at)}
+                  {' · '}
+                  {g.last_used_at ? `použita ${formatDateTime(g.last_used_at)}` : 'nikdy nepoužita'}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`Odpojit aplikaci ${g.client_name}`}
+                className="-mt-2 -mr-2 text-destructive hover:text-destructive"
+                onClick={() => setRevoking(g)}
+              >
+                <UnplugIcon />
+              </Button>
+            </div>
+          )}
+        />
+      )}
+      <DisconnectAppDialog grant={revoking} onClose={() => setRevoking(null)} />
+    </section>
+  )
+}
+
+function DisconnectAppDialog({ grant, onClose }: { grant: OAuthGrant | null; onClose: () => void }) {
+  const revoke = useRevokeOAuthGrant()
+  return (
+    <ResponsiveDialog
+      open={grant !== null}
+      onOpenChange={(o) => !o && onClose()}
+      title="Odpojit aplikaci?"
+      description={
+        grant && (
+          <>
+            Aplikace <strong className="text-foreground">{grant.client_name}</strong> ztratí přístup k vašim účtům. Znovu ji
+            můžete připojit, přístup ale budete muset povolit znovu.
+          </>
+        )
+      }
+      footer={
+        <>
+          <Button
+            variant="destructive"
+            disabled={revoke.isPending}
+            onClick={() =>
+              grant &&
+              revoke.mutate(grant.id, {
+                onSuccess: () => {
+                  toast.success('Aplikace odpojena')
+                  onClose()
+                },
+              })
+            }
+          >
+            {revoke.isPending && <Spinner data-icon="inline-start" />}
+            Odpojit
+          </Button>
+          <Button variant="outline" onClick={onClose}>
+            Ponechat
+          </Button>
+        </>
+      }
+    />
   )
 }
 

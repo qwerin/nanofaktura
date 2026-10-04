@@ -189,5 +189,8 @@ func (s *server) RunAuthCleanup(ctx context.Context, now time.Time) error {
 	if err := auth.DeleteExpired(db, now); err != nil { // expiring API tokens
 		return err
 	}
+	if err := cleanupOAuth(db, now); err != nil { // OAuth codes, expired grants, unused clients
+		return err
+	}
 	return db.Where("accepted_at IS NULL AND expires_at <= ?", now.Add(-InvitationTTL)).Delete(&model.Invitation{}).Error
 }

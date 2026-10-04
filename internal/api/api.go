@@ -133,7 +133,8 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 
 	router := chi.NewRouter()
 	// client IP / HTTPS behind trusted proxies, security headers, CSRF (SPEC §5)
-	router.Use(httpsec.Middleware(httpsec.Options{TrustedProxies: cfg.TrustedProxies, PublicHTTPS: cfg.PublicHTTPS()}))
+	secOpts := httpsec.Options{TrustedProxies: cfg.TrustedProxies, PublicHTTPS: cfg.PublicHTTPS()}
+	router.Use(httpsec.Middleware(secOpts))
 	router.Use(httpsec.CSRF)
 	hc := huma.DefaultConfig("NanoFaktura API", "1.0.0")
 	hc.OpenAPIPath = "/api/openapi"
@@ -175,6 +176,7 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 	s.registerAdmin(admin)
 	s.registerTwoFactor(public, authed)
 	s.registerTokens(authed)
+	s.registerOAuth(authed)
 	s.registerAccounts(authed, account)
 	s.registerAres(authed)
 	s.registerExchangeRates(authed)
@@ -213,7 +215,8 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 	// MCP for AI assistants: plain handler (streaming transport), tools dispatch to the routes above
 	router.Handle(mcpPath, s.mcpHandler(router, api))
 
-	return router, api
+	// OAuth metadata, client registration and token endpoint skip CSRF (oauth.go)
+	return s.withOAuth(router, secOpts), api
 }
 
 // newServer applies the dependency defaults (shared by New and Jobs).

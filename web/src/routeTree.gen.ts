@@ -16,6 +16,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ASlugRouteRouteImport } from './routes/a/$slug/route'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
+import { Route as OauthAuthorizeRouteImport } from './routes/oauth.authorize'
 import { Route as PTokenRouteImport } from './routes/p.$token'
 import { Route as ResetPasswordTokenRouteImport } from './routes/reset-password.$token'
 import { Route as VerifyEmailTokenRouteImport } from './routes/verify-email.$token'
@@ -100,6 +101,11 @@ const ASlugRouteRoute = ASlugRouteRouteImport.update({
 const InviteTokenRoute = InviteTokenRouteImport.update({
   id: '/invite/$token',
   path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OauthAuthorizeRoute = OauthAuthorizeRouteImport.update({
+  id: '/oauth/authorize',
+  path: '/oauth/authorize',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PTokenRoute = PTokenRouteImport.update({
@@ -374,6 +380,7 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/a/$slug': typeof ASlugRouteRouteWithChildren
   '/invite/$token': typeof InviteTokenRoute
+  '/oauth/authorize': typeof OauthAuthorizeRoute
   '/p/$token': typeof PTokenRoute
   '/reset-password/$token': typeof ResetPasswordTokenRoute
   '/verify-email/$token': typeof VerifyEmailTokenRoute
@@ -432,6 +439,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/oauth/authorize': typeof OauthAuthorizeRoute
   '/p/$token': typeof PTokenRoute
   '/reset-password/$token': typeof ResetPasswordTokenRoute
   '/verify-email/$token': typeof VerifyEmailTokenRoute
@@ -490,6 +498,7 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/a/$slug': typeof ASlugRouteRouteWithChildren
   '/invite/$token': typeof InviteTokenRoute
+  '/oauth/authorize': typeof OauthAuthorizeRoute
   '/p/$token': typeof PTokenRoute
   '/reset-password/$token': typeof ResetPasswordTokenRoute
   '/verify-email/$token': typeof VerifyEmailTokenRoute
@@ -551,6 +560,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/a/$slug'
     | '/invite/$token'
+    | '/oauth/authorize'
     | '/p/$token'
     | '/reset-password/$token'
     | '/verify-email/$token'
@@ -609,6 +619,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/invite/$token'
+    | '/oauth/authorize'
     | '/p/$token'
     | '/reset-password/$token'
     | '/verify-email/$token'
@@ -666,6 +677,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/a/$slug'
     | '/invite/$token'
+    | '/oauth/authorize'
     | '/p/$token'
     | '/reset-password/$token'
     | '/verify-email/$token'
@@ -726,6 +738,7 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   ASlugRouteRoute: typeof ASlugRouteRouteWithChildren
   InviteTokenRoute: typeof InviteTokenRoute
+  OauthAuthorizeRoute: typeof OauthAuthorizeRoute
   PTokenRoute: typeof PTokenRoute
   ResetPasswordTokenRoute: typeof ResetPasswordTokenRoute
   VerifyEmailTokenRoute: typeof VerifyEmailTokenRoute
@@ -780,6 +793,13 @@ declare module '@tanstack/react-router' {
       path: '/invite/$token'
       fullPath: '/invite/$token'
       preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oauth/authorize': {
+      id: '/oauth/authorize'
+      path: '/oauth/authorize'
+      fullPath: '/oauth/authorize'
+      preLoaderRoute: typeof OauthAuthorizeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/p/$token': {
@@ -1265,6 +1285,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   ASlugRouteRoute: ASlugRouteRouteWithChildren,
   InviteTokenRoute: InviteTokenRoute,
+  OauthAuthorizeRoute: OauthAuthorizeRoute,
   PTokenRoute: PTokenRoute,
   ResetPasswordTokenRoute: ResetPasswordTokenRoute,
   VerifyEmailTokenRoute: VerifyEmailTokenRoute,

@@ -38,6 +38,9 @@ export type ApiToken = ListItem<ResponseBody<'/api/auth/tokens', 'get'>>
 export type ApiTokenCreated = ResponseBody<'/api/auth/tokens', 'post'>
 export type CreateTokenInput = RequestBody<'/api/auth/tokens', 'post'>
 export type LoginResult = ResponseBody<'/api/auth/login', 'post'>
+export type OAuthConsent = ResponseBody<'/api/oauth/authorize', 'get'>
+export type OAuthDecision = RequestBody<'/api/oauth/authorize', 'post'>
+export type OAuthGrant = ListItem<ResponseBody<'/api/auth/oauth-grants', 'get'>>
 export type EmailVerificationInfo = ResponseBody<'/api/auth/verify-email', 'post'>
 
 // --- Správa instance ---

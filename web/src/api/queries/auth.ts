@@ -2,7 +2,7 @@ import { queryOptions, useMutation, useQueryClient } from '@tanstack/react-query
 import { api, unwrap } from '../client'
 import { createCredential, getCredential } from '@/lib/webauthn'
 import { isApiError } from '../errors'
-import type { CreateTokenInput, LoginInput, Me, RegisterInput, UpdateMeInput } from '../types'
+import type { CreateTokenInput, LoginInput, Me, OAuthDecision, RegisterInput, UpdateMeInput } from '../types'
 import { keys } from './keys'
 
 // --- Queries (queryOptions → použitelné v komponentách i v route loaderech) ---
@@ -51,7 +51,28 @@ export const authQueries = {
       queryKey: keys.tokens(),
       queryFn: async () => (await unwrap(api.GET('/api/auth/tokens'))).items ?? [],
     }),
+
+  /** Připojené aplikace (OAuth granty) přihlášeného uživatele. */
+  oauthGrants: () =>
+    queryOptions({
+      queryKey: keys.oauthGrants(),
+      queryFn: async () => (await unwrap(api.GET('/api/auth/oauth-grants'))).items ?? [],
+    }),
+
+  /** Ověří žádost aplikace o přístup a vrátí, co ukázat na stránce souhlasu. Chybu ukazuje stránka. */
+  oauthConsent: (query: OAuthAuthorizeParams) =>
+    queryOptions({
+      queryKey: keys.oauthConsent(query),
+      queryFn: () => unwrap(api.GET('/api/oauth/authorize', { params: { query } })),
+      staleTime: Infinity,
+      retry: false,
+      refetchOnWindowFocus: false,
+      meta: { silent: true },
+    }),
 }
+
+/** Parametry žádosti o přístup (z URL, kam aplikaci poslalo discovery). */
+export type OAuthAuthorizeParams = Partial<Omit<OAuthDecision, 'approve'>>
 
 // --- Mutations ---
 
@@ -231,6 +252,23 @@ export function useCreateToken() {
     mutationFn: (body: CreateTokenInput) => unwrap(api.POST('/api/auth/tokens', { body })),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.tokens() }),
     meta: { silent: true },
+  })
+}
+
+/** Povolí/zamítne přístup aplikaci; vrací adresu, kam prohlížeč poslat zpět. */
+export function useOAuthDecision() {
+  return useMutation({
+    mutationFn: (body: OAuthDecision) => unwrap(api.POST('/api/oauth/authorize', { body })),
+    meta: { silent: true },
+  })
+}
+
+export function useRevokeOAuthGrant() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) =>
+      unwrap(api.DELETE('/api/auth/oauth-grants/{id}', { params: { path: { id } } })),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.oauthGrants() }),
   })
 }
 

@@ -43,7 +43,8 @@ func (s *server) registerTokens(authed huma.API) {
 }
 
 func (s *server) listTokens(ctx context.Context, in *struct{ PageParams }) (*Out[ListResponse[APIToken]], error) {
-	q := s.db.WithContext(ctx).Where("user_id = ?", auth.UserFrom(ctx).ID).Order("id DESC")
+	// access tokens of connected OAuth applications are listed as grants
+	q := s.db.WithContext(ctx).Where("user_id = ? AND oauth_grant_id IS NULL", auth.UserFrom(ctx).ID).Order("id DESC")
 	return paginate(q, in.PageParams, toAPIToken)
 }
 
@@ -63,7 +64,7 @@ func (s *server) createToken(ctx context.Context, in *struct{ Body APITokenCreat
 func (s *server) deleteToken(ctx context.Context, in *struct {
 	ID uint `path:"id"`
 }) (*NoContent, error) {
-	res := s.db.WithContext(ctx).Where("id = ? AND user_id = ?", in.ID, auth.UserFrom(ctx).ID).Delete(&model.APIToken{})
+	res := s.db.WithContext(ctx).Where("id = ? AND user_id = ? AND oauth_grant_id IS NULL", in.ID, auth.UserFrom(ctx).ID).Delete(&model.APIToken{})
 	if res.Error != nil {
 		return nil, dbErr(res.Error, "token")
 	}

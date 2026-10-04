@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import { createRouter } from '@tanstack/react-router'
 import { PageError, PageNotFound } from '@/components/page-states'
 import { PageSkeleton } from '@/components/skeletons'
+import { parseSearch, stringifySearch } from '@/lib/search-params'
 import { routeTree } from './routeTree.gen'
 
 export interface RouterContext {
@@ -20,6 +21,9 @@ export function createAppRouter(queryClient: QueryClient) {
     defaultErrorComponent: PageError,
     defaultNotFoundComponent: PageNotFound,
     scrollRestoration: true,
+    // Parametry OAuth žádosti beze změny (viz lib/search-params).
+    parseSearch,
+    stringifySearch,
   })
 }
 

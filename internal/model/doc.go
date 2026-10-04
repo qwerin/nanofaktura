@@ -19,5 +19,6 @@ func All() []any {
 		&InvoiceTemplate{}, &Recurring{}, &EmailLog{},
 		&BankTransaction{},
 		&Event{}, &Todo{}, &Webhook{}, &WebhookDelivery{},
+		&OAuthClient{}, &OAuthCode{}, &OAuthGrant{},
 	}
 }

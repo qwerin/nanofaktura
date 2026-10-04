@@ -147,7 +147,8 @@ func withSPA(apiHandler http.Handler, dir string) http.Handler {
 	files := http.FileServer(http.Dir(dir))
 	index := filepath.Join(dir, "index.html")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api" || strings.HasPrefix(r.URL.Path, "/api/") {
+		if r.URL.Path == "/api" || strings.HasPrefix(r.URL.Path, "/api/") ||
+			strings.HasPrefix(r.URL.Path, "/.well-known/oauth-") { // OAuth metadata for MCP clients
 			apiHandler.ServeHTTP(w, r)
 			return
 		}

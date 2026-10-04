@@ -112,12 +112,18 @@ func (s *Service) userBySession(ctx context.Context, token string) (*model.User,
 // CreateAPIToken stores a new API token (expiresAt nil = no expiry). The
 // plaintext is returned only here.
 func (s *Service) CreateAPIToken(ctx context.Context, userID uint, name string, expiresAt *time.Time) (string, *model.APIToken, error) {
-	plain, hash := newToken(APITokenPrefix)
-	tok := model.APIToken{UserID: userID, Name: name, TokenHash: hash, Prefix: plain[:8], ExpiresAt: expiresAt}
-	if err := s.db.WithContext(ctx).Create(&tok).Error; err != nil {
+	plain, tok := NewAPIToken(userID, name, expiresAt)
+	if err := s.db.WithContext(ctx).Create(tok).Error; err != nil {
 		return "", nil, err
 	}
-	return plain, &tok, nil
+	return plain, tok, nil
+}
+
+// NewAPIToken builds an unsaved API token and returns its plaintext (callers
+// creating tokens inside a transaction save it with their tx).
+func NewAPIToken(userID uint, name string, expiresAt *time.Time) (string, *model.APIToken) {
+	plain, hash := newToken(APITokenPrefix)
+	return plain, &model.APIToken{UserID: userID, Name: name, TokenHash: hash, Prefix: plain[:8], ExpiresAt: expiresAt}
 }
 
 // UserByAPIToken returns the owner of a valid, unexpired API token (nf_…);

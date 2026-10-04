@@ -268,7 +268,10 @@ straight against the configured SMTP (not through `deps.Mailer`); tests inject `
 A tool is an entry in `mcpTools` (name, method, path relative to the account or absolute `/api/…`, `Write`): its input schema
 is derived from the OpenAPI operation and calls are dispatched in-process to the router with the caller's token — no
 handler code is duplicated, roles/validation/events apply as in REST. Only reads and safe writes: never e-mails,
-deletions, document actions or settings; `create_invoice` forces `draft: true` (`mcpTool.Force`). A new tool needs a call in `mcp_test.go` (`TestMCPEveryTool`).
+deletions, document actions or settings; `create_invoice` forces `draft: true` (`mcpTool.Force`).
+OAuth 2.1 for MCP clients lives in `oauth.go`: metadata/register/token are plain handlers routed by `withOAuth` around the
+CSRF middleware (RFC bodies, form-encoded token requests); consent (`/api/oauth/authorize`, session only) and grants are huma.
+Access tokens are `APIToken`s with `OAuthGrantID` (1 h), refresh tokens rotate; needs a correct `NANOFAKTURA_PUBLIC_URL`. A new tool needs a call in `mcp_test.go` (`TestMCPEveryTool`).
 
 ## Backup (SPEC §7.16)
 

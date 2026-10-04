@@ -36,6 +36,9 @@ type limits struct {
 	verifyLink *ratelimit.Limiter // verification link lookups/confirms per IP
 	emailTest  *ratelimit.Limiter // SMTP diagnostics (test e-mails) per instance admin
 	mcpAuth    *ratelimit.Limiter // invalid API tokens on the MCP endpoint per IP
+
+	oauthRegister *ratelimit.Limiter // OAuth client registrations per IP
+	oauthToken    *ratelimit.Limiter // failed OAuth token requests per IP
 }
 
 func newLimits(now func() time.Time) limits {
@@ -55,6 +58,9 @@ func newLimits(now func() time.Time) limits {
 		verifyLink: ratelimit.New(20, 20, 10*time.Minute, now),
 		emailTest:  ratelimit.New(10, 10, time.Hour, now),
 		mcpAuth:    ratelimit.New(20, 20, 10*time.Minute, now),
+
+		oauthRegister: ratelimit.New(20, 20, time.Hour, now),
+		oauthToken:    ratelimit.New(20, 20, 10*time.Minute, now),
 	}
 }
 

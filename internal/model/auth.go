@@ -107,4 +107,6 @@ type APIToken struct {
 	LastUsedAt *time.Time
 	ExpiresAt  *time.Time `gorm:"index"` // nil = never expires
 	CreatedAt  time.Time
+
+	OAuthGrantID *uint `gorm:"column:oauth_grant_id;index"` // access token of a connected OAuth application (OAuthGrant)
 }

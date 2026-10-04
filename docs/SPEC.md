@@ -78,6 +78,10 @@ Endpointy:
 | GET/POST | `/api/auth/tokens` | seznam / vytvoření API tokenu |
 | DELETE | `/api/auth/tokens/{id}` | revokace |
 | POST | `/api/mcp` | MCP server pro AI asistenty (§7.17), jen `Authorization: Bearer nf_…` |
+| GET | `/.well-known/oauth-protected-resource[/api/mcp]`, `/.well-known/oauth-authorization-server` | OAuth metadata (§7.17) |
+| POST | `/api/oauth/register`, `/api/oauth/token` | OAuth registrace klienta / tokeny (§7.17) |
+| GET/POST | `/api/oauth/authorize` | souhlas s připojením aplikace (session) |
+| GET/DELETE | `/api/auth/oauth-grants[/{id}]` | připojené aplikace / odpojení |
 | GET/POST | `/api/accounts` | účty uživatele / založení nového účtu (tvůrce = owner) |
 | GET/PATCH | `/api/accounts/{slug}` | firemní profil a nastavení (PATCH jen owner) |
 
@@ -530,7 +534,8 @@ Kompletní přenos účtu mezi instancemi (a SQLite → Postgres) a záloha.
 ### 7.17 MCP server (AI asistenti)
 `POST /api/mcp` mluví protokolem MCP (Streamable HTTP, bezstavově, odpovědi `application/json`), aby AI asistent mohl
 pracovat s účtem za uživatele.
-- **Přihlášení**: jen API token (`Authorization: Bearer nf_…`); bez tokenu / s neplatným 401 + `WWW-Authenticate: Bearer`,
+- **Přihlášení**: jen API token (`Authorization: Bearer nf_…`) — osobní, nebo přístupový token OAuth (níže); bez tokenu /
+  s neplatným 401 + `WWW-Authenticate: Bearer resource_metadata="…/.well-known/oauth-protected-resource/api/mcp"`,
   session cookie se nepřijímá. Neúspěšné pokusy jsou omezené na IP (20 / 10 min → 429). Tělo max. 1 MiB.
 - **Nástroje** = vybrané REST operace (katalog `mcpTools` v `internal/api/mcp.go`). Vstupní schéma se odvozuje z OpenAPI
   (`account` = slug, path/query parametry, `body` = schéma těla s `$defs`), volání se v procesu předá routeru API
@@ -541,7 +546,22 @@ pracovat s účtem za uživatele.
   koncept** (`draft` vynucen, vystavuje uživatel v aplikaci), úhrada faktury, nový/úprava kontaktu, nový náklad a jeho úhrada, nový úkol. **Nikdy**: vystavení konceptu, odesílání
   e-mailů, mazání, akce dokladů (storno …), nastavení, členové, webhooky, tokeny.
 - **UI**: Nastavení → API tokeny — karta „AI asistent (MCP)“ s adresou a příkazem pro připojení; po vytvoření tokenu
-  příkaz i s tokenem.
+  příkaz i s tokenem; seznam „Připojené aplikace“ (OAuth) s odpojením.
+- **OAuth 2.1** (autorizace MCP; klienti jako vlastní konektor v claude.ai, které hlavičku s tokenem nastavit neumí):
+  issuer = `NANOFAKTURA_PUBLIC_URL` (musí být správně nastavená — klient ověřuje, že `resource` = adresa, na kterou se připojuje).
+  Metadata RFC 9728 (`resource` = `<PUBLIC_URL>/api/mcp`) a RFC 8414 (`authorization_endpoint` = SPA `/oauth/authorize`).
+  Dynamická registrace klientů (RFC 7591, `POST /api/oauth/register`, limit 20/h na IP): `redirect_uris` jen https,
+  http na loopbacku (port libovolný, RFC 8252) nebo vlastní schéma aplikace; `token_endpoint_auth_method` `none` (výchozí)
+  nebo `client_secret_post|basic` (vygeneruje secret). Klienti bez použití se po 7 dnech mažou (`auth-cleanup`).
+  Autorizace: jen `response_type=code` s PKCE `S256`; souhlas v SPA (přihlášení vč. 2FA, jméno aplikace + kam se vrací);
+  `POST /api/oauth/authorize` jen se session (s `Authorization` 403 `oauth_session_required`) → `redirect_to` s `code`,
+  `state`, `iss` (RFC 9207), zamítnutí `error=access_denied`; neplatný klient/redirect → 422 bez přesměrování.
+  `POST /api/oauth/token` (form-urlencoded, mimo CSRF middleware, chyby `{error, error_description}`, `Cache-Control: no-store`,
+  neúspěchy limitované na IP): `authorization_code` (kód 10 min, jednorázový i při chybě, kontrola klienta, redirect_uri,
+  PKCE a `resource`) a `refresh_token` (rotace — použitý se zneplatní; platnost 90 dní od posledního použití).
+  Přístupový token = API token `nf_…` s platností 1 h navázaný na `OAuthGrant` („připojená aplikace“, uživatelská úroveň jako
+  osobní API tokeny — přístup ke všem účtům uživatele s jeho rolemi). V seznamu osobních tokenů se nezobrazuje; odpojení
+  (`DELETE /api/auth/oauth-grants/{id}`) a změna hesla smažou grant i jeho tokeny. Do zálohy účtu nepatří.
 
 ### 7.18 Mimo rozsah
 EET (zrušeno), účetnictví (podvojné), mzdy, OCR účtenek (jen příprava: přílohy nákladu).

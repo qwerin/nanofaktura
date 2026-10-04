@@ -272,6 +272,9 @@ func (s *server) patchMe(ctx context.Context, in *struct {
 		if err := tx.Where("user_id = ?", user.ID).Delete(&model.APIToken{}).Error; err != nil {
 			return dbErr(err, "tokens")
 		}
+		if err := deleteUserGrants(tx, user.ID); err != nil { // connected OAuth applications
+			return dbErr(err, "tokens")
+		}
 		return nil
 	})
 	if err != nil {

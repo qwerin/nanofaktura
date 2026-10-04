@@ -17,6 +17,10 @@ export const keys = {
   authStatus: () => [...keys.auth, 'status'] as const,
   me: () => [...keys.auth, 'me'] as const,
   tokens: () => [...keys.auth, 'tokens'] as const,
+  /** Připojené aplikace (OAuth) přihlášeného uživatele. */
+  oauthGrants: () => [...keys.auth, 'oauth-grants'] as const,
+  /** Souhlas s připojením aplikace — podle parametrů žádosti. */
+  oauthConsent: (params: object) => [...keys.auth, 'oauth-consent', params] as const,
   twoFactor: () => [...keys.auth, '2fa'] as const,
   passwordReset: (token: string) => [...keys.auth, 'password-reset', token] as const,
 

@@ -25,7 +25,8 @@ import (
 
 // MCP server (SPEC §7.17): POST /api/mcp speaks the Model Context Protocol
 // (Streamable HTTP, stateless) to AI assistants. Every request carries an API
-// token (`Authorization: Bearer nf_…`); cookies are not accepted.
+// token (`Authorization: Bearer nf_…`), a personal one or an OAuth access
+// token (oauth.go); cookies are not accepted.
 //
 // A tool is a curated REST operation: its input schema is derived from the
 // OpenAPI operation (path/query parameters + request body) and a call is
@@ -45,9 +46,9 @@ type mcpTool struct {
 	Name        string
 	Title       string
 	Description string
-	Method      string // http.MethodGet …
-	Path        string // relative to /api/accounts/{slug} (account tools) or absolute ("/api/…")
-	Write       bool   // false = read-only
+	Method      string         // http.MethodGet …
+	Path        string         // relative to /api/accounts/{slug} (account tools) or absolute ("/api/…")
+	Write       bool           // false = read-only
 	Force       map[string]any // body fields always set, whatever the model sends
 }
 
@@ -77,7 +78,7 @@ var mcpTools = []mcpTool{
 	{Name: "get_invoice", Title: "Detail faktury", Method: http.MethodGet, Path: "/invoices/{id}",
 		Description: "Full invoice detail including lines, VAT summary, payments and attachments."},
 	{Name: "create_invoice", Title: "Připravit fakturu", Method: http.MethodPost, Path: "/invoices", Write: true,
-		Force: map[string]any{"draft": true},
+		Force:       map[string]any{"draft": true},
 		Description: "Prepare a new document as a DRAFT (always): it has no number yet, counts nowhere and is not sent. The user reviews and issues it in the web app. Look the client up first (list_subjects / search) and pass subject_id."},
 	{Name: "add_invoice_payment", Title: "Zapsat úhradu faktury", Method: http.MethodPost, Path: "/invoices/{id}/payments", Write: true,
 		Description: "Record a received payment of an invoice (full or partial). The invoice becomes paid when payments cover its total."},
@@ -152,7 +153,9 @@ func (s *server) mcpHandler(router http.Handler, api huma.API) http.Handler {
 func (s *server) mcpAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		unauthorized := func(msg string) {
-			w.Header().Set("WWW-Authenticate", `Bearer realm="nanofaktura"`)
+			// RFC 9728: where clients find the OAuth server (SPEC §7.17)
+			w.Header().Set("WWW-Authenticate", `Bearer realm="nanofaktura", resource_metadata="`+
+				s.oauthIssuer()+"/.well-known/oauth-protected-resource"+mcpPath+`"`)
 			http.Error(w, msg, http.StatusUnauthorized)
 		}
 		ip := clientIP(r.Context())
