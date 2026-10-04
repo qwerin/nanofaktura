@@ -263,7 +263,7 @@ func TestPriceItemsTenantIsolation(t *testing.T) {
 	bs := newSubject(b, api.SubjectCreate{Name: "B"})
 	l := line("X", "1", 100, nil)
 	l.PriceItemID = &item.ID
-	res, body := b.do("POST", b.acct("/invoices"), api.InvoiceCreate{SubjectID: bs.ID, Lines: []api.InvoiceLineInput{l}})
+	res, body := b.do("POST", b.acct("/invoices"), api.InvoiceCreate{SubjectID: new(bs.ID), Lines: []api.InvoiceLineInput{l}})
 	assertError(t, res, body, http.StatusUnprocessableEntity, "lines[0].price_item_id")
 	res, body = b.do("POST", b.acct("/expenses"), api.ExpenseCreate{ExpenseSupplierFields: api.ExpenseSupplierFields{SupplierName: &bs.Name}, Lines: []api.InvoiceLineInput{l}})
 	assertError(t, res, body, http.StatusUnprocessableEntity, "lines[0].price_item_id")
@@ -285,7 +285,7 @@ func TestInvoiceStock(t *testing.T) {
 	}
 
 	// create: tracked line moves out, untracked and unlinked lines do not
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, IssuedOn: "2026-03-10", Lines: []api.InvoiceLineInput{
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), IssuedOn: "2026-03-10", Lines: []api.InvoiceLineInput{
 		itemLine(tracked.ID, "2"), itemLine(plain.ID, "1"), line("Doprava", "1", 100, nil),
 	}})
 	if inv.Lines[0].PriceItemID == nil || *inv.Lines[0].PriceItemID != tracked.ID {
@@ -304,7 +304,7 @@ func TestInvoiceStock(t *testing.T) {
 	assertError(t, res, body, http.StatusConflict, "generated from a document")
 
 	// proforma does not move stock
-	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: subj.ID, Lines: []api.InvoiceLineInput{itemLine(tracked.ID, "5")}})
+	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{itemLine(tracked.ID, "5")}})
 	assertStock(t, a, tracked.ID, "8")
 
 	// PATCH rewrites the moves: quantity change, line removal, re-adding
@@ -350,7 +350,7 @@ func TestInvoiceStock(t *testing.T) {
 	assertStock(t, a, tracked.ID, "10")
 
 	// deleting a cancelled invoice does not return the goods twice
-	inv2 := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{itemLine(tracked.ID, "1")}})
+	inv2 := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{itemLine(tracked.ID, "1")}})
 	assertStock(t, a, tracked.ID, "9")
 	action(a, inv2.ID, "cancel")
 	a.mustDo(http.StatusNoContent, "DELETE", invURL(a, inv2.ID, ""), nil)

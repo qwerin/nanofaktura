@@ -74,6 +74,7 @@ export const codeMessages: Record<string, string> = {
     'Právnická osoba podává kontrolní hlášení vždy za měsíc, i při čtvrtletním přiznání. Vyberte měsíc.',
   correction_invoice_only: 'Dobropis lze vystavit jen k faktuře.',
   correction_template: 'Dobropis nelze uložit jako šablonu.',
+  template_needs_subject: 'Fakturu bez kontaktu nelze uložit jako šablonu — nejdřív k ní vyberte odběratele z kontaktů.',
   sync_not_configured: 'Automatické stahování není pro tento účet nastavené.',
   zero_amount: 'Nulovou transakci nelze spárovat.',
   already_matched: 'Transakce je už spárovaná. Nejdřív párování zrušte.',

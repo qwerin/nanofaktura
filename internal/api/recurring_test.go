@@ -162,7 +162,7 @@ func TestSaveAsTemplate(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
 	inv := createInv(a, api.InvoiceCreate{
-		SubjectID: subj.ID, Tags: []string{"web"}, OrderNumber: "OBJ-1", DueDays: intPtr(30),
+		SubjectID: new(subj.ID), Tags: []string{"web"}, OrderNumber: "OBJ-1", DueDays: intPtr(30),
 		Lines: []api.InvoiceLineInput{line("Vývoj", "3", 150000, nil), line("Sleva", "-1", 5000, i32(0))},
 	})
 	tpl := doJSON[api.Template](a, http.StatusCreated, "POST", invURL(a, inv.ID, "/save-as-template"), nil)
@@ -408,7 +408,7 @@ func TestRecurringSendEmail(t *testing.T) {
 	}
 	for _, inv := range invoicesByIssue(a) {
 		logs := doJSON[api.ListResponse[api.EmailLog]](a, http.StatusOK, "GET", invURL(a, inv.ID, "/emails"), nil)
-		if inv.SubjectID == subj.ID {
+		if inv.SubjectID != nil && *inv.SubjectID == subj.ID {
 			if inv.SentAt == nil || logs.Total != 1 || !logs.Items[0].Automatic || logs.Items[0].SentAt == nil {
 				t.Fatalf("sent invoice: %+v %+v", inv.Status, logs)
 			}

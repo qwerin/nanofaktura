@@ -84,8 +84,8 @@ func TestPGConcurrentPayments(t *testing.T) {
 	ts := newPGTestServer(t)
 	a := ts.signup("a@example.cz", "Firma A")
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("X", "1", 100000, i32(0))}})
-	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("X", "1", 100000, i32(0))}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("X", "1", 100000, i32(0))}})
+	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("X", "1", 100000, i32(0))}})
 	exp := createExp(a, api.ExpenseCreate{SubjectID: &acme.ID, Lines: []api.InvoiceLineInput{line("X", "1", 50000, i32(0))}})
 	codes := make([]int, 8)
 	proCodes := make([]int, 8)
@@ -136,7 +136,7 @@ func TestPGConcurrentPatchVsPayment(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME"})
 	for k := 0; k < 10; k++ {
-		inv := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("X", "1", 100000, i32(0))}})
+		inv := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("X", "1", 100000, i32(0))}})
 		parallel(3, func(i int) {
 			switch i {
 			case 0:
@@ -166,7 +166,7 @@ func TestPGConcurrentRematch(t *testing.T) {
 	for k := 0; k < 5; k++ {
 		vs := fmt.Sprintf("77%02d", k)
 		importOK(a, bank.ID, fioJSON(fioTx{id: fmt.Sprintf("9%03d", k), date: "2026-03-10", vs: vs, amount: "1000.00", name: "ACME"}))
-		inv := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, VariableSymbol: &vs, Lines: []api.InvoiceLineInput{line("X", "1", 100000, i32(0))}})
+		inv := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), VariableSymbol: &vs, Lines: []api.InvoiceLineInput{line("X", "1", 100000, i32(0))}})
 		parallel(3, func(int) { a.do("POST", a.acct("/bank-transactions/rematch"), nil) })
 		var n int64
 		ts.db.Model(&model.Payment{}).Where("invoice_id = ?", inv.ID).Count(&n)
@@ -188,7 +188,7 @@ func TestPGConcurrentProformaPayments(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	setVatPayer(a)
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("X", "1", 100000, i32(2100))}})
+	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("X", "1", 100000, i32(2100))}})
 	parallel(8, func(i int) {
 		if i%2 == 0 {
 			a.do("POST", invURL(a, pro.ID, "/payments"), map[string]any{})

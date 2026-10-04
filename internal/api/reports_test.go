@@ -21,20 +21,20 @@ func TestVatReport(t *testing.T) {
 	setVatPayer(a)
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME", VatNo: "CZ27074358"})
 	muller := newSubject(a, api.SubjectCreate{Name: "Müller GmbH", VatNo: "DE811907980", Country: "DE"})
-	inv1 := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("Vývoj", "1", 10_000_000, i32(2100))}})
-	createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("Kniha", "1", 100_000, i32(1200))}})
-	createInv(a, api.InvoiceCreate{SubjectID: muller.ID, ReverseCharge: true, Lines: []api.InvoiceLineInput{line("Služby", "1", 5_000_000, i32(2100))}})
-	createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Currency: "EUR", ExchangeRate: "25", Lines: []api.InvoiceLineInput{line("Licence", "1", 100_000, i32(2100))}})
+	inv1 := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("Vývoj", "1", 10_000_000, i32(2100))}})
+	createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("Kniha", "1", 100_000, i32(1200))}})
+	createInv(a, api.InvoiceCreate{SubjectID: new(muller.ID), ReverseCharge: true, Lines: []api.InvoiceLineInput{line("Služby", "1", 5_000_000, i32(2100))}})
+	createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Currency: "EUR", ExchangeRate: "25", Lines: []api.InvoiceLineInput{line("Licence", "1", 100_000, i32(2100))}})
 	corr := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, inv1.ID, "/correction"), map[string]any{"correction_reason": "Vrácení zboží"})
 	a.mustDo(http.StatusOK, "PATCH", invURL(a, corr.ID, ""), map[string]any{
 		"lines": []api.InvoiceLineInput{line("Sleva", "-0.1", 10_000_000, i32(2100))}})
 	// excluded: cancelled, proforma, other period, other account
-	cancelled := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("X", "1", 999_900, i32(2100))}})
+	cancelled := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("X", "1", 999_900, i32(2100))}})
 	action(a, cancelled.ID, "cancel")
-	createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("Z", "1", 999_900, i32(2100))}})
-	createInv(a, api.InvoiceCreate{SubjectID: acme.ID, IssuedOn: "2026-04-02", Lines: []api.InvoiceLineInput{line("Duben", "1", 999_900, i32(2100))}})
+	createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("Z", "1", 999_900, i32(2100))}})
+	createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), IssuedOn: "2026-04-02", Lines: []api.InvoiceLineInput{line("Duben", "1", 999_900, i32(2100))}})
 	setVatPayer(b)
-	createInv(b, api.InvoiceCreate{SubjectID: newSubject(b, api.SubjectCreate{Name: "B"}).ID, Lines: []api.InvoiceLineInput{line("B", "1", 999_900, i32(2100))}})
+	createInv(b, api.InvoiceCreate{SubjectID: new(newSubject(b, api.SubjectCreate{Name: "B"}).ID), Lines: []api.InvoiceLineInput{line("B", "1", 999_900, i32(2100))}})
 	// purchases: big → B.2, small → B.3, not deductible → none
 	supplier := api.ExpenseSupplierFields{SupplierName: strPtr("Dodavatel s.r.o."), SupplierVatNo: strPtr("CZ25596641")}
 	createExp(a, api.ExpenseCreate{OriginalNumber: "FV-2026-77", ExpenseSupplierFields: supplier, Lines: []api.InvoiceLineInput{line("Notebook", "1", 2_000_000, i32(2100))}})
@@ -146,13 +146,13 @@ func TestOverview(t *testing.T) {
 	b := ts.signup("b@example.cz", "Firma B")
 	alfa := newSubject(a, api.SubjectCreate{Name: "Alfa"})
 	beta := newSubject(a, api.SubjectCreate{Name: "Beta"})
-	i1 := createInv(a, api.InvoiceCreate{SubjectID: alfa.ID, IssuedOn: "2026-01-10", Lines: []api.InvoiceLineInput{line("A", "1", 100_000, nil)}})
-	i2 := createInv(a, api.InvoiceCreate{SubjectID: beta.ID, IssuedOn: "2026-03-01", Lines: []api.InvoiceLineInput{line("B", "1", 300_000, nil)}})
-	createInv(a, api.InvoiceCreate{SubjectID: beta.ID, IssuedOn: "2026-03-02", Currency: "EUR", ExchangeRate: "25",
+	i1 := createInv(a, api.InvoiceCreate{SubjectID: new(alfa.ID), IssuedOn: "2026-01-10", Lines: []api.InvoiceLineInput{line("A", "1", 100_000, nil)}})
+	i2 := createInv(a, api.InvoiceCreate{SubjectID: new(beta.ID), IssuedOn: "2026-03-01", Lines: []api.InvoiceLineInput{line("B", "1", 300_000, nil)}})
+	createInv(a, api.InvoiceCreate{SubjectID: new(beta.ID), IssuedOn: "2026-03-02", Currency: "EUR", ExchangeRate: "25",
 		Lines: []api.InvoiceLineInput{line("C", "1", 10_000, nil)}}) // 100 EUR = 2 500 Kč, unpaid
-	c := createInv(a, api.InvoiceCreate{SubjectID: alfa.ID, IssuedOn: "2026-03-03", Lines: []api.InvoiceLineInput{line("X", "1", 900_000, nil)}})
+	c := createInv(a, api.InvoiceCreate{SubjectID: new(alfa.ID), IssuedOn: "2026-03-03", Lines: []api.InvoiceLineInput{line("X", "1", 900_000, nil)}})
 	action(a, c.ID, "cancel")
-	createInv(a, api.InvoiceCreate{SubjectID: alfa.ID, IssuedOn: "2025-12-31", Lines: []api.InvoiceLineInput{line("Loni", "1", 50_000, nil)}})
+	createInv(a, api.InvoiceCreate{SubjectID: new(alfa.ID), IssuedOn: "2025-12-31", Lines: []api.InvoiceLineInput{line("Loni", "1", 50_000, nil)}})
 	pay(a, i1.ID, api.PaymentCreate{PaidOn: "2026-01-20"})
 	pay(a, i2.ID, api.PaymentCreate{PaidOn: "2026-03-15"})
 	e := createExp(a, api.ExpenseCreate{IssuedOn: "2026-02-05", ExpenseSupplierFields: api.ExpenseSupplierFields{SupplierName: strPtr("D")},

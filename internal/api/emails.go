@@ -561,16 +561,23 @@ type emailRequest struct {
 // errNoRecipients: automatic e-mail for an invoice without a client e-mail.
 var errNoRecipients = errors.New("no recipient: the invoice has no client e-mail")
 
-// defaultRecipients: to = invoice client_email, cc = the subject's email_copy
-// (comma/semicolon separated, duplicates dropped).
+// defaultRecipients: to = invoice client_email (or the subject's current email
+// when the invoice has none, e.g. it was added to the contact later), cc = the
+// subject's email_copy (comma/semicolon separated, duplicates dropped).
 func (s *server) defaultRecipients(ctx context.Context, db *gorm.DB, inv *model.Invoice) (to, cc []string) {
 	to = []string{}
 	cc = []string{}
-	if e := strings.TrimSpace(inv.ClientEmail); e != "" {
-		to = append(to, e)
-	}
 	var subj model.Subject
-	if err := db.Scopes(inAccount(ctx)).Select("id", "email_copy").First(&subj, inv.SubjectID).Error; err == nil {
+	found := inv.SubjectID != nil &&
+		db.Scopes(inAccount(ctx)).Select("id", "email", "email_copy").First(&subj, *inv.SubjectID).Error == nil
+	email := strings.TrimSpace(inv.ClientEmail)
+	if email == "" && found {
+		email = strings.TrimSpace(subj.Email)
+	}
+	if email != "" {
+		to = append(to, email)
+	}
+	if found {
 		for _, e := range strings.FieldsFunc(subj.EmailCopy, func(r rune) bool { return r == ',' || r == ';' }) {
 			if e = strings.TrimSpace(e); e != "" && !slices.Contains(to, e) && !slices.Contains(cc, e) {
 				cc = append(cc, e)

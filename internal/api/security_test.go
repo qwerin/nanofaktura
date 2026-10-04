@@ -316,7 +316,7 @@ func TestEmailAbuseLimits(t *testing.T) {
 	ts := newTestServer(t, withRateLimit)
 	a := ts.signup("a@example.cz", "Firma A")
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME", Email: "acme@example.cz"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("Práce", "1", 1000, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("Práce", "1", 1000, nil)}})
 	noPDF := false
 	many := make([]string, 11)
 	for i := range many {

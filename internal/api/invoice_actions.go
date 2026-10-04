@@ -190,7 +190,8 @@ func (s *server) regeneratePublicToken(ctx context.Context, in *invoiceID) (*Out
 // copyInvoice builds a create body with the content of src (subject, lines,
 // currency, payment, notes, flags); dates, number and related_id are left
 // to the caller / defaults. copySnapshots keeps src's client_* and your_*
-// data instead of snapshotting the subject and account anew; negate flips
+// data instead of snapshotting the subject and account anew (client_* are
+// always kept for an end customer without a contact); negate flips
 // the sign of every quantity.
 func copyInvoice(src *model.Invoice, docType string, copySnapshots, negate bool) InvoiceCreate {
 	dueDays, note, footer, round := src.DueDays, src.Note, src.FooterNote, src.RoundTotal
@@ -222,6 +223,13 @@ func copyInvoice(src *model.Invoice, docType string, copySnapshots, negate bool)
 			YourName: &c.YourName, YourRegistrationNo: &c.YourRegistrationNo, YourVatNo: &c.YourVatNo,
 			YourStreet: &c.YourStreet, YourCity: &c.YourCity, YourZip: &c.YourZip, YourCountry: &c.YourCountry,
 			YourRegisteredBy: &c.YourRegisteredBy, YourVatMode: &c.YourVatMode,
+		}
+	} else if src.SubjectID == nil { // end customer: no contact to snapshot from
+		c := *src
+		body.InvoiceSnapshotFields = InvoiceSnapshotFields{
+			ClientName: &c.ClientName, ClientFullName: &c.ClientFullName, ClientRegistrationNo: &c.ClientRegistrationNo,
+			ClientVatNo: &c.ClientVatNo, ClientStreet: &c.ClientStreet, ClientCity: &c.ClientCity,
+			ClientZip: &c.ClientZip, ClientCountry: &c.ClientCountry, ClientEmail: &c.ClientEmail, ClientLocalVatNo: &c.ClientLocalVatNo,
 		}
 	}
 	return body

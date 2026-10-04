@@ -40,7 +40,7 @@ export function TopCustomers({
               <li key={c.subject_id || `${c.name}-${i}`}>
                 <Link
                   to="/a/$slug/subjects/$subjectId"
-                  params={{ slug, subjectId: c.subject_id }}
+                  params={{ slug, subjectId: c.subject_id ?? 0 }}
                   disabled={!c.subject_id}
                   className="flex flex-col gap-1.5 px-4 py-2.5 transition-colors hover:bg-muted/40 focus-visible:bg-muted/60 focus-visible:outline-none md:px-5"
                 >

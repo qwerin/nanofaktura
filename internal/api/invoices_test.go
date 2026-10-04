@@ -91,13 +91,13 @@ func TestInvoiceCreateDefaults(t *testing.T) {
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME s.r.o.", FullName: "Jan Novák", Street: "Dlouhá 5",
 		City: "Praha", Zip: "11000", Email: "acme@example.cz"})
 
-	inv := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Lines: []api.InvoiceLineInput{
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{
 		line("Práce", "1,5", 100000, i32(2100)), // non VAT payer → rate forced to 0
 		{Name: " Materiál ", UnitPrice: 5050, UnitName: "ks"},
 	}})
 	s := inv.InvoiceSummary
 	if s.DocumentType != "invoice" || s.Number != "2026-0001" || s.VariableSymbol != "20260001" || s.Status != "open" ||
-		s.SubjectID != acme.ID || s.RelatedID != nil || s.IssuedOn != "2026-03-15" || s.TaxableFulfillmentDue != "" ||
+		s.SubjectID == nil || *s.SubjectID != acme.ID || s.RelatedID != nil || s.IssuedOn != "2026-03-15" || s.TaxableFulfillmentDue != "" ||
 		s.DueDays != 14 || s.DueOn != "2026-03-29" || s.Currency != "CZK" || s.ExchangeRate != "1" ||
 		s.Language != "cs" || s.PaymentMethod != "bank" || s.SentAt != nil || s.PaidOn != "" || s.LockedAt != nil {
 		t.Fatalf("defaults: %+v", s)
@@ -131,31 +131,31 @@ func TestInvoiceCreateDefaults(t *testing.T) {
 
 	// subject due_days wins over the account default; numbers continue
 	beta := newSubject(a, api.SubjectCreate{Name: "Beta", DueDays: intPtr(30)})
-	inv2 := createInv(a, api.InvoiceCreate{SubjectID: beta.ID, Lines: []api.InvoiceLineInput{line("X", "", 100, nil)}})
+	inv2 := createInv(a, api.InvoiceCreate{SubjectID: new(beta.ID), Lines: []api.InvoiceLineInput{line("X", "", 100, nil)}})
 	if inv2.Number != "2026-0002" || inv2.DueDays != 30 || inv2.DueOn != "2026-04-14" {
 		t.Fatalf("inv2: %+v", inv2.InvoiceSummary)
 	}
 	// proforma has its own series
-	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("X", "", 100, nil)}})
+	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("X", "", 100, nil)}})
 	if pro.Number != "Z2026-0001" || pro.VariableSymbol != "20260001" || pro.DocumentType != "proforma" {
 		t.Fatalf("proforma: %+v", pro.InvoiceSummary)
 	}
 	// custom number does not advance the counter; VS from its digits
-	custom := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Number: " X-15 ", Lines: []api.InvoiceLineInput{line("X", "", 100, nil)}})
+	custom := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Number: " X-15 ", Lines: []api.InvoiceLineInput{line("X", "", 100, nil)}})
 	if custom.Number != "X-15" || custom.VariableSymbol != "15" {
 		t.Fatalf("custom: %+v", custom.InvoiceSummary)
 	}
-	next := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, VariableSymbol: strPtr("777"), Lines: []api.InvoiceLineInput{line("X", "", 100, nil)}})
+	next := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), VariableSymbol: strPtr("777"), Lines: []api.InvoiceLineInput{line("X", "", 100, nil)}})
 	if next.Number != "2026-0003" || next.VariableSymbol != "777" {
 		t.Fatalf("next: %+v", next.InvoiceSummary)
 	}
-	res, body := a.do("POST", a.acct("/invoices"), api.InvoiceCreate{SubjectID: acme.ID, Number: "X-15",
+	res, body := a.do("POST", a.acct("/invoices"), api.InvoiceCreate{SubjectID: new(acme.ID), Number: "X-15",
 		Lines: []api.InvoiceLineInput{line("X", "", 100, nil)}})
 	assertError(t, res, body, http.StatusConflict, "X-15 already exists")
 	// the same number in another document type is fine
-	createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: acme.ID, Number: "X-15", Lines: []api.InvoiceLineInput{line("X", "", 100, nil)}})
+	createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: new(acme.ID), Number: "X-15", Lines: []api.InvoiceLineInput{line("X", "", 100, nil)}})
 	// a failed create does not consume a number
-	if n := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("X", "", 100, nil)}}); n.Number != "2026-0004" {
+	if n := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("X", "", 100, nil)}}); n.Number != "2026-0004" {
 		t.Fatalf("after conflict: %s", n.Number)
 	}
 }
@@ -168,7 +168,7 @@ func TestInvoiceCreateVatPayer(t *testing.T) {
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
 
 	// mixed rates 0/12/21, default rate 21 %, VAT per rate, round_total from the account
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{
 		line("A", "1.5", 12345, i32(2100)),
 		line("B", "3", 999, i32(1200)),
 		line("C", "1", 5000, i32(0)),
@@ -188,14 +188,14 @@ func TestInvoiceCreateVatPayer(t *testing.T) {
 	}
 
 	// prices including VAT, rounding switched off explicitly
-	gross := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, PricesIncludeVat: true, RoundTotal: new(bool),
+	gross := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), PricesIncludeVat: true, RoundTotal: new(bool),
 		Lines: []api.InvoiceLineInput{line("A", "1", 12100, i32(2100)), line("B", "1", 1000, i32(1200))}})
 	if gross.Subtotal != 10893 || gross.VatTotal != 2207 || gross.Total != 13100 || gross.Rounding != 0 || gross.RoundTotal {
 		t.Fatalf("gross: %+v", gross.InvoiceSummary)
 	}
 
 	// reverse charge: no VAT, rates kept
-	rc := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, ReverseCharge: true, RoundTotal: new(bool),
+	rc := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), ReverseCharge: true, RoundTotal: new(bool),
 		Lines: []api.InvoiceLineInput{line("A", "2", 10000, i32(2100))}})
 	if rc.VatTotal != 0 || rc.Total != 20000 || rc.Lines[0].VatRateBps != 2100 ||
 		!reflect.DeepEqual(rc.VatRecap, []api.VatRecapItem{{VatRateBps: 2100, Base: 20000, Total: 20000}}) {
@@ -204,7 +204,7 @@ func TestInvoiceCreateVatPayer(t *testing.T) {
 
 	// explicit values and snapshot overrides
 	ov := createInv(a, api.InvoiceCreate{
-		SubjectID: subj.ID, IssuedOn: "2026-02-01", TaxableFulfillmentDue: strPtr("2026-01-31"), DueDays: intPtr(0),
+		SubjectID: new(subj.ID), IssuedOn: "2026-02-01", TaxableFulfillmentDue: strPtr("2026-01-31"), DueDays: intPtr(0),
 		Currency: "EUR", ExchangeRate: "24.355", Language: "en", PaymentMethod: "custom", CustomPaymentMethod: "Barter",
 		OrderNumber: "PO-1", Note: strPtr(""), PrivateNote: "tajné", Tags: []string{" a ", "b", "a", ""},
 		InvoiceSnapshotFields: api.InvoiceSnapshotFields{ClientName: strPtr("Jiný název"), YourName: strPtr("Firma A s.r.o.")},
@@ -219,7 +219,7 @@ func TestInvoiceCreateVatPayer(t *testing.T) {
 	}
 
 	// non VAT payer snapshot (overridden) forces rates to 0
-	np := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, TaxableFulfillmentDue: strPtr(""),
+	np := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), TaxableFulfillmentDue: strPtr(""),
 		InvoiceSnapshotFields: api.InvoiceSnapshotFields{YourVatMode: strPtr("non_vat_payer")},
 		Lines:                 []api.InvoiceLineInput{line("A", "1", 1000, i32(2100))}})
 	if np.VatTotal != 0 || np.Lines[0].VatRateBps != 0 || np.TaxableFulfillmentDue != "" {
@@ -229,12 +229,12 @@ func TestInvoiceCreateVatPayer(t *testing.T) {
 	// the default bank account of the invoice currency is used
 	eur := doJSON[api.BankAccount](a, http.StatusCreated, "POST", a.acct("/bank-accounts"),
 		api.BankAccountCreate{Name: "EUR", Currency: "EUR", IBAN: "DE89370400440532013000"})
-	e := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Currency: "EUR", Lines: []api.InvoiceLineInput{line("A", "1", 1, nil)}})
+	e := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Currency: "EUR", Lines: []api.InvoiceLineInput{line("A", "1", 1, nil)}})
 	if e.BankAccountID == nil || *e.BankAccountID != eur.ID || e.IBAN != "DE89370400440532013000" {
 		t.Fatalf("eur bank: %+v", e.InvoiceSummary)
 	}
 	// explicit bank account (other currency) + explicit IBAN override
-	e2 := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, BankAccountID: &eur.ID,
+	e2 := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), BankAccountID: &eur.ID,
 		InvoiceSnapshotFields: api.InvoiceSnapshotFields{IBAN: strPtr("X")}, Lines: []api.InvoiceLineInput{line("A", "1", 1, nil)}})
 	if *e2.BankAccountID != eur.ID || e2.IBAN != "X" || e2.Currency != "CZK" {
 		t.Fatalf("explicit bank: %+v", e2.InvoiceSummary)
@@ -249,8 +249,8 @@ func TestInvoiceCreateValidation(t *testing.T) {
 	bSubj := newSubject(b, api.SubjectCreate{Name: "B"})
 	bBank := doJSON[api.BankAccount](b, http.StatusCreated, "POST", b.acct("/bank-accounts"),
 		api.BankAccountCreate{Name: "Fio", Number: "2000145399/2010"})
-	bInv := createInv(b, api.InvoiceCreate{SubjectID: bSubj.ID, Lines: []api.InvoiceLineInput{line("X", "1", 1, nil)}})
-	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("X", "1", 1, nil)}})
+	bInv := createInv(b, api.InvoiceCreate{SubjectID: new(bSubj.ID), Lines: []api.InvoiceLineInput{line("X", "1", 1, nil)}})
+	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("X", "1", 1, nil)}})
 	ok := []api.InvoiceLineInput{line("X", "1", 100, nil)}
 
 	tests := []struct {
@@ -261,20 +261,20 @@ func TestInvoiceCreateValidation(t *testing.T) {
 		{"no lines", map[string]any{"subject_id": subj.ID}, "lines"},
 		{"empty lines", map[string]any{"subject_id": subj.ID, "lines": []any{}}, "lines"},
 		{"no subject", map[string]any{"lines": ok}, "subject_id"},
-		{"blank line name", api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line(" ", "1", 1, nil)}}, "lines[0].name"},
-		{"bad quantity", api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("X", "1", 1, nil), line("Y", "1.2345", 1, nil)}}, "lines[1].quantity"},
-		{"rate too high", api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("X", "1", 1, i32(20000))}}, "vat_rate_bps"},
-		{"overflow", api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("X", "999999999999", 100000000000000, nil)}}, "out of range"},
-		{"unknown subject", api.InvoiceCreate{SubjectID: 9999, Lines: ok}, "subject not found"},
-		{"foreign subject", api.InvoiceCreate{SubjectID: bSubj.ID, Lines: ok}, "subject not found"},
-		{"correction without related", api.InvoiceCreate{DocumentType: "correction", SubjectID: subj.ID, Lines: ok}, "requires related_id"},
-		{"correction of foreign invoice", api.InvoiceCreate{DocumentType: "correction", SubjectID: subj.ID, RelatedID: &bInv.ID, Lines: ok}, "related document not found"},
-		{"correction of proforma", api.InvoiceCreate{DocumentType: "correction", SubjectID: subj.ID, RelatedID: &pro.ID, Lines: ok}, "must relate to an invoice"},
-		{"bad issued_on", api.InvoiceCreate{SubjectID: subj.ID, IssuedOn: "2026-02-30", Lines: ok}, "issued_on"},
-		{"bad duzp", api.InvoiceCreate{SubjectID: subj.ID, TaxableFulfillmentDue: strPtr("brzy"), Lines: ok}, "taxable_fulfillment_due"},
-		{"foreign bank account", api.InvoiceCreate{SubjectID: subj.ID, BankAccountID: &bBank.ID, Lines: ok}, "bank account not found"},
-		{"bad currency", api.InvoiceCreate{SubjectID: subj.ID, Currency: "czk", Lines: ok}, "currency"},
-		{"bad variable symbol", api.InvoiceCreate{SubjectID: subj.ID, VariableSymbol: strPtr("12345678901"), Lines: ok}, "variable_symbol"},
+		{"blank line name", api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line(" ", "1", 1, nil)}}, "lines[0].name"},
+		{"bad quantity", api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("X", "1", 1, nil), line("Y", "1.2345", 1, nil)}}, "lines[1].quantity"},
+		{"rate too high", api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("X", "1", 1, i32(20000))}}, "vat_rate_bps"},
+		{"overflow", api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("X", "999999999999", 100000000000000, nil)}}, "out of range"},
+		{"unknown subject", api.InvoiceCreate{SubjectID: new(uint(9999)), Lines: ok}, "subject not found"},
+		{"foreign subject", api.InvoiceCreate{SubjectID: new(bSubj.ID), Lines: ok}, "subject not found"},
+		{"correction without related", api.InvoiceCreate{DocumentType: "correction", SubjectID: new(subj.ID), Lines: ok}, "requires related_id"},
+		{"correction of foreign invoice", api.InvoiceCreate{DocumentType: "correction", SubjectID: new(subj.ID), RelatedID: &bInv.ID, Lines: ok}, "related document not found"},
+		{"correction of proforma", api.InvoiceCreate{DocumentType: "correction", SubjectID: new(subj.ID), RelatedID: &pro.ID, Lines: ok}, "must relate to an invoice"},
+		{"bad issued_on", api.InvoiceCreate{SubjectID: new(subj.ID), IssuedOn: "2026-02-30", Lines: ok}, "issued_on"},
+		{"bad duzp", api.InvoiceCreate{SubjectID: new(subj.ID), TaxableFulfillmentDue: strPtr("brzy"), Lines: ok}, "taxable_fulfillment_due"},
+		{"foreign bank account", api.InvoiceCreate{SubjectID: new(subj.ID), BankAccountID: &bBank.ID, Lines: ok}, "bank account not found"},
+		{"bad currency", api.InvoiceCreate{SubjectID: new(subj.ID), Currency: "czk", Lines: ok}, "currency"},
+		{"bad variable symbol", api.InvoiceCreate{SubjectID: new(subj.ID), VariableSymbol: strPtr("12345678901"), Lines: ok}, "variable_symbol"},
 		{"bad document type", map[string]any{"subject_id": subj.ID, "document_type": "receipt", "lines": ok}, "document_type"},
 	}
 	for _, tt := range tests {
@@ -285,17 +285,17 @@ func TestInvoiceCreateValidation(t *testing.T) {
 	}
 
 	// a correction of an own invoice is fine
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: ok})
-	corr := createInv(a, api.InvoiceCreate{DocumentType: "correction", SubjectID: subj.ID, RelatedID: &inv.ID, Lines: ok})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: ok})
+	corr := createInv(a, api.InvoiceCreate{DocumentType: "correction", SubjectID: new(subj.ID), RelatedID: &inv.ID, Lines: ok})
 	if corr.Number != "D2026-0001" || corr.RelatedID == nil || *corr.RelatedID != inv.ID {
 		t.Fatalf("correction: %+v", corr.InvoiceSummary)
 	}
 
 	// without a default number format → 409
 	ts.db.Where("document_type = ?", "invoice").Delete(&model.NumberFormat{})
-	res, body := a.do("POST", a.acct("/invoices"), api.InvoiceCreate{SubjectID: subj.ID, Lines: ok})
+	res, body := a.do("POST", a.acct("/invoices"), api.InvoiceCreate{SubjectID: new(subj.ID), Lines: ok})
 	assertError(t, res, body, http.StatusConflict, "number format")
-	createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Number: "RUČNĚ-1", Lines: ok}) // custom number needs no format
+	createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Number: "RUČNĚ-1", Lines: ok}) // custom number needs no format
 }
 
 // ---- list ----
@@ -306,7 +306,7 @@ func TestInvoiceList(t *testing.T) {
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME"})
 	beta := newSubject(a, api.SubjectCreate{Name: "Beta a.s."})
 	mk := func(subj uint, issued string, price int64) api.Invoice {
-		return createInv(a, api.InvoiceCreate{SubjectID: subj, IssuedOn: issued, Lines: []api.InvoiceLineInput{line("X", "1", price, nil)}})
+		return createInv(a, api.InvoiceCreate{SubjectID: new(subj), IssuedOn: issued, Lines: []api.InvoiceLineInput{line("X", "1", price, nil)}})
 	}
 	i1 := mk(acme.ID, "2026-01-10", 500) // due 01-24 → overdue
 	i2 := mk(acme.ID, "2026-03-10", 300) // due 03-24 → open
@@ -314,7 +314,7 @@ func TestInvoiceList(t *testing.T) {
 	action(a, i3.ID, "mark_as_sent")
 	i4 := mk(beta.ID, "2026-03-01", 900) // paid
 	pay(a, i4.ID, api.PaymentCreate{})
-	i5 := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: acme.ID, IssuedOn: "2026-03-12",
+	i5 := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: new(acme.ID), IssuedOn: "2026-03-12",
 		Lines: []api.InvoiceLineInput{line("X", "1", 200, nil)}})
 	i6 := mk(acme.ID, "2026-03-05", 400) // cancelled
 	action(a, i6.ID, "cancel")
@@ -373,10 +373,10 @@ func TestInvoicePatch(t *testing.T) {
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME", City: "Praha"})
 	beta := newSubject(a, api.SubjectCreate{Name: "Beta a.s.", City: "Brno"})
 	doJSON[api.BankAccount](a, http.StatusCreated, "POST", a.acct("/bank-accounts"), api.BankAccountCreate{Name: "Fio", Number: "2000145399/2010"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Lines: []api.InvoiceLineInput{
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{
 		line("L1", "1", 100, nil), line("L2", "1", 200, nil), line("L3", "1", 300, nil),
 	}})
-	other := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("O", "1", 1, nil)}})
+	other := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("O", "1", 1, nil)}})
 	if got := getInv(a, inv.ID); !reflect.DeepEqual(got, inv) {
 		t.Fatalf("get differs from create:\n%+v\n%+v", got, inv)
 	}
@@ -413,7 +413,7 @@ func TestInvoicePatch(t *testing.T) {
 
 	// subject change re-snapshots client_*, explicit client fields win
 	p = doJSON[api.Invoice](a, http.StatusOK, "PATCH", invURL(a, inv.ID, ""), map[string]any{"subject_id": beta.ID})
-	if p.SubjectID != beta.ID || p.ClientName != "Beta a.s." || p.ClientCity != "Brno" {
+	if p.SubjectID == nil || *p.SubjectID != beta.ID || p.ClientName != "Beta a.s." || p.ClientCity != "Brno" {
 		t.Fatalf("resnapshot: %+v", p.InvoiceSummary)
 	}
 	p = doJSON[api.Invoice](a, http.StatusOK, "PATCH", invURL(a, inv.ID, ""), map[string]any{"subject_id": acme.ID, "client_name": "Vlastní"})
@@ -456,7 +456,7 @@ func TestInvoicePatch(t *testing.T) {
 	}
 
 	// changing the total of a paid invoice reopens it
-	paid := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
+	paid := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
 	pay(a, paid.ID, api.PaymentCreate{})
 	p = doJSON[api.Invoice](a, http.StatusOK, "PATCH", invURL(a, paid.ID, ""), map[string]any{"lines": []any{map[string]any{"name": "X", "unit_price": 150}}})
 	if p.Status != "open" || p.PaidOn != "" || p.RemainingAmount != 50 {
@@ -484,7 +484,7 @@ func TestInvoiceDelete(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
 	mk := func() api.Invoice {
-		return createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
+		return createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
 	}
 	inv := mk()
 	a.mustDo(http.StatusNoContent, "DELETE", invURL(a, inv.ID, ""), nil)
@@ -520,7 +520,7 @@ func TestInvoiceActions(t *testing.T) {
 	ts := newTestServer(t)
 	a := ts.signup("a@example.cz", "Firma A")
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
 
 	s := action(a, inv.ID, "mark_as_sent")
 	if s.Status != "sent" || s.SentAt == nil || !s.SentAt.Equal(ts.now) {
@@ -553,7 +553,7 @@ func TestInvoiceActions(t *testing.T) {
 	}
 
 	// open invoice: undo_cancel goes back to open
-	inv2 := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
+	inv2 := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
 	action(a, inv2.ID, "cancel")
 	if s = action(a, inv2.ID, "undo_cancel"); s.Status != "open" {
 		t.Fatalf("undo cancel open: %+v", s.InvoiceSummary)
@@ -578,7 +578,7 @@ func TestPayments(t *testing.T) {
 	ts := newTestServer(t)
 	a := ts.signup("a@example.cz", "Firma A")
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("X", "1", 10000, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("X", "1", 10000, nil)}})
 
 	r := pay(a, inv.ID, api.PaymentCreate{Amount: i64(4000), PaidOn: "2026-03-16", Note: "záloha"})
 	if r.Payment.Amount != 4000 || r.Payment.PaidOn != "2026-03-16" || r.Payment.Note != "záloha" || r.Payment.InvoiceID != inv.ID ||
@@ -610,7 +610,7 @@ func TestPayments(t *testing.T) {
 	res, body = a.do("DELETE", invURL(a, inv.ID, fmt.Sprintf("/payments/%d", first)), nil)
 	assertError(t, res, body, http.StatusNotFound, "payment not found")
 	// a payment of another invoice cannot be deleted through this one
-	inv2 := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("X", "1", 500, nil)}})
+	inv2 := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("X", "1", 500, nil)}})
 	p2 := pay(a, inv2.ID, api.PaymentCreate{}).Payment
 	res, body = a.do("DELETE", invURL(a, inv.ID, fmt.Sprintf("/payments/%d", p2.ID)), nil)
 	assertError(t, res, body, http.StatusNotFound, "payment not found")
@@ -626,7 +626,7 @@ func TestPayments(t *testing.T) {
 	}
 
 	// cancelled / uncollectible invoices take no payments
-	c := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("X", "1", 500, nil)}})
+	c := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("X", "1", 500, nil)}})
 	action(a, c.ID, "cancel")
 	res, body = a.do("POST", invURL(a, c.ID, "/payments"), api.PaymentCreate{})
 	assertError(t, res, body, http.StatusConflict, "cancelled")
@@ -651,8 +651,8 @@ func TestPaymentCreateFinalInvoice(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	setVatPayer(a)
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("X", "1", 1, nil)}}) // 2026-0001
-	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: subj.ID, Note: strPtr("Záloha"),
+	createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("X", "1", 1, nil)}}) // 2026-0001
+	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: new(subj.ID), Note: strPtr("Záloha"),
 		Lines: []api.InvoiceLineInput{line("Práce", "2", 5000, i32(2100)), line("Kniha", "1", 1000, i32(1200))}})
 
 	r := pay(a, pro.ID, api.PaymentCreate{PaidOn: "2026-03-20", CreateFinalInvoice: true})
@@ -682,7 +682,7 @@ func TestCorrectionAndDuplicate(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	setVatPayer(a)
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Tags: []string{"x"}, Lines: []api.InvoiceLineInput{
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Tags: []string{"x"}, Lines: []api.InvoiceLineInput{
 		line("A", "2", 1000, i32(2100)), line("B", "1.5", 500, i32(1200)),
 	}})
 	action(a, inv.ID, "mark_as_sent")
@@ -705,7 +705,7 @@ func TestCorrectionAndDuplicate(t *testing.T) {
 	}
 	res, body := a.do("POST", invURL(a, corr.ID, "/correction"), map[string]any{"correction_reason": "Vrácení zboží"})
 	assertError(t, res, body, http.StatusConflict, "only be issued for an invoice")
-	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("X", "1", 1, nil)}})
+	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("X", "1", 1, nil)}})
 	res, body = a.do("POST", invURL(a, pro.ID, "/correction"), map[string]any{"correction_reason": "Vrácení zboží"})
 	assertError(t, res, body, http.StatusConflict, "proforma")
 
@@ -733,7 +733,7 @@ func TestRegeneratePublicToken(t *testing.T) {
 	ts := newTestServer(t)
 	a := ts.signup("a@example.cz", "Firma A")
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("X", "1", 1, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("X", "1", 1, nil)}})
 	action(a, inv.ID, "lock") // allowed on locked invoices too
 	r := doJSON[api.Invoice](a, http.StatusOK, "POST", invURL(a, inv.ID, "/regenerate-public-token"), nil)
 	if len(r.PublicToken) < 24 || r.PublicToken == inv.PublicToken || getInv(a, inv.ID).PublicToken != r.PublicToken {
@@ -748,7 +748,7 @@ func TestDashboard(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
 	mk := func(docType, issued, currency string, price int64, related *uint) api.Invoice {
-		return createInv(a, api.InvoiceCreate{DocumentType: docType, SubjectID: subj.ID, IssuedOn: issued, Currency: currency,
+		return createInv(a, api.InvoiceCreate{DocumentType: docType, SubjectID: new(subj.ID), IssuedOn: issued, Currency: currency,
 			RelatedID: related, Lines: []api.InvoiceLineInput{line("X", "1", price, nil)}})
 	}
 	jan := mk("", "2026-01-05", "", 1000, nil)
@@ -788,7 +788,7 @@ func TestInvoicesTenantIsolation(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	b := ts.signup("b@example.cz", "Firma B")
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
 	p := pay(a, inv.ID, api.PaymentCreate{Amount: i64(10)}).Payment
 
 	for _, r := range []struct {
@@ -822,7 +822,7 @@ func TestInvoicesTenantIsolation(t *testing.T) {
 	}
 	// b's own numbering is independent
 	bs := newSubject(b, api.SubjectCreate{Name: "B"})
-	if n := createInv(b, api.InvoiceCreate{SubjectID: bs.ID, Lines: []api.InvoiceLineInput{line("X", "1", 1, nil)}}).Number; n != "2026-0001" {
+	if n := createInv(b, api.InvoiceCreate{SubjectID: new(bs.ID), Lines: []api.InvoiceLineInput{line("X", "1", 1, nil)}}).Number; n != "2026-0001" {
 		t.Fatalf("b number: %s", n)
 	}
 }

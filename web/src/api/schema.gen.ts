@@ -3880,8 +3880,11 @@ export interface components {
              * @enum {string}
              */
             status: "draft" | "open" | "sent" | "overdue" | "paid" | "cancelled" | "uncollectible";
-            /** Format: int64 */
-            subject_id: number;
+            /**
+             * Format: int64
+             * @description The client contact; absent = end customer without a contact (client_* only)
+             */
+            subject_id?: number;
             /**
              * Format: int64
              * @description Sum of VAT bases
@@ -3982,8 +3985,11 @@ export interface components {
             reverse_charge?: boolean;
             /** @description Default: account round_total */
             round_total?: boolean;
-            /** Format: int64 */
-            subject_id: number;
+            /**
+             * Format: int64
+             * @description The client contact; snapshots client_*. Without it (end customer) client_name is required
+             */
+            subject_id?: number;
             /**
              * @description EU reverse charge: services (default) or goods (§ 64)
              * @enum {string}
@@ -4061,6 +4067,8 @@ export interface components {
              * @description Re-snapshots bank_account/iban/swift_bic
              */
             bank_account_id?: number;
+            /** @description Unlink the client contact (subject_id → null, end customer); client_* stay as free text */
+            clear_subject?: boolean;
             client_city?: string;
             client_country?: string;
             client_email?: string;
@@ -4217,8 +4225,11 @@ export interface components {
              * @enum {string}
              */
             status: "draft" | "open" | "sent" | "overdue" | "paid" | "cancelled" | "uncollectible";
-            /** Format: int64 */
-            subject_id: number;
+            /**
+             * Format: int64
+             * @description The client contact; absent = end customer without a contact (client_* only)
+             */
+            subject_id?: number;
             /**
              * Format: int64
              * @description Sum of VAT bases
@@ -5349,8 +5360,11 @@ export interface components {
             /** Format: int64 */
             count: number;
             name: string;
-            /** Format: int64 */
-            subject_id: number;
+            /**
+             * Format: int64
+             * @description Absent for end customers invoiced without a contact (grouped by name)
+             */
+            subject_id?: number;
             /**
              * Format: int64
              * @description Σ total of invoices and corrections (CZK)

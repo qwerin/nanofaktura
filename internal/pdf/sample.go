@@ -74,7 +74,7 @@ func Sample(s SampleSpec) (*model.Invoice, *model.Account) {
 	}
 	inv := &model.Invoice{
 		ID: 42, AccountID: acc.ID, DocumentType: s.DocumentType, Number: number,
-		VariableSymbol: spayd.Digits(number, 10), Status: s.Status, SubjectID: 7,
+		VariableSymbol: spayd.Digits(number, 10), Status: s.Status, SubjectID: new(uint(7)),
 
 		ClientName: "ACME Technologies a.s.", ClientFullName: "Ing. Jana Nováková",
 		ClientRegistrationNo: "45317054", ClientVatNo: "CZ45317054",

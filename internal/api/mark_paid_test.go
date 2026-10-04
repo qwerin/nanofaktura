@@ -15,7 +15,7 @@ func TestMarkInvoicesPaid(t *testing.T) {
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME", Email: "acme@example.cz"})
 	days := func(n int) *int { return &n }
 	newInv := func(issued string, due int, price int64) api.Invoice {
-		return createInv(a, api.InvoiceCreate{SubjectID: subj.ID, IssuedOn: issued, DueDays: days(due),
+		return createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), IssuedOn: issued, DueDays: days(due),
 			Lines: []api.InvoiceLineInput{line("X", "1", price, nil)}})
 	}
 	old := newInv("2025-01-10", 14, 10000)     // due 2025-01-24
@@ -26,7 +26,7 @@ func TestMarkInvoicesPaid(t *testing.T) {
 	pay(a, paid.ID, api.PaymentCreate{})
 	cancelled := newInv("2025-04-01", 14, 900)
 	action(a, cancelled.ID, "cancel")
-	bOther := createInv(b, api.InvoiceCreate{SubjectID: newSubject(b, api.SubjectCreate{Name: "B"}).ID,
+	bOther := createInv(b, api.InvoiceCreate{SubjectID: new(newSubject(b, api.SubjectCreate{Name: "B"}).ID),
 		Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
 	mails := len(ts.mail.Messages())
 

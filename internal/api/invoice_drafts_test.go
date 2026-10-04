@@ -20,8 +20,8 @@ func TestInvoiceDrafts(t *testing.T) {
 		api.PriceItemCreate{Name: "Krabice", UnitPrice: 1000, TrackStock: true, StockQuantity: "10"})
 	lines := []api.InvoiceLineInput{{Name: "Krabice", Quantity: "2", UnitPrice: 50000, PriceItemID: &item.ID}}
 
-	d1 := createInv(a, api.InvoiceCreate{Draft: true, SubjectID: acme.ID, Lines: lines})
-	d2 := createInv(a, api.InvoiceCreate{Draft: true, SubjectID: acme.ID, Lines: lines}) // several drafts without a number
+	d1 := createInv(a, api.InvoiceCreate{Draft: true, SubjectID: new(acme.ID), Lines: lines})
+	d2 := createInv(a, api.InvoiceCreate{Draft: true, SubjectID: new(acme.ID), Lines: lines}) // several drafts without a number
 	if d1.Status != "draft" || d1.Number != "" || d1.VariableSymbol != "" || d1.Total != 100000 || d2.Number != "" {
 		t.Fatalf("draft: %+v", d1.InvoiceSummary)
 	}
@@ -122,7 +122,7 @@ func TestInvoiceDrafts(t *testing.T) {
 	a.mustDo(http.StatusNoContent, "DELETE", invURL(a, fromTpl.ID, ""), nil)
 
 	// a future issue date is kept; a custom number is kept on issue
-	future := createInv(a, api.InvoiceCreate{Draft: true, SubjectID: acme.ID, IssuedOn: "2026-04-01", Number: "X-1",
+	future := createInv(a, api.InvoiceCreate{Draft: true, SubjectID: new(acme.ID), IssuedOn: "2026-04-01", Number: "X-1",
 		Lines: []api.InvoiceLineInput{line("Práce", "1", 100, nil)}})
 	if future.Number != "X-1" || future.Status != "draft" {
 		t.Fatalf("custom draft: %+v", future.InvoiceSummary)
@@ -138,7 +138,7 @@ func TestDraftNotInVatReport(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	a.mustDo(http.StatusOK, "PATCH", a.acct(""), map[string]any{"vat_mode": "vat_payer", "vat_no": "CZ12345678"})
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	d := createInv(a, api.InvoiceCreate{Draft: true, SubjectID: acme.ID, IssuedOn: "2026-02-10", Lines: []api.InvoiceLineInput{line("Práce", "1", 100000, i32(2100))}})
+	d := createInv(a, api.InvoiceCreate{Draft: true, SubjectID: new(acme.ID), IssuedOn: "2026-02-10", Lines: []api.InvoiceLineInput{line("Práce", "1", 100000, i32(2100))}})
 	b := a.mustDo(http.StatusOK, "GET", a.acct("/reports/vat?period=2026-02"), nil)
 	if strings.Contains(string(b), "100000") || strings.Contains(string(b), "21000") {
 		t.Fatalf("VAT report contains the draft: %s", b)

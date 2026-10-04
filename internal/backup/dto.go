@@ -156,7 +156,7 @@ type Invoice struct {
 	Number         string `json:"number"`
 	VariableSymbol string `json:"variable_symbol"`
 	Status         string `json:"status"`
-	SubjectID      uint   `json:"subject_id"`
+	SubjectID      *uint  `json:"subject_id"` // nil = end customer without a contact
 	RelatedID      *uint  `json:"related_id"`
 	RecurringID    *uint  `json:"recurring_id"`
 

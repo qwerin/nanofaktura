@@ -146,7 +146,7 @@ func TestSubjectPatchAndDelete(t *testing.T) {
 	var acc model.Account
 	ts.db.Where("slug = ?", a.slug).First(&acc)
 	if err := ts.db.Create(&model.Invoice{AccountID: acc.ID, DocumentType: model.DocInvoice, Number: "2026-0001",
-		Status: model.StatusOpen, SubjectID: other.ID, IssuedOn: "2026-03-15", Currency: "CZK",
+		Status: model.StatusOpen, SubjectID: new(other.ID), IssuedOn: "2026-03-15", Currency: "CZK",
 		ExchangeRate: "1", Language: "cs", PaymentMethod: "bank"}).Error; err != nil {
 		t.Fatal(err)
 	}

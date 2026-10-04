@@ -84,20 +84,23 @@ func richFixture(t *testing.T, ts *testServer, a *client) (webhookSecret string)
 
 	pl := line("Krabice", "2", 10000, i32(2100))
 	pl.PriceItemID = &item.ID
-	inv1 := createInv(a, api.InvoiceCreate{SubjectID: cust.ID, Lines: []api.InvoiceLineInput{pl, line("Práce", "1.25", 80000, i32(1200))},
+	inv1 := createInv(a, api.InvoiceCreate{SubjectID: new(cust.ID), Lines: []api.InvoiceLineInput{pl, line("Práce", "1.25", 80000, i32(1200))},
 		Tags: []string{"web"}, OrderNumber: "OBJ-1", BankAccountID: &czk.ID})
 	pay(a, inv1.ID, api.PaymentCreate{Note: "převodem"})
 	corr := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, inv1.ID, "/correction"), map[string]any{"correction_reason": "Vrácení zboží"})
 	_ = corr
-	proforma := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: cust.ID, Lines: []api.InvoiceLineInput{line("Záloha", "", 50000, nil)}})
+	proforma := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: new(cust.ID), Lines: []api.InvoiceLineInput{line("Záloha", "", 50000, nil)}})
 	pay(a, proforma.ID, api.PaymentCreate{CreateFinalInvoice: true})
-	cancelled := createInv(a, api.InvoiceCreate{SubjectID: cust.ID, Lines: []api.InvoiceLineInput{line("Storno", "", 1000, nil)}})
+	cancelled := createInv(a, api.InvoiceCreate{SubjectID: new(cust.ID), Lines: []api.InvoiceLineInput{line("Storno", "", 1000, nil)}})
 	action(a, cancelled.ID, "cancel")
-	locked := createInv(a, api.InvoiceCreate{SubjectID: cust.ID, Lines: []api.InvoiceLineInput{line("Zamčená", "", 2000, nil)}})
+	locked := createInv(a, api.InvoiceCreate{SubjectID: new(cust.ID), Lines: []api.InvoiceLineInput{line("Zamčená", "", 2000, nil)}})
 	action(a, locked.ID, "mark_as_sent")
 	action(a, locked.ID, "lock")
 	pay(a, locked.ID, api.PaymentCreate{Amount: ptr64(500)})
-	deleted := createInv(a, api.InvoiceCreate{SubjectID: cust.ID, Lines: []api.InvoiceLineInput{line("Smazat", "", 1, nil)}})
+	endCustomer := "Jan Koncový" // invoice without a contact
+	createInv(a, api.InvoiceCreate{InvoiceSnapshotFields: api.InvoiceSnapshotFields{ClientName: &endCustomer},
+		Lines: []api.InvoiceLineInput{line("Oprava kola", "", 1500, nil)}})
+	deleted := createInv(a, api.InvoiceCreate{SubjectID: new(cust.ID), Lines: []api.InvoiceLineInput{line("Smazat", "", 1, nil)}})
 	a.mustDo(http.StatusNoContent, "DELETE", invURL(a, deleted.ID, ""), nil) // leaves an invoice.deleted event
 
 	exp := createExp(a, api.ExpenseCreate{SubjectID: &supp.ID, OriginalNumber: "DF-77", Category: "kancelář",
@@ -372,7 +375,7 @@ func TestBackupRoundtrip(t *testing.T) {
 		codes[w.Code] = w.Count
 	}
 	for code, n := range map[string]int{"recurring_deactivated": 1, "reminders_disabled": 0, "paid_thanks_disabled": 0,
-		"webhooks_inactive": 1, "bank_tokens_removed": 1, "public_links_regenerated": 8, "members_not_imported": 1} {
+		"webhooks_inactive": 1, "bank_tokens_removed": 1, "public_links_regenerated": 9, "members_not_imported": 1} {
 		if got, ok := codes[code]; !ok || got != n {
 			t.Errorf("warning %s: %d (present %v), want %d; all %+v", code, got, ok, n, out.Warnings)
 		}
@@ -406,7 +409,7 @@ func TestBackupRoundtrip(t *testing.T) {
 			t.Errorf("%s differs after roundtrip:\nbefore: %v\nafter:  %v", table, before[table], after[table])
 		}
 	}
-	if len(before["invoices"]) != 8 || len(before["attachments"]) != 4 || len(before["bank_transactions"]) != 3 {
+	if len(before["invoices"]) != 9 || len(before["attachments"]) != 4 || len(before["bank_transactions"]) != 3 {
 		t.Fatalf("fixture too small: %d invoices, %d attachments", len(before["invoices"]), len(before["attachments"]))
 	}
 
@@ -436,9 +439,9 @@ func TestBackupRoundtrip(t *testing.T) {
 
 	// numbering continues in both accounts identically
 	subj := doJSON[api.ListResponse[api.Subject]](bc, http.StatusOK, "GET", bc.acct("/subjects?query=ACME"), nil).Items[0]
-	next := createInv(bc, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("Další", "", 100, nil)}})
+	next := createInv(bc, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("Další", "", 100, nil)}})
 	srcSubj := doJSON[api.ListResponse[api.Subject]](a, http.StatusOK, "GET", a.acct("/subjects?query=ACME"), nil).Items[0]
-	nextSrc := createInv(a, api.InvoiceCreate{SubjectID: srcSubj.ID, Lines: []api.InvoiceLineInput{line("Další", "", 100, nil)}})
+	nextSrc := createInv(a, api.InvoiceCreate{SubjectID: new(srcSubj.ID), Lines: []api.InvoiceLineInput{line("Další", "", 100, nil)}})
 	if next.Number != nextSrc.Number || !strings.HasPrefix(next.Number, "FV2603-") || next.Number == "FV2603-001" {
 		t.Errorf("next number %q (source %q)", next.Number, nextSrc.Number)
 	}
@@ -520,7 +523,7 @@ func TestBackupImportRejections(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	b := ts.signup("b@example.cz", "Firma B")
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("X", "", 100, nil)}})
+	createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("X", "", 100, nil)}})
 	data := downloadBackup(t, a)
 
 	var accounts int64

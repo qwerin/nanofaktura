@@ -574,7 +574,9 @@ func loadMatchCandidates(ctx context.Context, tx *gorm.DB) (*matchCandidates, er
 	}
 	subjectIDs := make([]uint, 0, len(invs))
 	for _, inv := range invs {
-		subjectIDs = append(subjectIDs, inv.SubjectID)
+		if inv.SubjectID != nil {
+			subjectIDs = append(subjectIDs, *inv.SubjectID)
+		}
 	}
 	accounts := map[uint][]string{}
 	if len(subjectIDs) > 0 {
@@ -587,9 +589,13 @@ func loadMatchCandidates(ctx context.Context, tx *gorm.DB) (*matchCandidates, er
 		}
 	}
 	for _, inv := range invs {
+		var subjAccounts []string
+		if inv.SubjectID != nil {
+			subjAccounts = accounts[*inv.SubjectID]
+		}
 		mt.invoices = append(mt.invoices, matching.Candidate{ID: inv.ID, Number: inv.Number, Currency: inv.Currency,
 			VS: inv.VariableSymbol, Total: inv.Total, Remaining: inv.Total - inv.PaidAmount, Name: inv.ClientName,
-			Accounts: accounts[inv.SubjectID]})
+			Accounts: subjAccounts})
 	}
 	var exps []model.Expense
 	if err := tx.Scopes(inAccount(ctx)).Where("status = ? AND total > paid_amount", model.StatusOpen).

@@ -352,6 +352,9 @@ func (s *server) saveAsTemplate(ctx context.Context, in *struct {
 	if inv.DocumentType == model.DocTaxDocument {
 		return nil, conflict(CodeTaxDocumentFixed, "a tax document for a received payment cannot be saved as a template")
 	}
+	if inv.SubjectID == nil {
+		return nil, conflict(CodeTemplateNeedsSubject, "an invoice without a contact cannot be saved as a template")
+	}
 	name := ""
 	if in.Body != nil {
 		name = strings.TrimSpace(in.Body.Name)
@@ -361,7 +364,7 @@ func (s *server) saveAsTemplate(ctx context.Context, in *struct {
 	}
 	dueDays, note, footer, round := inv.DueDays, inv.Note, inv.FooterNote, inv.RoundTotal
 	m := &model.InvoiceTemplate{
-		AccountID: inv.AccountID, Name: name, DocumentType: inv.DocumentType, SubjectID: inv.SubjectID,
+		AccountID: inv.AccountID, Name: name, DocumentType: inv.DocumentType, SubjectID: *inv.SubjectID,
 		DueDays: &dueDays, Currency: inv.Currency, ExchangeRate: inv.ExchangeRate, Language: inv.Language,
 		PaymentMethod: inv.PaymentMethod, CustomPaymentMethod: inv.CustomPaymentMethod, BankAccountID: inv.BankAccountID,
 		OrderNumber: inv.OrderNumber, Note: &note, FooterNote: &footer, PrivateNote: inv.PrivateNote,
@@ -445,7 +448,7 @@ func templateInvoice(ctx context.Context, t *model.InvoiceTemplate, docType, iss
 	apply(&footer, t.FooterNote)
 	note, footer = fill(note), fill(footer)
 	body := InvoiceCreate{
-		DocumentType: docType, SubjectID: t.SubjectID, IssuedOn: issuedOn, DueDays: t.DueDays,
+		DocumentType: docType, SubjectID: &t.SubjectID, IssuedOn: issuedOn, DueDays: t.DueDays,
 		Currency: t.Currency, ExchangeRate: t.ExchangeRate, Language: t.Language,
 		PaymentMethod: t.PaymentMethod, CustomPaymentMethod: t.CustomPaymentMethod, BankAccountID: t.BankAccountID,
 		OrderNumber: fill(t.OrderNumber), Note: &note, FooterNote: &footer, PrivateNote: fill(t.PrivateNote),

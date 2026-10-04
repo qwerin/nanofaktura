@@ -84,7 +84,7 @@ func TestWebhookDelivery(t *testing.T) {
 	assertError(t, res, body, http.StatusUnprocessableEntity, "unknown event")
 
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"}) // subject.* does not match the filter
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("Práce", "1", 1000_00, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("Práce", "1", 1000_00, nil)}})
 	ds := deliveries(a, hook.ID)
 	if len(ds) != 1 || ds[0].Event != "invoice.created" || ds[0].Status != "pending" {
 		t.Fatalf("queued %+v", ds)

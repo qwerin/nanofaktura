@@ -33,7 +33,7 @@ func TestAccountAppearanceOnboardingCapabilities(t *testing.T) {
 
 	// PDFs render with the saved settings; the preview accepts unsaved ones
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("A", "1", 100, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("A", "1", 100, nil)}})
 	if b := a.mustDo(http.StatusOK, "GET", invURL(a, inv.ID, "/pdf"), nil); !bytes.HasPrefix(b, []byte("%PDF")) {
 		t.Fatalf("pdf %q", b[:10])
 	}

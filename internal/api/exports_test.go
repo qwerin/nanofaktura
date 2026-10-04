@@ -83,10 +83,10 @@ func TestExportInvoices(t *testing.T) {
 	b := ts.signup("b@example.cz", "Firma B")
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME; s.r.o.", RegistrationNo: "27074358"}) // ";" must be quoted
 	beta := newSubject(a, api.SubjectCreate{Name: "Beta"})
-	createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Tags: []string{"web", "2026"}, Lines: []api.InvoiceLineInput{line("Práce", "1.5", 121050, nil)}})
-	createInv(a, api.InvoiceCreate{SubjectID: beta.ID, IssuedOn: "2026-02-01", Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
-	createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("Záloha", "1", 50000, nil)}})
-	createInv(b, api.InvoiceCreate{SubjectID: newSubject(b, api.SubjectCreate{Name: "Cizí"}).ID, Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
+	createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Tags: []string{"web", "2026"}, Lines: []api.InvoiceLineInput{line("Práce", "1.5", 121050, nil)}})
+	createInv(a, api.InvoiceCreate{SubjectID: new(beta.ID), IssuedOn: "2026-02-01", Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
+	createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("Záloha", "1", 50000, nil)}})
+	createInv(b, api.InvoiceCreate{SubjectID: new(newSubject(b, api.SubjectCreate{Name: "Cizí"}).ID), Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
 
 	res, body := a.do("GET", a.acct("/exports/invoices.csv"), nil)
 	recs := parseCSV(t, res, body)
@@ -223,9 +223,9 @@ func TestExportPDFZip(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	b := ts.signup("b@example.cz", "Firma B")
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	createInv(a, api.InvoiceCreate{SubjectID: subj.ID, IssuedOn: "2026-01-10", Lines: []api.InvoiceLineInput{line("A", "1", 1000, nil)}})
-	createInv(a, api.InvoiceCreate{SubjectID: subj.ID, IssuedOn: "2026-02-10", Lines: []api.InvoiceLineInput{line("B", "1", 1000, nil)}})
-	createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: subj.ID, IssuedOn: "2026-02-11", Number: "2026-0002",
+	createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), IssuedOn: "2026-01-10", Lines: []api.InvoiceLineInput{line("A", "1", 1000, nil)}})
+	createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), IssuedOn: "2026-02-10", Lines: []api.InvoiceLineInput{line("B", "1", 1000, nil)}})
+	createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: new(subj.ID), IssuedOn: "2026-02-11", Number: "2026-0002",
 		Lines: []api.InvoiceLineInput{line("C", "1", 1000, nil)}})
 
 	names := zipOf(t, a, a.acct("/exports/pdf.zip"))

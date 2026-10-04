@@ -135,7 +135,7 @@ func TestAttachments(t *testing.T) {
 		append(append([]byte{}, pdfData...), make([]byte, api.MaxAttachmentSize)...))
 	assertError(t, res, body, http.StatusRequestEntityTooLarge, "20 MB")
 	// an invoice can own attachments
-	inv := createInv(a, api.InvoiceCreate{SubjectID: sa.ID, Lines: []api.InvoiceLineInput{line("Práce", "1", 1000, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(sa.ID), Lines: []api.InvoiceLineInput{line("Práce", "1", 1000, nil)}})
 	uploadOK(a, "invoice", inv.ID, "podklad.pdf", pdfData)
 
 	// list + filter
@@ -241,7 +241,7 @@ func TestInvoicePDFWithLogo(t *testing.T) {
 	a.mustDo(http.StatusOK, "PATCH", a.acct(""), map[string]any{"logo_attachment_id": logo.ID, "stamp_attachment_id": logo.ID})
 
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("Práce", "1", 1000, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("Práce", "1", 1000, nil)}})
 	res, body := a.do("GET", invURL(a, inv.ID, "/pdf"), nil)
 	if res.StatusCode != http.StatusOK || !bytes.HasPrefix(body, []byte("%PDF")) {
 		t.Fatalf("pdf: %d %.200s", res.StatusCode, body)

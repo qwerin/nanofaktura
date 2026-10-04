@@ -13,7 +13,7 @@ func TestInvoiceListSumsAndFilters(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
 	mk := func(price int64, cur string) api.Invoice {
-		b := api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("A", "1", price, nil)}}
+		b := api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("A", "1", price, nil)}}
 		if cur != "" {
 			b.Currency, b.ExchangeRate = cur, "25"
 		}
@@ -25,7 +25,7 @@ func TestInvoiceListSumsAndFilters(t *testing.T) {
 	cancelled := mk(700, "")
 	action(a, cancelled.ID, "cancel")
 	pay(a, i2.ID, api.PaymentCreate{Amount: i64(500)})
-	createInv(a, api.InvoiceCreate{SubjectID: subj.ID, IssuedOn: "2026-01-01", DueDays: intPtr(1),
+	createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), IssuedOn: "2026-01-01", DueDays: intPtr(1),
 		Lines: []api.InvoiceLineInput{line("A", "1", 300, nil)}})
 
 	l := doJSON[api.DocumentList[api.InvoiceSummary]](a, http.StatusOK, "GET", a.acct("/invoices?per_page=1"), nil)

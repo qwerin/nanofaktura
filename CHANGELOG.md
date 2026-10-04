@@ -11,6 +11,8 @@ Pravidla (viz CLAUDE.md → „Novinky“):
 
 ## 2026-10-04 · Koncepty faktur a AI asistent
 
+- **Faktura pro koncového zákazníka** — ve formuláři faktury zapněte *Koncový zákazník* a stačí napsat jméno (případně adresu a e-mail) přímo na fakturu, bez zakládání kontaktu. Hodí se pro jednorázové zákazníky. Kontakt můžete k faktuře přiřadit i později.
+- **E-mail odběratele se předvyplní i dodatečně** — když kontaktu doplníte e-mail až po vystavení faktury, při odeslání faktury e-mailem se adresa předvyplní z kontaktu.
 - **Koncepty faktur** — fakturu můžete uložit jako koncept a vystavit ji později. Koncept ještě nemá číslo, nepočítá se do přehledů, DPH ani skladu a nejde ho odeslat ani zaplatit. Až je hotový, stačí v detailu kliknout na *Vystavit*: dostane další číslo řady, a pokud byl připravený dřív, datum vystavení se posune na dnešek. Rozpracovaný koncept při úpravě vystavíte tlačítkem *Uložit a vystavit*. Všechny koncepty najdete v seznamu faktur pod filtrem *Koncepty*.
 - **Připojení AI asistenta (MCP)** — v *Nastavení → API tokeny* najdete adresu a hotový příkaz pro připojení AI asistenta, třeba Claude. Asistent pak za vás najde fakturu nebo kontakt, řekne, kdo vám dluží, připraví přehled DPH, připraví koncept faktury (vystavíte ho sami) nebo zapíše náklad a úhradu. Nic neodesílá e-mailem, nic nemaže a nemění nastavení. Asistent smí jen to, co vy.
 - **Připojení z claude.ai bez tokenu** — v claude.ai přidáte NanoFakturu jako vlastní konektor (adresa z *Nastavení → API tokeny*) a jen se přihlásíte a povolíte přístup. Připojené aplikace uvidíte a kdykoli odpojíte v *Nastavení → API tokeny → Připojené aplikace*; změna hesla je odpojí všechny.

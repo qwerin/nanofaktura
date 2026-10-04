@@ -488,11 +488,14 @@ func (im *importer) run(tx *gorm.DB) error {
 		d := &a.invoices[i]
 		m := model.Invoice{}
 		convert(&m, d)
-		sid, ok := im.subjects[d.SubjectID]
-		if !ok {
-			return corrupt("invoice %d: subject %d is not in the backup", d.ID, d.SubjectID)
+		if d.SubjectID != nil {
+			sid, ok := im.subjects[*d.SubjectID]
+			if !ok {
+				return corrupt("invoice %d: subject %d is not in the backup", d.ID, *d.SubjectID)
+			}
+			m.SubjectID = &sid
 		}
-		m.ID, m.AccountID, m.SubjectID, m.RelatedID, m.RecurringID = 0, accID, sid, nil, nil
+		m.ID, m.AccountID, m.RelatedID, m.RecurringID = 0, accID, nil, nil
 		m.BankAccountID = im.bankAccounts.opt(d.BankAccountID)
 		m.PublicToken = newPublicToken()
 		m.Lines, m.Payments = nil, nil

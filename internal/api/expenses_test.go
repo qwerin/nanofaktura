@@ -312,7 +312,7 @@ func TestDashboardExpenses(t *testing.T) {
 	ts := newTestServer(t)
 	a := ts.signup("a@example.cz", "Firma A")
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	createInv(a, api.InvoiceCreate{SubjectID: subj.ID, IssuedOn: "2026-02-05", Lines: []api.InvoiceLineInput{line("X", "1", 10000, nil)}})
+	createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), IssuedOn: "2026-02-05", Lines: []api.InvoiceLineInput{line("X", "1", 10000, nil)}})
 	name := "Dodavatel"
 	mk := func(issued, currency string, price int64) {
 		createExp(a, api.ExpenseCreate{ExpenseSupplierFields: api.ExpenseSupplierFields{SupplierName: &name}, IssuedOn: issued, Currency: currency,

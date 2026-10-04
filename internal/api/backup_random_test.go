@@ -38,7 +38,7 @@ func randomFixture(t *testing.T, a *client, rng *rand.Rand, n int) {
 		return ls
 	}
 	for i := range 2 * n {
-		inv := createInv(a, api.InvoiceCreate{SubjectID: subjects[rng.IntN(len(subjects))].ID, Lines: lines(),
+		inv := createInv(a, api.InvoiceCreate{SubjectID: new(subjects[rng.IntN(len(subjects))].ID), Lines: lines(),
 			Tags: []string{fmt.Sprintf("t%d", rng.IntN(3))}})
 		switch rng.IntN(4) {
 		case 0:

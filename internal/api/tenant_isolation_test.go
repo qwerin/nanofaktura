@@ -27,13 +27,13 @@ func TestTenantIsolationAllIDRoutes(t *testing.T) {
 	richFixture(t, ts, a)
 	a.mustDo(http.StatusCreated, "POST", a.acct("/members/invite"), api.InvitationCreate{Email: "novy@example.cz", Role: "member"})
 	aSubj := newSubject(a, api.SubjectCreate{Name: "Pozdější klient"})
-	createInv(a, api.InvoiceCreate{SubjectID: aSubj.ID, Lines: []api.InvoiceLineInput{line("Po webhooku", "", 100, nil)}}) // → a webhook delivery
+	createInv(a, api.InvoiceCreate{SubjectID: new(aSubj.ID), Lines: []api.InvoiceLineInput{line("Po webhooku", "", 100, nil)}}) // → a webhook delivery
 	srcAcc := accountOf(t, ts, a.slug)
 	before := dumpAccount(t, ts, srcAcc.ID)
 
 	// B's own parent records (for nested routes: B's parent + A's child)
 	bSubj := newSubject(b, api.SubjectCreate{Name: "B klient"})
-	bInv := createInv(b, api.InvoiceCreate{SubjectID: bSubj.ID, Lines: []api.InvoiceLineInput{line("B", "", 100, nil)}})
+	bInv := createInv(b, api.InvoiceCreate{SubjectID: new(bSubj.ID), Lines: []api.InvoiceLineInput{line("B", "", 100, nil)}})
 	bExp := createExp(b, api.ExpenseCreate{SubjectID: &bSubj.ID, Lines: []api.InvoiceLineInput{line("B", "", 100, nil)}})
 	bItem := doJSON[api.PriceItem](b, http.StatusCreated, "POST", b.acct("/price-items"), api.PriceItemCreate{Name: "B", UnitPrice: 1})
 	bHook := doJSON[api.Webhook](b, http.StatusCreated, "POST", b.acct("/webhooks"), api.WebhookCreate{URL: "http://127.0.0.1:9/b", Events: []string{"*"}})

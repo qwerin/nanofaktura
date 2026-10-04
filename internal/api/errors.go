@@ -38,6 +38,7 @@ const (
 	CodeFinalExists              = "final_exists"
 	CodeCorrectionOnly           = "correction_invoice_only"
 	CodeCorrectionTemplate       = "correction_template"
+	CodeTemplateNeedsSubject     = "template_needs_subject"
 	CodeSyncNotConfigured        = "sync_not_configured"
 	CodeZeroAmount               = "zero_amount"
 	CodeAlreadyMatched           = "already_matched"

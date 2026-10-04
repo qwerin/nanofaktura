@@ -18,14 +18,14 @@ func TestVatPayerRequiresTaxPointDate(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	setVatPayer(a)
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	res, body := a.do("POST", a.acct("/invoices"), api.InvoiceCreate{SubjectID: acme.ID, TaxableFulfillmentDue: strPtr(""),
+	res, body := a.do("POST", a.acct("/invoices"), api.InvoiceCreate{SubjectID: new(acme.ID), TaxableFulfillmentDue: strPtr(""),
 		Lines: []api.InvoiceLineInput{line("X", "1", 100_000, i32(2100))}})
 	assertError(t, res, body, http.StatusUnprocessableEntity, "taxable_fulfillment_due")
-	inv := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("X", "1", 100_000, i32(2100))}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("X", "1", 100_000, i32(2100))}})
 	res, body = a.do("PATCH", invURL(a, inv.ID, ""), map[string]any{"taxable_fulfillment_due": ""})
 	assertError(t, res, body, http.StatusUnprocessableEntity, "taxable_fulfillment_due")
 	// a proforma is no tax document
-	createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: acme.ID, TaxableFulfillmentDue: strPtr(""),
+	createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: new(acme.ID), TaxableFulfillmentDue: strPtr(""),
 		Lines: []api.InvoiceLineInput{line("X", "1", 100, i32(2100))}})
 
 	ts.db.Model(&model.Invoice{}).Where("id = ?", inv.ID).Update("taxable_fulfillment_due", "") // legacy data
@@ -41,7 +41,7 @@ func TestCorrectionReasonRequired(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	setVatPayer(a)
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("X", "1", 100_000, i32(2100))}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("X", "1", 100_000, i32(2100))}})
 	res, body := a.do("POST", invURL(a, inv.ID, "/correction"), nil)
 	assertError(t, res, body, http.StatusUnprocessableEntity, "correction_reason")
 	cr := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, inv.ID, "/correction"), api.CorrectionCreate{CorrectionReason: "Vrácení zboží"})
@@ -59,7 +59,7 @@ func TestCorrectionReasonRequired(t *testing.T) {
 	// non-payers issue a plain "opravná faktura"; the reason is optional
 	b := ts.signup("b@example.cz", "Firma B")
 	bs := newSubject(b, api.SubjectCreate{Name: "ACME"})
-	bi := createInv(b, api.InvoiceCreate{SubjectID: bs.ID, Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
+	bi := createInv(b, api.InvoiceCreate{SubjectID: new(bs.ID), Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
 	b.mustDo(http.StatusCreated, "POST", invURL(b, bi.ID, "/correction"), nil)
 }
 
@@ -70,7 +70,7 @@ func TestCancelSentTaxDocument(t *testing.T) {
 	setVatPayer(a)
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME"})
 	mk := func() api.Invoice {
-		return createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("X", "1", 100, i32(2100))}})
+		return createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("X", "1", 100, i32(2100))}})
 	}
 	sent := mk()
 	action(a, sent.ID, "mark_as_sent")
@@ -80,7 +80,7 @@ func TestCancelSentTaxDocument(t *testing.T) {
 
 	b := ts.signup("b@example.cz", "Firma B") // non-payer
 	bs := newSubject(b, api.SubjectCreate{Name: "ACME"})
-	bi := createInv(b, api.InvoiceCreate{SubjectID: bs.ID, Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
+	bi := createInv(b, api.InvoiceCreate{SubjectID: new(bs.ID), Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
 	action(b, bi.ID, "mark_as_sent")
 	action(b, bi.ID, "cancel")
 }
@@ -92,7 +92,7 @@ func TestIdentifiedPersonReverseChargeISDOC(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	a.mustDo(http.StatusOK, "PATCH", a.acct(""), map[string]any{"vat_mode": "identified_person", "vat_no": "CZ8001011234"})
 	de := newSubject(a, api.SubjectCreate{Name: "GmbH", Country: "DE", VatNo: "DE811907980"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: de.ID, ReverseCharge: true, IssuedOn: "2026-03-20",
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(de.ID), ReverseCharge: true, IssuedOn: "2026-03-20",
 		TaxableFulfillmentDue: strPtr("2026-03-18"), Lines: []api.InvoiceLineInput{line("Consulting", "1", 200_000, i32(2100))}})
 	if inv.VatTotal != 0 || inv.TaxableFulfillmentDue != "2026-03-18" {
 		t.Fatalf("invoice %+v", inv.InvoiceSummary)
@@ -117,10 +117,10 @@ func TestEUSuppliesGoodsAndSlovakVatID(t *testing.T) {
 	de := newSubject(a, api.SubjectCreate{Name: "GmbH", Country: "DE", VatNo: "DE811907980"})
 	sk := newSubject(a, api.SubjectCreate{Name: "s.r.o.", Country: "SK", VatNo: "2020317068", LocalVatNo: "SK2020317068"})
 	skNoID := newSubject(a, api.SubjectCreate{Name: "Bez IČ DPH", Country: "SK", VatNo: "2020317068"})
-	goods := createInv(a, api.InvoiceCreate{SubjectID: de.ID, ReverseCharge: true, SupplyType: "goods",
+	goods := createInv(a, api.InvoiceCreate{SubjectID: new(de.ID), ReverseCharge: true, SupplyType: "goods",
 		Lines: []api.InvoiceLineInput{line("Zboží", "1", 300_000, i32(2100))}})
-	svc := createInv(a, api.InvoiceCreate{SubjectID: sk.ID, ReverseCharge: true, Lines: []api.InvoiceLineInput{line("Služba", "1", 100_000, i32(2100))}})
-	bad := createInv(a, api.InvoiceCreate{SubjectID: skNoID.ID, ReverseCharge: true, Lines: []api.InvoiceLineInput{line("Služba", "1", 50_000, i32(2100))}})
+	svc := createInv(a, api.InvoiceCreate{SubjectID: new(sk.ID), ReverseCharge: true, Lines: []api.InvoiceLineInput{line("Služba", "1", 100_000, i32(2100))}})
+	bad := createInv(a, api.InvoiceCreate{SubjectID: new(skNoID.ID), ReverseCharge: true, Lines: []api.InvoiceLineInput{line("Služba", "1", 50_000, i32(2100))}})
 	if svc.ClientLocalVatNo != "SK2020317068" || svc.SupplyType != "services" || goods.SupplyType != "goods" {
 		t.Fatalf("snapshot %+v / %+v", svc.InvoiceSummary, goods.InvoiceSummary)
 	}
@@ -233,18 +233,18 @@ func TestTaxLowFixes(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	setVatPayer(a)
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME", Email: "klient@example.cz"})
-	res, body := a.do("POST", a.acct("/invoices"), api.InvoiceCreate{SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("X", "1", 100, i32(1000))}})
+	res, body := a.do("POST", a.acct("/invoices"), api.InvoiceCreate{SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("X", "1", 100, i32(1000))}})
 	assertError(t, res, body, http.StatusUnprocessableEntity, "lines[0].vat_rate_bps")
-	createInv(a, api.InvoiceCreate{SubjectID: acme.ID, IssuedOn: "2023-12-20", Lines: []api.InvoiceLineInput{line("X", "1", 100, i32(1000))}})
+	createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), IssuedOn: "2023-12-20", Lines: []api.InvoiceLineInput{line("X", "1", 100, i32(1000))}})
 
-	inv := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Number: "X-1", Lines: []api.InvoiceLineInput{line("X", "1", 100, i32(2100))}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Number: "X-1", Lines: []api.InvoiceLineInput{line("X", "1", 100, i32(2100))}})
 	res, body = a.do("POST", a.acct("/invoices"), api.InvoiceCreate{DocumentType: "correction", RelatedID: &inv.ID, Number: "X-1",
-		CorrectionReason: "Sleva", SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("X", "-1", 100, i32(2100))}})
+		CorrectionReason: "Sleva", SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("X", "-1", 100, i32(2100))}})
 	assertCode(t, res, body, http.StatusConflict, "already_exists")
 
 	b := ts.signup("b@example.cz", "Firma B")
 	bs := newSubject(b, api.SubjectCreate{Name: "ACME", Email: "klient@example.cz"})
-	bi := createInv(b, api.InvoiceCreate{SubjectID: bs.ID, Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
+	bi := createInv(b, api.InvoiceCreate{SubjectID: new(bs.ID), Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
 	cr := doJSON[api.Invoice](b, http.StatusCreated, "POST", invURL(b, bi.ID, "/correction"), nil)
 	b.mustDo(http.StatusOK, "POST", invURL(b, cr.ID, "/send"), api.InvoiceSend{})
 	if m, _ := ts.mail.Last(); strings.Contains(m.Subject+m.Text, "daňový doklad") || !strings.Contains(m.Subject+m.Text, "pravná faktura") {

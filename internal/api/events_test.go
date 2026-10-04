@@ -28,7 +28,7 @@ func TestEvents(t *testing.T) {
 	b := ts.signup("b@example.cz", "Firma B")
 
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("Práce", "1", 1000_00, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("Práce", "1", 1000_00, nil)}})
 	action(a, inv.ID, "mark_as_sent")
 	pay(a, inv.ID, api.PaymentCreate{})
 
@@ -74,7 +74,7 @@ func TestEventRolledBackWithTransaction(t *testing.T) {
 	ts := newTestServer(t)
 	a := ts.signup("a@example.cz", "Firma A")
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: subj.ID,
+	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: new(subj.ID),
 		Lines: []api.InvoiceLineInput{line("Záloha", "1", 500_00, nil)}})
 	pay(a, pro.ID, api.PaymentCreate{Amount: ptr64(100_00), CreateFinalInvoice: true})
 	before := listEvents(a, "?name=payment.created").Total
@@ -97,7 +97,7 @@ func TestEventsAtMutationPoints(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME", Email: "acme@example.cz"})
 	a.mustDo(http.StatusOK, "PATCH", fmt.Sprintf("%s/%d", a.acct("/subjects"), subj.ID), map[string]any{"city": "Brno"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("Práce", "1", 1000_00, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("Práce", "1", 1000_00, nil)}})
 	a.mustDo(http.StatusOK, "PATCH", invURL(a, inv.ID, ""), map[string]any{"note": "x"})
 	a.mustDo(http.StatusOK, "POST", invURL(a, inv.ID, "/send"), map[string]any{})
 	a.mustDo(http.StatusOK, "POST", invURL(a, inv.ID, "/regenerate-public-token"), nil)

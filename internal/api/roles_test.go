@@ -213,7 +213,7 @@ func TestInvoiceRoles(t *testing.T) {
 	accountant := ts.memberOf(owner, "acc@example.cz", "accountant")
 
 	subj := newSubject(member, api.SubjectCreate{Name: "ACME"})
-	inv := createInv(member, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("Práce", "1", 1000, nil)}})
+	inv := createInv(member, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("Práce", "1", 1000, nil)}})
 	action(member, inv.ID, "mark_as_sent")
 	pay(member, inv.ID, api.PaymentCreate{})
 
@@ -226,6 +226,6 @@ func TestInvoiceRoles(t *testing.T) {
 	accountant.mustDo(http.StatusOK, "GET", accountant.acct("/dashboard"), nil)
 	res, body := accountant.do("POST", invURL(accountant, inv.ID, "/actions/cancel"), nil)
 	assertError(t, res, body, http.StatusForbidden, "your role (accountant)")
-	res, body = accountant.do("POST", accountant.acct("/invoices"), api.InvoiceCreate{SubjectID: subj.ID})
+	res, body = accountant.do("POST", accountant.acct("/invoices"), api.InvoiceCreate{SubjectID: new(subj.ID)})
 	assertError(t, res, body, http.StatusForbidden, "your role (accountant)")
 }

@@ -33,7 +33,7 @@ type InvoiceSummary struct {
 	Number         string `json:"number"`
 	VariableSymbol string `json:"variable_symbol"`
 	Status         string `json:"status" enum:"draft,open,sent,overdue,paid,cancelled,uncollectible" doc:"Stored status, or overdue when open/sent and due_on < today. A draft has no number (empty) until issued"`
-	SubjectID      uint   `json:"subject_id"`
+	SubjectID      *uint  `json:"subject_id,omitempty" doc:"The client contact; absent = end customer without a contact (client_* only)"`
 	RelatedID      *uint  `json:"related_id,omitempty" doc:"Correction → corrected invoice, final invoice → proforma"`
 	RecurringID    *uint  `json:"recurring_id,omitempty" doc:"The recurring invoice that generated this document"`
 	PublicToken    string `json:"public_token" doc:"Token of the public client link"`
@@ -330,7 +330,7 @@ type InvoiceCreate struct {
 	DocumentType   string  `json:"document_type,omitempty" enum:"invoice,proforma,correction" doc:"Default invoice"`
 	Number         string  `json:"number,omitempty" maxLength:"50" doc:"Custom number (the counter is not advanced); default: next number of the default number format"`
 	VariableSymbol *string `json:"variable_symbol,omitempty" pattern:"^[0-9]{0,10}$" doc:"Default: digits of the number (last 10)"`
-	SubjectID      uint    `json:"subject_id" minimum:"1"`
+	SubjectID      *uint   `json:"subject_id,omitempty" minimum:"1" doc:"The client contact; snapshots client_*. Without it (end customer) client_name is required"`
 	RelatedID      *uint   `json:"related_id,omitempty" doc:"Required for corrections (the corrected invoice)"`
 	InvoiceSnapshotFields
 
@@ -364,6 +364,7 @@ type InvoicePatch struct {
 	Number         *string `json:"number,omitempty" minLength:"1" maxLength:"50"`
 	VariableSymbol *string `json:"variable_symbol,omitempty" pattern:"^[0-9]{0,10}$"`
 	SubjectID      *uint   `json:"subject_id,omitempty" minimum:"1" doc:"Changing the subject re-snapshots client_* (unless sent explicitly)"`
+	ClearSubject   bool    `json:"clear_subject,omitempty" doc:"Unlink the client contact (subject_id → null, end customer); client_* stay as free text"`
 	RelatedID      *uint   `json:"related_id,omitempty"`
 	InvoiceSnapshotFields
 
@@ -519,12 +520,15 @@ func (s *server) createInvoiceTx(ctx context.Context, tx *gorm.DB, in *InvoiceCr
 		RelatedID:    in.RelatedID,
 		PublicToken:  newPublicToken(),
 	}
-	subj, err := findSubject(ctx, tx, in.SubjectID)
-	if err != nil {
-		return nil, err
+	var subj *model.Subject
+	if in.SubjectID != nil {
+		var err error
+		if subj, err = findSubject(ctx, tx, *in.SubjectID); err != nil {
+			return nil, err
+		}
+		m.SubjectID = &subj.ID
+		snapshotClient(m, subj)
 	}
-	m.SubjectID = subj.ID
-	snapshotClient(m, subj)
 	snapshotYour(m, acc)
 
 	m.IssuedOn = defaultStr(in.IssuedOn, s.today())
@@ -534,7 +538,7 @@ func (s *server) createInvoiceTx(ctx context.Context, tx *gorm.DB, in *InvoiceCr
 	switch {
 	case in.DueDays != nil:
 		m.DueDays = *in.DueDays
-	case subj.DueDays != nil:
+	case subj != nil && subj.DueDays != nil:
 		m.DueDays = *subj.DueDays
 	default:
 		m.DueDays = acc.DefaultDueDays
@@ -567,6 +571,9 @@ func (s *server) createInvoiceTx(ctx context.Context, tx *gorm.DB, in *InvoiceCr
 		return nil, err
 	}
 	in.InvoiceSnapshotFields.applyTo(m) // explicit overrides win over snapshots
+	if m.ClientName = strings.TrimSpace(m.ClientName); m.ClientName == "" && m.SubjectID == nil {
+		return nil, invalid("client_name", "subject_id or client_name is required")
+	}
 
 	if m.YourVatMode != model.VatModeNonPayer {
 		m.TaxableFulfillmentDue = m.IssuedOn
@@ -583,6 +590,7 @@ func (s *server) createInvoiceTx(ctx context.Context, tx *gorm.DB, in *InvoiceCr
 	if err := checkPriceItems(ctx, tx, in.Lines); err != nil {
 		return nil, err
 	}
+	var err error
 	if m.Lines, err = buildLines(in.Lines, nil, acc.DefaultVatRateBps); err != nil {
 		return nil, err
 	}
@@ -644,12 +652,18 @@ func (s *server) patchInvoice(ctx context.Context, in *struct {
 		}
 		acc := auth.AccountFrom(ctx)
 
-		if p.SubjectID != nil && *p.SubjectID != m.SubjectID {
+		if p.ClearSubject {
+			if p.SubjectID != nil {
+				return 0, invalid("clear_subject", "clear_subject and subject_id cannot be combined")
+			}
+			m.SubjectID = nil
+		}
+		if p.SubjectID != nil && (m.SubjectID == nil || *p.SubjectID != *m.SubjectID) {
 			subj, err := findSubject(ctx, tx, *p.SubjectID)
 			if err != nil {
 				return 0, err
 			}
-			m.SubjectID = subj.ID
+			m.SubjectID = &subj.ID
 			snapshotClient(m, subj)
 		}
 		if p.RelatedID != nil {
@@ -696,6 +710,9 @@ func (s *server) patchInvoice(ctx context.Context, in *struct {
 			}
 		}
 		p.InvoiceSnapshotFields.applyTo(m)
+		if m.ClientName = strings.TrimSpace(m.ClientName); m.ClientName == "" && m.SubjectID == nil {
+			return 0, invalid("client_name", "an invoice without a contact needs client_name")
+		}
 		if err := checkTaxFields(m); err != nil {
 			return 0, err
 		}

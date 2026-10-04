@@ -143,6 +143,28 @@ describe('formulář faktury (desktop)', () => {
     })
   })
 
+  it('koncový zákazník: bez kontaktu, jméno a e-mail přímo na faktuře', async () => {
+    setSession('owner')
+    const created = useInvoiceApi()
+    const { user, router } = await openNewInvoice()
+
+    await user.click(screen.getByRole('switch', { name: 'Koncový zákazník' }))
+    expect(screen.queryByRole('button', { name: 'Odběratel' })).not.toBeInTheDocument()
+    const name = screen.getByLabelText('Jméno')
+    expect(name).toHaveValue('Koncový zákazník')
+    await user.clear(name)
+    await user.type(name, 'Jan Novák')
+    await user.type(screen.getByLabelText('E-mail (nepovinné)'), 'jan@example.cz')
+    await user.type(screen.getByLabelText('Položka 1: název'), 'Oprava kola')
+    await user.type(screen.getByLabelText('Položka 1: cena za jednotku'), '1 500')
+    await user.click(screen.getByRole('button', { name: 'Vystavit' }))
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/a/firma/invoices/42'))
+    expect(created).toHaveLength(1)
+    expect(created[0]).toMatchObject({ client_name: 'Jan Novák', client_email: 'jan@example.cz' })
+    expect(created[0]!.subject_id).toBeUndefined()
+  })
+
   it('uloží koncept (draft: true) a přejde na detail', async () => {
     setSession('owner')
     const created = useInvoiceApi()

@@ -29,7 +29,7 @@ func TestDeleteReferencedAndAttachments(t *testing.T) {
 	ts := newTestServer(t)
 	a := ts.signup("a@example.cz", "Firma A")
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("A", "1", 100, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("A", "1", 100, nil)}})
 	corr := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, inv.ID, "/correction"), map[string]any{"correction_reason": "Vrácení zboží"})
 
 	res, body := a.do("DELETE", invURL(a, inv.ID, ""), nil)
@@ -73,12 +73,12 @@ func TestInvoiceIdentifiedPerson(t *testing.T) {
 	a.mustDo(http.StatusOK, "PATCH", a.acct(""), map[string]any{"vat_mode": "identified_person", "vat_no": "CZ12345678"})
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
 
-	dom := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("A", "1", 10000, i32(2100))}})
+	dom := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("A", "1", 10000, i32(2100))}})
 	if dom.YourVatMode != "identified_person" || dom.VatTotal != 0 || dom.Total != 10000 || dom.Lines[0].VatRateBps != 0 ||
 		len(dom.VatRecap) != 1 || dom.VatRecap[0].VatRateBps != 0 {
 		t.Fatalf("domestic: %+v %+v", dom.InvoiceSummary, dom.VatRecap)
 	}
-	rc := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, ReverseCharge: true,
+	rc := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), ReverseCharge: true,
 		Lines: []api.InvoiceLineInput{line("A", "1", 10000, i32(2100))}})
 	if rc.VatTotal != 0 || rc.Total != 10000 || rc.Lines[0].VatRateBps != 2100 {
 		t.Fatalf("reverse charge: %+v %+v", rc.InvoiceSummary, rc.Lines)
@@ -98,11 +98,11 @@ func TestInvoiceNoBankAccountWarning(t *testing.T) {
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
 	a.mustDo(http.StatusCreated, "POST", a.acct("/bank-accounts"), api.BankAccountCreate{Name: "Fio", Number: "2000145399/2010"})
 
-	czk := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("A", "1", 100, nil)}})
+	czk := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("A", "1", 100, nil)}})
 	if len(czk.Warnings) != 0 || czk.BankAccount == "" {
 		t.Fatalf("czk: %+v %+v", czk.Warnings, czk.InvoiceSummary)
 	}
-	eur := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Currency: "EUR", ExchangeRate: "25",
+	eur := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Currency: "EUR", ExchangeRate: "25",
 		Lines: []api.InvoiceLineInput{line("A", "1", 100, nil)}})
 	if len(eur.Warnings) != 1 || eur.Warnings[0].Code != "no_bank_account" || eur.BankAccount != "" || eur.IBAN != "" {
 		t.Fatalf("eur: %+v %+v", eur.Warnings, eur.InvoiceSummary)
@@ -110,7 +110,7 @@ func TestInvoiceNoBankAccountWarning(t *testing.T) {
 	if got := getInv(a, eur.ID); len(got.Warnings) != 1 {
 		t.Fatalf("detail warnings: %+v", got.Warnings)
 	}
-	cash := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Currency: "EUR", ExchangeRate: "25", PaymentMethod: "cash",
+	cash := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Currency: "EUR", ExchangeRate: "25", PaymentMethod: "cash",
 		Lines: []api.InvoiceLineInput{line("A", "1", 100, nil)}})
 	if len(cash.Warnings) != 0 {
 		t.Fatalf("cash: %+v", cash.Warnings)

@@ -22,7 +22,7 @@ func TestTodoOverdueInvoice(t *testing.T) {
 	ts := newTestServer(t)
 	a := ts.signup("a@example.cz", "Firma A")
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, IssuedOn: "2026-02-01", DueDays: intPtr(14),
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), IssuedOn: "2026-02-01", DueDays: intPtr(14),
 		Lines: []api.InvoiceLineInput{line("Práce", "1", 1000_00, nil)}})
 
 	mustRunJob(ts, "todos")
@@ -79,7 +79,7 @@ func TestTodoLowStock(t *testing.T) {
 	}
 	ln := line("Šroub", "6", 10_00, nil)
 	ln.PriceItemID = &item.ID
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{ln}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{ln}})
 	l := listTodos(a, "?completed=false&related_type=price_item")
 	if l.Total != 1 || l.Items[0].Name != "stock.low" {
 		t.Fatalf("low stock todo: %+v", l.Items)

@@ -38,7 +38,7 @@ func TestOpenMigrate(t *testing.T) {
 	}
 
 	inv := model.Invoice{AccountID: 1, DocumentType: model.DocInvoice, Number: "1", Status: model.StatusOpen,
-		SubjectID: 1, IssuedOn: "2026-01-01", Currency: "CZK", ExchangeRate: "1", Language: "cs",
+		SubjectID: new(uint(1)), IssuedOn: "2026-01-01", Currency: "CZK", ExchangeRate: "1", Language: "cs",
 		PaymentMethod: "bank", Tags: []string{"a", "b"}, Lines: []model.InvoiceLine{{Name: "x", QuantityMilli: 1000}}}
 	if err := d.Create(&inv).Error; err != nil {
 		t.Fatal(err)
@@ -134,7 +134,7 @@ func TestMigrateInvoiceNumberIndex(t *testing.T) {
 	}
 	doc := func(number, token string) error {
 		return d.Create(&model.Invoice{AccountID: 1, DocumentType: model.DocInvoice, Number: number, Status: model.StatusDraft,
-			SubjectID: 1, IssuedOn: "2026-01-01", PublicToken: token}).Error
+			SubjectID: new(uint(1)), IssuedOn: "2026-01-01", PublicToken: token}).Error
 	}
 	if err := doc("", "t1"); err != nil {
 		t.Fatal(err)

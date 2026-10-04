@@ -240,7 +240,7 @@ created_at, updated_at
 ```
 `InvoiceLine`: `id, invoice_id, position, name, quantity (string), unit_name, unit_price, vat_rate_bps` + vypočtené `base, vat, total`.
 
-**Vytvoření (`POST /api/accounts/{slug}/invoices`)**: povinné `subject_id` a `lines` (≥1). Defaulty:
+**Vytvoření (`POST /api/accounts/{slug}/invoices`)**: povinné `lines` (≥1) a `subject_id`, nebo bez něj `client_name` (koncový zákazník bez kontaktu, viz Otevřené otázky). Defaulty:
 `document_type=invoice`, `issued_on=dnes`, `taxable_fulfillment_due=issued_on` (jen plátce), `due_days` = subject.due_days → account.default_due_days,
 `due_on=issued_on+due_days`, měna/jazyk/platba/round_total/note/footer z účtu, `bank_account_id` = výchozí pro měnu.
 Snapshot `client_*` ze subjektu, `your_*` z účtu, `bank_account/iban/swift_bic` z bankovního účtu — vše při vytvoření;
@@ -272,7 +272,7 @@ událost `invoice.issued`. Daňový doklad k platbě konceptem být nemůže.
 
 **Úpravy (`PATCH`)**: zakázané (409), pokud `locked_at != nil` nebo `status ∈ {cancelled, uncollectible}`.
 `lines` v PATCH = úplná náhrada seznamu (řádky s `id` se aktualizují, bez `id` vloží, chybějící smažou).
-Změna `issued_on`/`due_days` přepočítá `due_on`. Změna `subject_id` znovu nasnapshotuje `client_*` (pokud nejsou poslána explicitně).
+Změna `issued_on`/`due_days` přepočítá `due_on`. Změna `subject_id` znovu nasnapshotuje `client_*` (pokud nejsou poslána explicitně). `clear_subject: true` odpojí kontakt (koncový zákazník).
 **Smazání (`DELETE`)**: zakázané pokud zamčená nebo má platby → 409.
 
 **Akce `POST /api/accounts/{slug}/invoices/{id}/actions/{action}`** (vrací aktualizovanou fakturu):
@@ -738,7 +738,7 @@ EET (zrušeno), účetnictví (podvojné), mzdy, OCR účtenek (jen příprava: 
 - `POST /templates/{id}/create-invoice` (tělo volitelné `{issued_on?, document_type?}`) → 201 faktura. `POST /invoices/{id}/save-as-template` (tělo volitelné `{name?}`, default „<klient> <číslo>“) → 201 šablona; dobropis → 409. Obě cesty (i generování) mají roli editors.
 - Placeholdery (v názvech řádků, `note`, `footer_note`, `order_number`, `private_note`; i ve výchozí poznámce účtu): `{MONTH}` (MM), `{MONTH_NAME}`, `{PREV_MONTH}`, `{PREV_MONTH_NAME}`, `{NEXT_MONTH}`, `{NEXT_MONTH_NAME}`, `{YEAR}`, `{PREV_YEAR}`, `{NEXT_YEAR}`, `{QUARTER}` (1–4), z data vystavení, jazyk šablony → účtu. Názvy měsíců cs/sk/en/de **jen v 1. pádě** (cs/sk malými: „za měsíc {MONTH_NAME}“ → „za měsíc září“; formulace typu „za {MONTH_NAME}“ by potřebovala 4. pád, ten nepodporujeme). Neznámé `{…}` zůstávají beze změny. Implementace `billing.RenderDatePlaceholders`, `billing.AddMonths`, `billing.FirstOccurrence`.
 - E-mailová nastavení jsou na `Account` (embedded `AccountMailSettings`) a v `GET/PATCH /accounts/{slug}`: `email_reply_to` (prázdné → `email` účtu; neplatná adresa → 422), `email_signature` (připojí se pod text ze šablony), `email_templates` (výstup: všech 6 efektivních textů kind × cs/en s `custom`; PATCH: pole přepisů, **nahrazuje všechny přepisy**, prázdné nebo shodné s defaultem se neukládá, prázdný subject/body = default), `reminders_enabled`, `reminder_days_after_due` (default `[3,14,30]`, 1–365, seřadí se a deduplikuje), `paid_thanks_enabled` (default false). Per-account SMTP override zatím není (jen instance).
-- `POST /invoices/{id}/send` `{to?, cc?, subject?, body?, attach_pdf=true, kind=invoice}` → 200 `EmailLog`. Bez `to` i `cc` = `client_email` + `email_copy` subjektu jako cc (více adres oddělených `,`/`;`). Žádný příjemce → 422 `body.to`; neplatná adresa → 422 `body.to[i]`. Chyba maileru → 502 a `EmailLog` s `error` (bez `sent_at`). `kind=invoice` úspěšně odeslaný → `open` faktura se označí `sent`. `subject`/`body` z požadavku se také renderují, ale podpis se k nim nepřidává (frontend předvyplní text z preview, který podpis obsahuje). `attach_isdoc=true` přiloží i ISDOC (`faktura-<number>.isdoc`, `application/xml`).
+- `POST /invoices/{id}/send` `{to?, cc?, subject?, body?, attach_pdf=true, kind=invoice}` → 200 `EmailLog`. Bez `to` i `cc` = `client_email` (prázdný → aktuální `email` subjektu, např. doplněný do kontaktu po vystavení) + `email_copy` subjektu jako cc (více adres oddělených `,`/`;`). Žádný příjemce → 422 `body.to`; neplatná adresa → 422 `body.to[i]`. Chyba maileru → 502 a `EmailLog` s `error` (bez `sent_at`). `kind=invoice` úspěšně odeslaný → `open` faktura se označí `sent`. `subject`/`body` z požadavku se také renderují, ale podpis se k nim nepřidává (frontend předvyplní text z preview, který podpis obsahuje). `attach_isdoc=true` přiloží i ISDOC (`faktura-<number>.isdoc`, `application/xml`).
 - Placeholdery e-mailů: `{number} {document} {document_title} {total} {remaining} {issued_on} {due_on} {days_overdue} {public_url} {account_name} {client_name} {vs} {iban} {bank_account} {payment_info}` (částky a data formátované jako v PDF v jazyce faktury; `{public_url}` = `{NANOFAKTURA_PUBLIC_URL}/p/{public_token}`; `{payment_info}` = řádky účet/IBAN/VS jen u platby převodem). Výchozí české texty se vyhýbají skloňování placeholderů.
 - `EmailLog`: `id, account_id, invoice_id, kind, to[], cc[], subject, body, attachments[] (názvy), reminder_step, automatic, sent_at?, error, created_at`. `GET /invoices/{id}/emails` stránkovaně, nejnovější první. `GET /email-templates/preview?kind=&lang=&invoice_id=` → `{kind, lang, to, cc, subject, body}`; bez `invoice_id` s ukázkovými daty.
 - Upomínky (`reminders` job): účty s `reminders_enabled`; doklady typu invoice/proforma ve stavu open/sent, `due_on < dnes`, s `client_email` a `total > paid_amount` (tj. ne cancelled/uncollectible/paid, ne dobropisy). Pošle se upomínka jen pro **nejvyšší dosažený krok** (zmeškané nižší kroky se neposílají); krok je vyřízený, když existuje úspěšný `EmailLog` s daným `reminder_step`; neúspěšný pokus se opakuje nejdřív po 24 h. Upomínka má PDF v příloze a neoznačuje fakturu jako odeslanou. Ruční `kind=reminder` má `reminder_step=0` a automatiku neovlivní.
@@ -814,3 +814,10 @@ EET (zrušeno), účetnictví (podvojné), mzdy, OCR účtenek (jen příprava: 
 - CLI: `nanofaktura backup export --account <slug> [--out soubor.zip|-]` (nepřepíše existující soubor; událost bez uživatele) a `nanofaktura backup import --owner <email> [--name …] soubor.zip` (uživatel musí existovat). Bez argumentů (nebo `serve`) běží server jako dřív.
 - `POST /api/accounts/import` je v `authed` (vytvořit účet smí každý přihlášený, stejně jako `POST /api/accounts`); `GET …/backup` jen owner/admin.
 
+**Koncový zákazník — faktura bez kontaktu (2026-10-04):**
+- Odchylka: `Invoice.subject_id` je volitelné (`null`), stejně jako u nákladů. Bez něj je povinné `client_name` (422 `client_name`, i když
+  ho PATCH vyprázdní); `client_*` jsou pak jen text na faktuře. `InvoicePatch.clear_subject: true` kontakt odpojí (s `subject_id` → 422),
+  `subject_id` ho kdykoli přiřadí (znovu nasnapshotuje `client_*`).
+- Kopie (duplikát, dobropis) převezme `client_*` vždy. Šablonu z takové faktury uložit nejde (409 `template_needs_subject`; šablony a
+  pravidelné faktury kontakt vyžadují dál). Párování banky nemá účty kontaktu (jen VS/částka/jméno). Přehled „nejlepší odběratelé“
+  seskupí faktury bez kontaktu podle jména (`top_customers[].subject_id` chybí). Záloha nese `subject_id: null`.

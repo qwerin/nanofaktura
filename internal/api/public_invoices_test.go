@@ -17,7 +17,7 @@ func TestPublicInvoice(t *testing.T) {
 	doJSON[api.BankAccount](a, http.StatusCreated, "POST", a.acct("/bank-accounts"),
 		api.BankAccountCreate{Name: "Fio", Number: "2000145399/2010"})
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME s.r.o.", City: "Praha", Email: "acme@example.cz"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, PrivateNote: "TAJNA-POZNAMKA", Tags: []string{"TAJNY-STITEK"},
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), PrivateNote: "TAJNA-POZNAMKA", Tags: []string{"TAJNY-STITEK"},
 		Lines: []api.InvoiceLineInput{line("Práce", "2", 150000, nil)}})
 	if inv.PublicViewedAt != nil {
 		t.Fatal("new invoice already viewed")
@@ -105,7 +105,7 @@ func TestInvoiceISDOC(t *testing.T) {
 	b := ts.signup("b@example.cz", "Firma B")
 	setVatPayer(a)
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME", VatNo: "CZ27074358"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("Práce", "1", 100000, i32(2100))}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("Práce", "1", 100000, i32(2100))}})
 
 	res, body := a.do("GET", invURL(a, inv.ID, "/isdoc"), nil)
 	if res.StatusCode != http.StatusOK || res.Header.Get("Content-Type") != "application/xml" {
@@ -140,7 +140,7 @@ func TestSendInvoiceWithISDOC(t *testing.T) {
 	ts := newTestServer(t)
 	a := ts.signup("a@example.cz", "Firma A")
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME", Email: "klient@example.cz"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("Práce", "1", 100000, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("Práce", "1", 100000, nil)}})
 
 	log := doJSON[api.EmailLog](a, http.StatusOK, "POST", invURL(a, inv.ID, "/send"), map[string]any{"attach_isdoc": true})
 	if strings.Join(log.Attachments, ",") != "faktura-2026-0001.pdf,faktura-2026-0001.isdoc" {

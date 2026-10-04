@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -351,7 +352,7 @@ func (s *server) getVatXML(ctx context.Context, in *vatReportInput, form string)
 
 // TopCustomer is a customer with the sum of its documents in the year.
 type TopCustomer struct {
-	SubjectID uint   `json:"subject_id"`
+	SubjectID *uint  `json:"subject_id,omitempty" doc:"Absent for end customers invoiced without a contact (grouped by name)"`
 	Name      string `json:"name"`
 	Total     int64  `json:"total" doc:"Σ total of invoices and corrections (CZK)"`
 	Count     int    `json:"count"`
@@ -406,7 +407,7 @@ func (s *server) getOverview(ctx context.Context, in *struct {
 	if err != nil {
 		return nil, dbErr(err, "invoices")
 	}
-	customers := map[uint]*TopCustomer{}
+	customers := map[string]*TopCustomer{} // by subject, end customers without a contact by name
 	var days, paid int
 	for _, m := range invs {
 		total, ok := toCZK(m.Total, m.Currency, m.ExchangeRate)
@@ -414,10 +415,14 @@ func (s *server) getOverview(ctx context.Context, in *struct {
 			o.InvalidRateDocuments = append(o.InvalidRateDocuments, m.Number)
 		}
 		o.RevenueByMonth[month(m.IssuedOn)] += total
-		c := customers[m.SubjectID]
+		key := "n:" + strings.ToLower(m.ClientName)
+		if m.SubjectID != nil {
+			key = "s:" + strconv.FormatUint(uint64(*m.SubjectID), 10)
+		}
+		c := customers[key]
 		if c == nil {
 			c = &TopCustomer{SubjectID: m.SubjectID}
-			customers[m.SubjectID] = c
+			customers[key] = c
 		}
 		c.Name, c.Total, c.Count = m.ClientName, c.Total+total, c.Count+1 // latest name wins
 		if m.DocumentType == model.DocInvoice && m.Status == model.StatusPaid && m.PaidOn != "" {
@@ -432,7 +437,7 @@ func (s *server) getOverview(ctx context.Context, in *struct {
 	}
 	sort.Slice(o.TopCustomers, func(i, j int) bool {
 		a, b := o.TopCustomers[i], o.TopCustomers[j]
-		return a.Total > b.Total || (a.Total == b.Total && a.SubjectID < b.SubjectID)
+		return a.Total > b.Total || (a.Total == b.Total && a.Name < b.Name)
 	})
 	o.TopCustomers = o.TopCustomers[:min(10, len(o.TopCustomers))]
 	if paid > 0 {

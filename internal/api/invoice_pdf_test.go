@@ -17,7 +17,7 @@ func TestInvoicePDF(t *testing.T) {
 	doJSON[api.BankAccount](a, http.StatusCreated, "POST", a.acct("/bank-accounts"),
 		api.BankAccountCreate{Name: "Fio", Number: "2000145399/2010"})
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME s.r.o.", City: "Praha"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Lines: []api.InvoiceLineInput{
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{
 		line("Práce", "2", 150000, nil),
 	}})
 

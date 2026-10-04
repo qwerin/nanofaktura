@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -23,7 +24,7 @@ func TestSendInvoice(t *testing.T) {
 	a.mustDo(http.StatusOK, "PATCH", a.acct(""), map[string]any{"email": "info@firma-a.cz", "email_signature": "Jan Novák\n+420 123 456 789"})
 	a.mustDo(http.StatusCreated, "POST", a.acct("/bank-accounts"), map[string]any{"name": "Hlavní", "number": "19-2000145399/0800"})
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME", Email: "klient@example.cz", EmailCopy: "ucetni@example.cz; klient@example.cz"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("Práce", "1", 123456, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("Práce", "1", 123456, nil)}})
 
 	// defaults: recipients, template, PDF attachment, mark_as_sent
 	log := doJSON[api.EmailLog](a, http.StatusOK, "POST", invURL(a, inv.ID, "/send"), api.InvoiceSend{})
@@ -80,7 +81,7 @@ func TestSendInvoice(t *testing.T) {
 	res, body := a.do("POST", invURL(a, inv.ID, "/send"), api.InvoiceSend{To: []string{"nope"}})
 	assertError(t, res, body, http.StatusUnprocessableEntity, "to[0]")
 	noMail := newSubject(a, api.SubjectCreate{Name: "Bez"})
-	inv2 := createInv(a, api.InvoiceCreate{SubjectID: noMail.ID, Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
+	inv2 := createInv(a, api.InvoiceCreate{SubjectID: new(noMail.ID), Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
 	res, body = a.do("POST", invURL(a, inv2.ID, "/send"), api.InvoiceSend{})
 	assertError(t, res, body, http.StatusUnprocessableEntity, "no recipient")
 
@@ -97,7 +98,7 @@ func TestSendInvoiceMailerFailure(t *testing.T) {
 	ts := newTestServer(t)
 	a := ts.signup("a@example.cz", "Firma A")
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME", Email: "klient@example.cz"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("Práce", "1", 1000, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("Práce", "1", 1000, nil)}})
 	ts.mail.Err = errors.New("smtp down")
 	res, body := a.do("POST", invURL(a, inv.ID, "/send"), api.InvoiceSend{})
 	assertError(t, res, body, http.StatusBadGateway, "smtp down")
@@ -116,7 +117,7 @@ func TestSendRoles(t *testing.T) {
 	member := ts.memberOf(owner, "member@example.cz", "member")
 	accountant := ts.memberOf(owner, "acc@example.cz", "accountant")
 	subj := newSubject(owner, api.SubjectCreate{Name: "ACME", Email: "klient@example.cz"})
-	inv := createInv(owner, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("Práce", "1", 1000, nil)}})
+	inv := createInv(owner, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("Práce", "1", 1000, nil)}})
 	member.mustDo(http.StatusOK, "POST", invURL(member, inv.ID, "/send"), api.InvoiceSend{})
 	res, body := accountant.do("POST", invURL(accountant, inv.ID, "/send"), api.InvoiceSend{})
 	assertError(t, res, body, http.StatusForbidden, "your role (accountant)")
@@ -189,16 +190,25 @@ func TestEmailSettingsAndPreview(t *testing.T) {
 		t.Fatalf("reminder preview: %+v", p)
 	}
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME", Email: "klient@example.cz", EmailCopy: "kopie@example.cz"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, DocumentType: "proforma", Language: "en", Lines: []api.InvoiceLineInput{line("Work", "1", 1000, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), DocumentType: "proforma", Language: "en", Lines: []api.InvoiceLineInput{line("Work", "1", 1000, nil)}})
 	p = doJSON[api.EmailPreview](a, http.StatusOK, "GET", a.acct("/email-templates/preview?kind=paid_thanks&invoice_id="+uintStr(inv.ID)), nil)
 	if p.Lang != "en" || p.Subject != "Thank you for paying proforma invoice "+inv.Number || p.To[0] != "klient@example.cz" || p.Cc[0] != "kopie@example.cz" {
 		t.Fatalf("invoice preview: %+v", p)
+	}
+	// e-mail added to the contact after the invoice was created → used as the recipient
+	late := newSubject(a, api.SubjectCreate{Name: "Bez e-mailu"})
+	lateInv := createInv(a, api.InvoiceCreate{SubjectID: new(late.ID), Lines: []api.InvoiceLineInput{line("Work", "1", 1000, nil)}})
+	email := "pozdeji@example.cz"
+	a.mustDo(http.StatusOK, "PATCH", fmt.Sprintf("%s/%d", a.acct("/subjects"), late.ID), api.SubjectPatch{Email: &email})
+	p = doJSON[api.EmailPreview](a, http.StatusOK, "GET", a.acct("/email-templates/preview?invoice_id="+uintStr(lateInv.ID)), nil)
+	if len(p.To) != 1 || p.To[0] != email {
+		t.Fatalf("late contact e-mail: %+v", p.To)
 	}
 	res, body := a.do("GET", a.acct("/email-templates/preview?kind=nope"), nil)
 	assertError(t, res, body, http.StatusUnprocessableEntity, "kind")
 
 	// Slovak and German documents get their own texts
-	sk := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Language: "sk", Lines: []api.InvoiceLineInput{line("Práca", "1", 1000, nil)}})
+	sk := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Language: "sk", Lines: []api.InvoiceLineInput{line("Práca", "1", 1000, nil)}})
 	p = doJSON[api.EmailPreview](a, http.StatusOK, "GET", a.acct("/email-templates/preview?invoice_id="+uintStr(sk.ID)), nil)
 	if p.Lang != "sk" || !strings.HasPrefix(p.Subject, "Faktúra "+sk.Number) || !strings.HasPrefix(p.Body, "Dobrý deň") || !strings.Contains(p.Body, "Suma na úhradu") {
 		t.Fatalf("sk preview: %+v", p)
@@ -232,7 +242,7 @@ func TestReminderJob(t *testing.T) {
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME", Email: "klient@example.cz"})
 	noMail := newSubject(a, api.SubjectCreate{Name: "Bez"})
 	mk := func(c *client, subjectID uint, issued string) api.Invoice {
-		return createInv(c, api.InvoiceCreate{SubjectID: subjectID, IssuedOn: issued, DueDays: intPtr(0),
+		return createInv(c, api.InvoiceCreate{SubjectID: new(subjectID), IssuedOn: issued, DueDays: intPtr(0),
 			Lines: []api.InvoiceLineInput{line("Práce", "1", 1000, nil)}})
 	}
 	overdue := mk(a, subj.ID, "2026-03-01")   // 14 days overdue on 2026-03-15
@@ -296,7 +306,7 @@ func TestPaidThanks(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME", Email: "klient@example.cz"})
 	mk := func() api.Invoice {
-		return createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("Práce", "1", 1000, nil)}})
+		return createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("Práce", "1", 1000, nil)}})
 	}
 	off := mk()
 	pay(a, off.ID, api.PaymentCreate{})

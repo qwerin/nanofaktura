@@ -84,7 +84,7 @@ func newFx(t *testing.T) *fx {
 	subj := model.Subject{AccountID: f.acc.ID, Name: "ACME"}
 	must(t, gdb.Create(&subj).Error)
 	inv := model.Invoice{AccountID: f.acc.ID, DocumentType: model.DocInvoice, Number: "2026-0001", Status: model.StatusOpen,
-		SubjectID: subj.ID, IssuedOn: "2026-01-01", Currency: "CZK", ExchangeRate: "1", Language: "cs", PaymentMethod: "bank",
+		SubjectID: new(subj.ID), IssuedOn: "2026-01-01", Currency: "CZK", ExchangeRate: "1", Language: "cs", PaymentMethod: "bank",
 		PublicToken: "tok-original", Total: 12100,
 		Lines: []model.InvoiceLine{{Name: "Práce", QuantityMilli: 1000, UnitPrice: 10000, VatRateBps: 2100, Position: 1}}}
 	must(t, gdb.Create(&inv).Error)

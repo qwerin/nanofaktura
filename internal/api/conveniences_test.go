@@ -31,7 +31,7 @@ func TestExpenseDueDaysClearSubjectAttachments(t *testing.T) {
 
 	// invoice detail lists its attachments too
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("A", "1", 100, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("A", "1", 100, nil)}})
 	uploadOK(a, "invoice", inv.ID, "i.pdf", []byte("%PDF-1.4 test"))
 	if got := getInv(a, inv.ID); len(got.Attachments) != 1 {
 		t.Fatalf("invoice attachments %+v", got.Attachments)

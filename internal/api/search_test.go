@@ -20,7 +20,7 @@ func TestSearch(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	b := ts.signup("b@example.cz", "Firma B")
 	subj := newSubject(a, api.SubjectCreate{Name: "Žluťoučký kůň s.r.o.", RegistrationNo: "25596641", Email: "kun@example.cz"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("Práce", "1", 1000_00, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("Práce", "1", 1000_00, nil)}})
 	newPriceItem(a, api.PriceItemCreate{Name: "Šroubek", SKU: "SRB-10"})
 	newSubject(b, api.SubjectCreate{Name: "Žluťoučký kůň B"})
 

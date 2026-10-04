@@ -79,7 +79,7 @@ var mcpTools = []mcpTool{
 		Description: "Full invoice detail including lines, VAT summary, payments and attachments."},
 	{Name: "create_invoice", Title: "Připravit fakturu", Method: http.MethodPost, Path: "/invoices", Write: true,
 		Force:       map[string]any{"draft": true},
-		Description: "Prepare a new document as a DRAFT (always): it has no number yet, counts nowhere and is not sent. The user reviews and issues it in the web app. Look the client up first (list_subjects / search) and pass subject_id."},
+		Description: "Prepare a new document as a DRAFT (always): it has no number yet, counts nowhere and is not sent. The user reviews and issues it in the web app. Look the client up first (list_subjects / search) and pass subject_id; for an end customer without a contact pass client_name (and optional client_* address/e-mail) instead."},
 	{Name: "add_invoice_payment", Title: "Zapsat úhradu faktury", Method: http.MethodPost, Path: "/invoices/{id}/payments", Write: true,
 		Description: "Record a received payment of an invoice (full or partial). The invoice becomes paid when payments cover its total."},
 	{Name: "list_subjects", Title: "Kontakty", Method: http.MethodGet, Path: "/subjects",

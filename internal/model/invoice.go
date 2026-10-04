@@ -13,7 +13,7 @@ type Invoice struct {
 	Number         string `gorm:"not null;uniqueIndex:idx_invoices_number,where:number <> ''"` // "" for drafts
 	VariableSymbol string
 	Status         string `gorm:"not null;index"`
-	SubjectID      uint   `gorm:"not null;index"`
+	SubjectID      *uint  `gorm:"index"` // nil = end customer without a contact (client_* only)
 	RelatedID      *uint  `gorm:"index"`
 	RecurringID    *uint  `gorm:"index"`               // the recurring invoice that generated it
 	PublicToken    string `gorm:"size:64;uniqueIndex"` // random, for the public client link

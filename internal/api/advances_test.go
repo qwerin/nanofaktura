@@ -65,7 +65,7 @@ func TestProformaTaxDocumentsAndFinalInvoice(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	setVatPayer(a)
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME", VatNo: "CZ27074358"})
-	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: acme.ID, IssuedOn: "2026-03-01",
+	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: new(acme.ID), IssuedOn: "2026-03-01",
 		Lines: []api.InvoiceLineInput{line("Dílo", "1", 100_000, i32(2100))}}) // 1 210,00
 
 	r := pay(a, pro.ID, api.PaymentCreate{PaidOn: "2026-03-10", Amount: i64(40_000)})
@@ -192,7 +192,7 @@ func TestProformaPartialPaymentWithFinalInvoice(t *testing.T) {
 	ts := newTestServer(t)
 	a := ts.signup("a@example.cz", "Firma A")
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("X", "1", 121_000, nil)}})
+	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("X", "1", 121_000, nil)}})
 	r := pay(a, pro.ID, api.PaymentCreate{Amount: i64(40_000), CreateFinalInvoice: true})
 	if r.TaxDocumentID != nil { // a non-payer issues no tax documents
 		t.Fatalf("tax document of a non-payer: %+v", r)
@@ -224,7 +224,7 @@ func TestBankMatchedProformaPayment(t *testing.T) {
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME"})
 	bank := fioBank(a)
 	vs := "55"
-	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: acme.ID, VariableSymbol: &vs,
+	pro := createInv(a, api.InvoiceCreate{DocumentType: "proforma", SubjectID: new(acme.ID), VariableSymbol: &vs,
 		Lines: []api.InvoiceLineInput{line("X", "1", 100_000, i32(2100))}})
 	res := importOK(a, bank.ID, fioJSON(fioTx{id: "1", date: "2026-03-12", vs: "55", amount: "1210.00", name: "ACME"}))
 	if res.Matched != 1 {
@@ -260,7 +260,7 @@ func TestPaymentAndRateGuards(t *testing.T) {
 	ts := newTestServer(t)
 	a := ts.signup("a@example.cz", "Firma A")
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("X", "1", 121_000, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("X", "1", 121_000, nil)}})
 	pay(a, inv.ID, api.PaymentCreate{})
 	res, body := a.do("PATCH", invURL(a, inv.ID, ""), map[string]any{"currency": "EUR", "exchange_rate": "25"})
 	assertCode(t, res, body, http.StatusConflict, "currency_has_payments")
@@ -270,19 +270,19 @@ func TestPaymentAndRateGuards(t *testing.T) {
 	assertCode(t, res, body, http.StatusConflict, "currency_has_payments")
 
 	for _, rate := range []string{"0", "0.000000"} {
-		res, body = a.do("POST", a.acct("/invoices"), api.InvoiceCreate{SubjectID: acme.ID, Currency: "EUR", ExchangeRate: rate,
+		res, body = a.do("POST", a.acct("/invoices"), api.InvoiceCreate{SubjectID: new(acme.ID), Currency: "EUR", ExchangeRate: rate,
 			Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
 		assertError(t, res, body, http.StatusUnprocessableEntity, "exchange_rate")
 		res, body = a.do("POST", a.acct("/expenses"), api.ExpenseCreate{SubjectID: &acme.ID, Currency: "EUR", ExchangeRate: rate,
 			Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
 		assertError(t, res, body, http.StatusUnprocessableEntity, "exchange_rate")
 	}
-	eur := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Currency: "EUR", ExchangeRate: "25", Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
+	eur := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Currency: "EUR", ExchangeRate: "25", Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
 	res, body = a.do("PATCH", invURL(a, eur.ID, ""), map[string]any{"exchange_rate": "0"})
 	assertError(t, res, body, http.StatusUnprocessableEntity, "exchange_rate")
 
 	// a credit note is refunded with a negative amount
-	cr := createInv(a, api.InvoiceCreate{DocumentType: "correction", RelatedID: &inv.ID, SubjectID: acme.ID,
+	cr := createInv(a, api.InvoiceCreate{DocumentType: "correction", RelatedID: &inv.ID, SubjectID: new(acme.ID),
 		Lines: []api.InvoiceLineInput{line("X", "-1", 121_000, nil)}})
 	res, body = a.do("POST", invURL(a, cr.ID, "/payments"), api.PaymentCreate{Amount: i64(121_000)})
 	assertError(t, res, body, http.StatusUnprocessableEntity, "same sign")
@@ -297,14 +297,14 @@ func TestUnpaidSumsIgnoreOverpaymentsAndCreditNotes(t *testing.T) {
 	ts := newTestServer(t)
 	a := ts.signup("a@example.cz", "Firma A")
 	acme := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	i1 := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("X", "1", 100_000, nil)}})
-	createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("Y", "1", 50_000, nil)}})
+	i1 := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("X", "1", 100_000, nil)}})
+	createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("Y", "1", 50_000, nil)}})
 	pay(a, i1.ID, api.PaymentCreate{Amount: i64(150_000)})
 	l := doJSON[api.DocumentList[api.InvoiceSummary]](a, http.StatusOK, "GET", a.acct("/invoices"), nil)
 	if len(l.Sums) != 1 || l.Sums[0].SumRemaining != 50_000 {
 		t.Fatalf("sums %+v", l.Sums)
 	}
-	createInv(a, api.InvoiceCreate{DocumentType: "correction", RelatedID: &i1.ID, SubjectID: acme.ID, Lines: []api.InvoiceLineInput{line("X", "-1", 10_000, nil)}})
+	createInv(a, api.InvoiceCreate{DocumentType: "correction", RelatedID: &i1.ID, SubjectID: new(acme.ID), Lines: []api.InvoiceLineInput{line("X", "-1", 10_000, nil)}})
 	if d := doJSON[api.Dashboard](a, http.StatusOK, "GET", a.acct("/dashboard"), nil); d.UnpaidTotal != 50_000 || d.UnpaidCount != 1 {
 		t.Fatalf("dashboard %+v", d)
 	}
@@ -328,7 +328,7 @@ func TestForeignCurrencyRateOnGeneratedInvoices(t *testing.T) {
 	if run.ExchangeRate != "24.350" {
 		t.Fatalf("recurring invoice rate %q", run.ExchangeRate)
 	}
-	old := createInv(a, api.InvoiceCreate{SubjectID: acme.ID, Currency: "EUR", ExchangeRate: "25.1", IssuedOn: "2026-01-10",
+	old := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Currency: "EUR", ExchangeRate: "25.1", IssuedOn: "2026-01-10",
 		Lines: []api.InvoiceLineInput{line("X", "1", 100, nil)}})
 	dup := doJSON[api.Invoice](a, http.StatusCreated, "POST", invURL(a, old.ID, "/duplicate"), nil)
 	if dup.ExchangeRate != "24.350" {

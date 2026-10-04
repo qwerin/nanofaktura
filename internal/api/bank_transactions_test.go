@@ -175,7 +175,7 @@ func TestBankImportAndMatching(t *testing.T) {
 	bank := fioBank(a)
 
 	subj := newSubject(a, api.SubjectCreate{Name: "Žluťoučký kůň s.r.o.", BankAccount: "123456789/0100"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, VariableSymbol: strPtr("2026001"),
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), VariableSymbol: strPtr("2026001"),
 		Lines: []api.InvoiceLineInput{line("Web", "1", 1210000, nil)}})
 	supplier := "Jan Novák"
 	exp := createExp(a, api.ExpenseCreate{VariableSymbol: strPtr("1234"), ExpenseSupplierFields: api.ExpenseSupplierFields{SupplierName: &supplier},
@@ -332,10 +332,10 @@ func TestBankPartialPaymentsAndSuggestions(t *testing.T) {
 	a := ts.signup("a@example.cz", "Firma A")
 	bank := fioBank(a)
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME s.r.o."})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, VariableSymbol: strPtr("55"), Lines: []api.InvoiceLineInput{line("X", "1", 10000, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), VariableSymbol: strPtr("55"), Lines: []api.InvoiceLineInput{line("X", "1", 10000, nil)}})
 	// two open invoices with the same amount and no VS match → suggestions only
-	i2 := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, VariableSymbol: strPtr("61"), Lines: []api.InvoiceLineInput{line("Y", "1", 7700, nil)}})
-	i3 := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, VariableSymbol: strPtr("62"), Lines: []api.InvoiceLineInput{line("Y", "1", 7700, nil)}})
+	i2 := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), VariableSymbol: strPtr("61"), Lines: []api.InvoiceLineInput{line("Y", "1", 7700, nil)}})
+	i3 := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), VariableSymbol: strPtr("62"), Lines: []api.InvoiceLineInput{line("Y", "1", 7700, nil)}})
 
 	res := importOK(a, bank.ID, fioJSON(
 		fioTx{id: "1", date: "2026-03-10", vs: "55", amount: "40.00", name: "ACME"}, // partial: suggestion
@@ -369,7 +369,7 @@ func TestBankPartialPaymentsAndSuggestions(t *testing.T) {
 		t.Fatalf("after rest: %+v", got)
 	}
 	// same VS twice in one import: the second no longer matches the paid invoice
-	i4 := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, VariableSymbol: strPtr("70"), Lines: []api.InvoiceLineInput{line("Z", "1", 500, nil)}})
+	i4 := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), VariableSymbol: strPtr("70"), Lines: []api.InvoiceLineInput{line("Z", "1", 500, nil)}})
 	res = importOK(a, bank.ID, fioJSON(fioTx{id: "4", date: "2026-03-21", vs: "70", amount: "5.00"}, fioTx{id: "5", date: "2026-03-21", vs: "70", amount: "5.00"}))
 	if res.Matched != 1 || res.Imported != 2 {
 		t.Fatalf("twice: %+v", res)
@@ -379,12 +379,12 @@ func TestBankPartialPaymentsAndSuggestions(t *testing.T) {
 	}
 
 	// cancelled invoice cannot be matched
-	i5 := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("Z", "1", 100, nil)}})
+	i5 := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("Z", "1", 100, nil)}})
 	action(a, i5.ID, "cancel")
 	r, body := a.do("POST", txURL(a, amb.ID, "/match"), api.BankTransactionMatch{InvoiceID: &i5.ID})
 	assertError(t, r, body, http.StatusConflict, "cancelled invoice")
 	// other currency
-	eur := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Currency: "EUR", Lines: []api.InvoiceLineInput{line("Z", "1", 100, nil)}})
+	eur := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Currency: "EUR", Lines: []api.InvoiceLineInput{line("Z", "1", 100, nil)}})
 	r, body = a.do("POST", txURL(a, amb.ID, "/match"), api.BankTransactionMatch{InvoiceID: &eur.ID})
 	assertError(t, r, body, http.StatusUnprocessableEntity, "is in EUR")
 }
@@ -417,7 +417,7 @@ func TestBankSync(t *testing.T) {
 	}
 
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, VariableSymbol: strPtr("2026001"), Lines: []api.InvoiceLineInput{line("Web", "1", 1210000, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), VariableSymbol: strPtr("2026001"), Lines: []api.InvoiceLineInput{line("Web", "1", 1210000, nil)}})
 	st, err := bankimport.ParseFioJSON(fixtureFile(t, "fio_transactions.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -516,8 +516,8 @@ func TestBankMatchPaidThanks(t *testing.T) {
 	a.mustDo(http.StatusOK, "PATCH", a.acct(""), map[string]any{"paid_thanks_enabled": true})
 	bank := fioBank(a)
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME", Email: "klient@example.cz"})
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, VariableSymbol: strPtr("81"), Lines: []api.InvoiceLineInput{line("X", "1", 1000, nil)}})
-	inv2 := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, VariableSymbol: strPtr("82"), Lines: []api.InvoiceLineInput{line("X", "1", 1000, nil)}})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), VariableSymbol: strPtr("81"), Lines: []api.InvoiceLineInput{line("X", "1", 1000, nil)}})
+	inv2 := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), VariableSymbol: strPtr("82"), Lines: []api.InvoiceLineInput{line("X", "1", 1000, nil)}})
 
 	importOK(a, bank.ID, fioJSON(fioTx{id: "p1", date: "2026-03-10", vs: "81", amount: "4.00"})) // suggestion only
 	doJSON[api.BankTransaction](a, http.StatusOK, "POST", txURL(a, txByExternal(a, "p1").ID, "/match"), api.BankTransactionMatch{InvoiceID: &inv.ID})
@@ -533,7 +533,7 @@ func TestBankMatchPaidThanks(t *testing.T) {
 		t.Fatalf("thanks: %+v", m)
 	}
 	// manual match paying an invoice in full
-	inv3 := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: []api.InvoiceLineInput{line("X", "1", 1000, nil)}})
+	inv3 := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: []api.InvoiceLineInput{line("X", "1", 1000, nil)}})
 	importOK(a, bank.ID, fioJSON(fioTx{id: "p4", date: "2026-03-12", amount: "10.00"}))
 	doJSON[api.BankTransaction](a, http.StatusOK, "POST", txURL(a, txByExternal(a, "p4").ID, "/match"), api.BankTransactionMatch{InvoiceID: &inv3.ID})
 	if m, _ := ts.mail.Last(); len(ts.mail.Messages()) != 3 || !strings.Contains(m.Subject, inv3.Number) {
@@ -567,21 +567,21 @@ func TestForeignCurrencyExchangeRate(t *testing.T) {
 	subj := newSubject(a, api.SubjectCreate{Name: "ACME"})
 	lines := []api.InvoiceLineInput{line("X", "1", 100, nil)}
 
-	inv := createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Currency: "EUR", IssuedOn: "2026-03-10", Lines: lines})
+	inv := createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Currency: "EUR", IssuedOn: "2026-03-10", Lines: lines})
 	if inv.ExchangeRate != "24.350" || rates.lastDate != "2026-03-10" {
 		t.Fatalf("invoice rate %q date %q", inv.ExchangeRate, rates.lastDate)
 	}
-	inv = createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Currency: "EUR", IssuedOn: "2026-03-10", TaxableFulfillmentDue: strPtr("2026-03-05"), Lines: lines})
+	inv = createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Currency: "EUR", IssuedOn: "2026-03-10", TaxableFulfillmentDue: strPtr("2026-03-05"), Lines: lines})
 	if rates.lastDate != "2026-03-05" {
 		t.Fatalf("DUZP date: %q", rates.lastDate)
 	}
-	if inv = createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Currency: "EUR", ExchangeRate: "25", Lines: lines}); inv.ExchangeRate != "25" {
+	if inv = createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Currency: "EUR", ExchangeRate: "25", Lines: lines}); inv.ExchangeRate != "25" {
 		t.Fatalf("manual rate: %q", inv.ExchangeRate)
 	}
-	if inv = createInv(a, api.InvoiceCreate{SubjectID: subj.ID, Lines: lines}); inv.ExchangeRate != "1" {
+	if inv = createInv(a, api.InvoiceCreate{SubjectID: new(subj.ID), Lines: lines}); inv.ExchangeRate != "1" {
 		t.Fatalf("CZK: %q", inv.ExchangeRate)
 	}
-	r, body := a.do("POST", a.acct("/invoices"), api.InvoiceCreate{SubjectID: subj.ID, Currency: "USD", Lines: lines})
+	r, body := a.do("POST", a.acct("/invoices"), api.InvoiceCreate{SubjectID: new(subj.ID), Currency: "USD", Lines: lines})
 	assertError(t, r, body, http.StatusUnprocessableEntity, "enter exchange_rate manually")
 
 	name := "Dodavatel"
