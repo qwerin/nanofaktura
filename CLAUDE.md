@@ -256,6 +256,14 @@ configuration only as "is set" booleans (like secrets). The e-mail test runs `ma
 straight against the configured SMTP (not through `deps.Mailer`); tests inject `Deps.Resolver` and point
 `cfg.SMTPHost` at `smtptest.Start` (see `admin_test.go`).
 
+## MCP server (SPEC §7.17)
+
+`POST /api/mcp` (`internal/api/mcp.go`, official `modelcontextprotocol/go-sdk`, stateless Streamable HTTP, bearer token only).
+A tool is an entry in `mcpTools` (name, method, path relative to the account or absolute `/api/…`, `Write`): its input schema
+is derived from the OpenAPI operation and calls are dispatched in-process to the router with the caller's token — no
+handler code is duplicated, roles/validation/events apply as in REST. Only reads and safe writes: never e-mails,
+deletions, document actions or settings. A new tool needs a call in `mcp_test.go` (`TestMCPEveryTool`).
+
 ## Backup (SPEC §7.16)
 
 `internal/backup` exports an account as a versioned ZIP (own DTOs in `dto.go`, `Version = 1`, no secrets) and imports

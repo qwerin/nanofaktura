@@ -9,6 +9,10 @@ Pravidla (viz CLAUDE.md → „Novinky“):
 - Podporováno: odstavce, `###`, odrážky, **tučně**, *zvýraznění* (např. cesta v menu), `kód`, [odkazy](https://…). Nic dalšího.
 -->
 
+## 2026-10-04 · AI asistent
+
+- **Připojení AI asistenta (MCP)** — v *Nastavení → API tokeny* najdete adresu a hotový příkaz pro připojení AI asistenta, třeba Claude. Asistent pak za vás najde fakturu nebo kontakt, řekne, kdo vám dluží, připraví přehled DPH, vystaví fakturu nebo zapíše náklad a úhradu. Nic neodesílá e-mailem, nic nemaže a nemění nastavení. Přihlašuje se API tokenem, takže smí jen to, co vy, a přístup kdykoli zrušíte zrušením tokenu.
+
 ## 2026-10-01 · Aplikace na plochu, hromadná úhrada, zálohy a přesnější DPH
 
 - **Nainstalovat aplikaci** — v menu *Více* (na počítači v menu pod vaším jménem) přidáte NanoFakturu na plochu telefonu. Pak se otevírá jako běžná aplikace přes celou obrazovku, bez adresního řádku prohlížeče. Na iPhonu ukáže krátký návod (Sdílet → Přidat na plochu).

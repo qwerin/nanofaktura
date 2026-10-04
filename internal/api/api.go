@@ -210,6 +210,9 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 	s.registerSearch(account)
 	s.registerBackup(authed, account)
 
+	// MCP for AI assistants: plain handler (streaming transport), tools dispatch to the routes above
+	router.Handle(mcpPath, s.mcpHandler(router, api))
+
 	return router, api
 }
 

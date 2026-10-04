@@ -77,6 +77,7 @@ Endpointy:
 | PATCH | `/api/auth/me` | změna jména / hesla (`current_password` povinné při změně hesla) |
 | GET/POST | `/api/auth/tokens` | seznam / vytvoření API tokenu |
 | DELETE | `/api/auth/tokens/{id}` | revokace |
+| POST | `/api/mcp` | MCP server pro AI asistenty (§7.17), jen `Authorization: Bearer nf_…` |
 | GET/POST | `/api/accounts` | účty uživatele / založení nového účtu (tvůrce = owner) |
 | GET/PATCH | `/api/accounts/{slug}` | firemní profil a nastavení (PATCH jen owner) |
 
@@ -515,7 +516,23 @@ Kompletní přenos účtu mezi instancemi (a SQLite → Postgres) a záloha.
   `nanofaktura backup import --owner <email> soubor.zip` (bez HTTP, stejný kód jako API).
 - **UI**: Nastavení → „Záloha a přenos“ (stáhnout zálohu, co obsahuje, co ne); v přepínači účtů „Nový účet“ → „Obnovit ze zálohy“.
 
-### 7.17 Mimo rozsah
+### 7.17 MCP server (AI asistenti)
+`POST /api/mcp` mluví protokolem MCP (Streamable HTTP, bezstavově, odpovědi `application/json`), aby AI asistent mohl
+pracovat s účtem za uživatele.
+- **Přihlášení**: jen API token (`Authorization: Bearer nf_…`); bez tokenu / s neplatným 401 + `WWW-Authenticate: Bearer`,
+  session cookie se nepřijímá. Neúspěšné pokusy jsou omezené na IP (20 / 10 min → 429). Tělo max. 1 MiB.
+- **Nástroje** = vybrané REST operace (katalog `mcpTools` v `internal/api/mcp.go`). Vstupní schéma se odvozuje z OpenAPI
+  (`account` = slug, path/query parametry, `body` = schéma těla s `$defs`), volání se v procesu předá routeru API
+  s tokenem volajícího: přihlášení, členství, role, validace, události i limity jsou tytéž jako u REST.
+  Úspěch → JSON těla odpovědi (text + `structuredContent`), chyba → `isError` s `HTTP <status>: <problem+json>`.
+- **Rozsah** (rozhodnutí 2026-10-04): čtení + bezpečné zápisy. Čtení: účty, nastavení účtu, hledání, nástěnka, faktury,
+  kontakty, ARES, náklady a jejich kategorie, ceník, DPH a roční přehled, úkoly. Zápisy: vystavení faktury (dostane číslo
+  hned, neodesílá se), úhrada faktury, nový/úprava kontaktu, nový náklad a jeho úhrada, nový úkol. **Nikdy**: odesílání
+  e-mailů, mazání, akce dokladů (storno …), nastavení, členové, webhooky, tokeny.
+- **UI**: Nastavení → API tokeny — karta „AI asistent (MCP)“ s adresou a příkazem pro připojení; po vytvoření tokenu
+  příkaz i s tokenem.
+
+### 7.18 Mimo rozsah
 EET (zrušeno), účetnictví (podvojné), mzdy, OCR účtenek (jen příprava: přílohy nákladu).
 
 ## Otevřené otázky

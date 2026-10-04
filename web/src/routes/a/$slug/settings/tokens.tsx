@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { KeyRoundIcon, PlusIcon, Trash2Icon, TriangleAlertIcon } from 'lucide-react'
+import { BotIcon, KeyRoundIcon, PlusIcon, Trash2Icon, TriangleAlertIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -18,6 +18,7 @@ import { ResponsiveList } from '@/components/responsive-list'
 import { SettingsPage } from '@/components/settings-page'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { formatDateTime } from '@/lib/date'
 
@@ -129,6 +130,8 @@ function TokensPage() {
         />
       )}
 
+      <McpCard />
+
       <CreateTokenDialog open={createOpen} onOpenChange={setCreateOpen} />
       <RevokeTokenDialog token={revoking} onClose={() => setRevoking(null)} />
     </SettingsPage>
@@ -137,6 +140,45 @@ function TokensPage() {
 
 function TokenPrefix({ prefix }: { prefix: string }) {
   return <code className="font-mono text-xs text-muted-foreground">{prefix}…</code>
+}
+
+/** Adresa MCP serveru této instance (stejný původ jako aplikace). */
+function mcpUrl() {
+  return `${window.location.origin}/api/mcp`
+}
+
+/** Příkaz pro připojení AI asistenta (Claude Code) s daným tokenem. */
+function mcpCommand(token: string) {
+  return `claude mcp add --transport http nanofaktura ${mcpUrl()} --header "Authorization: Bearer ${token}"`
+}
+
+function McpCard() {
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <BotIcon className="size-4" />
+          AI asistent (MCP)
+        </CardTitle>
+        <CardDescription>
+          Připojte AI asistenta (např. Claude) přes protokol MCP. Asistent pak umí hledat a číst faktury, náklady a kontakty,
+          vystavit fakturu, zapsat náklad nebo úhradu. Nic neodesílá e-mailem, nic nemaže a nemění nastavení. Přihlašuje se
+          API tokenem a má stejná oprávnění jako vy.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <code className="block rounded-lg border bg-muted px-3 py-2 font-mono text-sm break-all select-all">{mcpUrl()}</code>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <CopyButton value={mcpUrl()} label="Zkopírovat adresu" />
+          <CopyButton value={mcpCommand('nf_…')} label="Příkaz pro Claude Code" />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Token posílá asistent v hlavičce <code className="font-mono">Authorization: Bearer nf_…</code>. Po vytvoření nového
+          tokenu nabídneme příkaz i s tokenem.
+        </p>
+      </CardContent>
+    </Card>
+  )
 }
 
 const createSchema = z.object({
@@ -199,6 +241,7 @@ function CreateTokenDialog({ open, onOpenChange }: { open: boolean; onOpenChange
             {created.token}
           </code>
           <CopyButton value={created.token} label="Zkopírovat token" className="w-full" />
+          <CopyButton value={mcpCommand(created.token)} label="Příkaz pro AI asistenta (MCP)" className="w-full" />
         </div>
       </ResponsiveDialog>
     )

@@ -120,6 +120,12 @@ func (s *Service) CreateAPIToken(ctx context.Context, userID uint, name string, 
 	return plain, &tok, nil
 }
 
+// UserByAPIToken returns the owner of a valid, unexpired API token (nf_…);
+// ErrInvalidCredentials otherwise. Records the last use like RequireUser.
+func (s *Service) UserByAPIToken(ctx context.Context, plain string) (*model.User, error) {
+	return s.userByAPIToken(ctx, plain)
+}
+
 func (s *Service) userByAPIToken(ctx context.Context, plain string) (*model.User, error) {
 	if !strings.HasPrefix(plain, APITokenPrefix) {
 		return nil, ErrInvalidCredentials
