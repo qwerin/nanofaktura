@@ -112,6 +112,21 @@ export function useInvoiceAction(slug: string, id: number) {
   })
 }
 
+/** Vystavení konceptu (číslo, VS) — chyby hlásí volající (formulář). */
+export function useIssueInvoice(slug: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) =>
+      unwrap(
+        api.POST('/api/accounts/{slug}/invoices/{id}/actions/{action}', {
+          params: { path: { slug, id, action: 'issue' } },
+        }),
+      ),
+    onSuccess: (inv) => afterChange(qc, slug, inv),
+    meta: { silent: true },
+  })
+}
+
 export function useDuplicateInvoice(slug: string, id: number) {
   const qc = useQueryClient()
   return useMutation({

@@ -4,6 +4,7 @@ import { ChevronRightIcon, FilePlusIcon, FileTextIcon } from 'lucide-react'
 import { subjectQueries } from '@/api/queries/subjects'
 import type { ResponseBody } from '@/api/types'
 import { EmptyState } from '@/components/empty-state'
+import { InvoiceNumber } from '@/components/invoice/invoice-number'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -14,6 +15,7 @@ import { cn } from '@/lib/utils'
 type InvoiceRow = NonNullable<ResponseBody<'/api/accounts/{slug}/invoices', 'get'>['items']>[number]
 
 const statusLabels: Record<InvoiceRow['status'], string> = {
+  draft: 'Koncept',
   open: 'Vystavená',
   sent: 'Odeslaná',
   overdue: 'Po splatnosti',
@@ -23,6 +25,7 @@ const statusLabels: Record<InvoiceRow['status'], string> = {
 }
 
 const statusClass: Record<InvoiceRow['status'], string> = {
+  draft: 'border-dashed border-muted-foreground/40 bg-transparent text-muted-foreground',
   open: 'bg-info/10 text-info',
   sent: 'bg-info/10 text-info',
   overdue: 'bg-destructive/10 text-destructive',
@@ -96,7 +99,7 @@ export function SubjectInvoices({ slug, subjectId, canCreate = true }: { slug: s
               >
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="flex items-center gap-2">
-                    <span className="truncate font-medium tabular-nums">{inv.number}</span>
+                    <InvoiceNumber number={inv.number} className="truncate font-medium tabular-nums" />
                     {docTypeLabels[inv.document_type] && (
                       <span className="text-xs text-muted-foreground">{docTypeLabels[inv.document_type]}</span>
                     )}

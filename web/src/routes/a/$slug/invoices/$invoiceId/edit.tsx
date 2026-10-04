@@ -7,7 +7,7 @@ import { invoiceQueries } from '@/api/queries/invoices'
 import { ButtonLink } from '@/components/button-link'
 import { EmptyState } from '@/components/empty-state'
 import { InvoiceForm } from '@/components/invoice/invoice-form'
-import { allowedActions, isSettledProforma } from '@/components/invoice/status'
+import { allowedActions, invoiceLabel, isSettledProforma } from '@/components/invoice/status'
 import { useCanEditDocuments } from '@/components/invoice/use-can-edit'
 import { PageBody, PageHeader } from '@/components/page-header'
 import { PageError } from '@/components/page-states'
@@ -42,7 +42,7 @@ function EditInvoicePage() {
 
   return (
     <>
-      <PageHeader title={inv ? `Upravit ${inv.number}` : 'Úprava faktury'} back={back} />
+      <PageHeader title={inv ? `Upravit ${invoiceLabel(inv, { lower: true })}` : 'Úprava faktury'} back={back} />
       <PageBody>
         {invoice.isError || account.isError ? (
           <PageError

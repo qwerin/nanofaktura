@@ -32,7 +32,7 @@ type InvoiceSummary struct {
 	DocumentType   string `json:"document_type" enum:"invoice,proforma,correction,tax_document" doc:"tax_document = tax document for a received proforma payment (issued automatically for VAT payers)"`
 	Number         string `json:"number"`
 	VariableSymbol string `json:"variable_symbol"`
-	Status         string `json:"status" enum:"open,sent,overdue,paid,cancelled,uncollectible" doc:"Stored status, or overdue when open/sent and due_on < today"`
+	Status         string `json:"status" enum:"draft,open,sent,overdue,paid,cancelled,uncollectible" doc:"Stored status, or overdue when open/sent and due_on < today. A draft has no number (empty) until issued"`
 	SubjectID      uint   `json:"subject_id"`
 	RelatedID      *uint  `json:"related_id,omitempty" doc:"Correction → corrected invoice, final invoice → proforma"`
 	RecurringID    *uint  `json:"recurring_id,omitempty" doc:"The recurring invoice that generated this document"`
@@ -326,6 +326,7 @@ func (f *InvoiceSnapshotFields) applyTo(m *model.Invoice) {
 }
 
 type InvoiceCreate struct {
+	Draft          bool    `json:"draft,omitempty" doc:"Save as a draft: no number yet, not counted anywhere, not payable or sendable until issued (POST …/actions/issue)"`
 	DocumentType   string  `json:"document_type,omitempty" enum:"invoice,proforma,correction" doc:"Default invoice"`
 	Number         string  `json:"number,omitempty" maxLength:"50" doc:"Custom number (the counter is not advanced); default: next number of the default number format"`
 	VariableSymbol *string `json:"variable_symbol,omitempty" pattern:"^[0-9]{0,10}$" doc:"Default: digits of the number (last 10)"`
@@ -589,10 +590,18 @@ func (s *server) createInvoiceTx(ctx context.Context, tx *gorm.DB, in *InvoiceCr
 		return nil, err
 	}
 
+	if in.Draft {
+		if m.DocumentType == model.DocTaxDocument {
+			return nil, invalid("draft", "a tax document cannot be a draft")
+		}
+		m.Status = model.StatusDraft
+	}
 	if n := strings.TrimSpace(in.Number); n != "" {
 		m.Number = n
-	} else if m.Number, err = s.deps.NextNumber(tx, acc.ID, m.DocumentType, m.IssuedOn); err != nil {
-		return nil, numberingErr(err)
+	} else if !in.Draft {
+		if m.Number, err = s.deps.NextNumber(tx, acc.ID, m.DocumentType, m.IssuedOn); err != nil {
+			return nil, numberingErr(err)
+		}
 	}
 	m.VariableSymbol = spayd.Digits(m.Number, 10)
 	apply(&m.VariableSymbol, in.VariableSymbol)
@@ -789,6 +798,15 @@ func (s *server) deleteInvoice(ctx context.Context, in *invoiceID) (*NoContent, 
 
 // ---- helpers ----
 
+// notDraft returns 409 invoice_draft for a draft (no payments, e-mails,
+// public link, ISDOC, corrections … before it is issued).
+func notDraft(m *model.Invoice) error {
+	if m.Status == model.StatusDraft {
+		return conflict(CodeDraft, "the invoice is a draft; issue it first")
+	}
+	return nil
+}
+
 // editable returns 409 when the invoice must not be changed.
 func editable(m *model.Invoice) error {
 	if m.LockedAt != nil {
@@ -867,7 +885,7 @@ var taxNumberTypes = []string{model.DocInvoice, model.DocCorrection, model.DocTa
 // checkTaxNumberUnique answers 409 when another invoice, correction or tax
 // document of the account already has m's number.
 func checkTaxNumberUnique(ctx context.Context, tx *gorm.DB, m *model.Invoice) error {
-	if !slices.Contains(taxNumberTypes, m.DocumentType) {
+	if m.Number == "" || !slices.Contains(taxNumberTypes, m.DocumentType) { // drafts have no number yet
 		return nil
 	}
 	var n int64

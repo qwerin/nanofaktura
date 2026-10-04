@@ -8,9 +8,9 @@ import "time"
 // recomputed (internal/billing) whenever lines or payments change.
 type Invoice struct {
 	ID             uint
-	AccountID      uint   `gorm:"not null;index;uniqueIndex:idx_invoices_account_type_number"`
-	DocumentType   string `gorm:"not null;uniqueIndex:idx_invoices_account_type_number"`
-	Number         string `gorm:"not null;uniqueIndex:idx_invoices_account_type_number"`
+	AccountID      uint   `gorm:"not null;index;uniqueIndex:idx_invoices_number,where:number <> ''"`
+	DocumentType   string `gorm:"not null;uniqueIndex:idx_invoices_number,where:number <> ''"`
+	Number         string `gorm:"not null;uniqueIndex:idx_invoices_number,where:number <> ''"` // "" for drafts
 	VariableSymbol string
 	Status         string `gorm:"not null;index"`
 	SubjectID      uint   `gorm:"not null;index"`

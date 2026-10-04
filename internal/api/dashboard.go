@@ -45,8 +45,8 @@ func (s *server) getDashboard(ctx context.Context, in *struct {
 
 	since, until := fmt.Sprintf("%04d-01-01", d.Year), fmt.Sprintf("%04d-12-31", d.Year)
 	revenue := s.scoped(ctx).Model(&model.Invoice{}).
-		Where("currency = ? AND document_type IN ? AND status <> ? AND issued_on BETWEEN ? AND ?",
-			d.Currency, []string{model.DocInvoice, model.DocCorrection}, model.StatusCancelled, since, until)
+		Where("currency = ? AND document_type IN ? AND status NOT IN ? AND issued_on BETWEEN ? AND ?",
+			d.Currency, []string{model.DocInvoice, model.DocCorrection}, notCounted, since, until)
 	var err error
 	if d.RevenueTotal, err = sumByMonth(revenue, d.RevenueByMonth); err != nil {
 		return nil, dbErr(err, "statistics")

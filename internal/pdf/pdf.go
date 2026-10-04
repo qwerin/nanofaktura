@@ -340,7 +340,7 @@ func newDoc(inv *model.Invoice, acc *model.Account, opt Options) *doc {
 
 	if opt.ShowQR && strings.EqualFold(d.currency, "CZK") && d.due > 0 &&
 		(inv.PaymentMethod == "" || inv.PaymentMethod == "bank") &&
-		inv.Status != model.StatusCancelled && inv.Status != model.StatusUncollectible {
+		inv.Status != model.StatusCancelled && inv.Status != model.StatusUncollectible && inv.Status != model.StatusDraft {
 		// SWIFT is deliberately omitted: with it some Czech banking apps treat
 		// the QR as a foreign payment.
 		d.qr = spayd.Build(spayd.Payment{

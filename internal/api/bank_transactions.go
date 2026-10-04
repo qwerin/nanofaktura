@@ -708,6 +708,9 @@ func (s *server) linkTransaction(ctx context.Context, tx *gorm.DB, m *model.Bank
 		if err != nil {
 			return refErr(err, "invoice_id", "invoice")
 		}
+		if err := notDraft(inv); err != nil {
+			return err
+		}
 		if inv.Status == model.StatusCancelled || inv.Status == model.StatusUncollectible {
 			return conflict(CodeNotPayable, "cannot add a payment to a "+inv.Status+" invoice")
 		}

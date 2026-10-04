@@ -35,8 +35,8 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { cn } from '@/lib/utils'
 import { countResults, matchesQuery, resultGroups } from './palette-actions'
 
-const invoiceStatuses = new Set<string>(['open', 'sent', 'overdue', 'paid', 'cancelled', 'uncollectible'])
-const expenseStatuses = new Set<string>(['open', 'overdue', 'paid'])
+const invoiceStatuses = new Set<string>(['draft', 'open', 'sent', 'overdue', 'paid', 'cancelled', 'uncollectible'])
+const expenseStatuses = new Set<string>(['draft', 'open', 'overdue', 'paid'])
 
 const hitIcons: Record<SearchHit['type'], LucideIcon> = {
   invoice: FileTextIcon,

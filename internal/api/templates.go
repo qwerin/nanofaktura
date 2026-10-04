@@ -119,6 +119,7 @@ type TemplatePatch struct {
 type TemplateIssue struct {
 	IssuedOn     string `json:"issued_on,omitempty" format:"date" doc:"Default today; also the date of the placeholders"`
 	DocumentType string `json:"document_type,omitempty" enum:"invoice,proforma" doc:"Default: the template's document_type"`
+	Draft        bool   `json:"draft,omitempty" doc:"Create a draft (no number until issued)"`
 }
 
 // SaveAsTemplate is the optional body of POST /invoices/{id}/save-as-template.
@@ -315,6 +316,7 @@ func (s *server) createInvoiceFromTemplate(ctx context.Context, in *struct {
 		return nil, err
 	}
 	body := templateInvoice(ctx, t, defaultStr(b.DocumentType, t.DocumentType), issuedOn)
+	body.Draft = b.Draft
 	if body.ExchangeRate, err = s.templateRate(ctx, t, issuedOn); err != nil {
 		return nil, err
 	}

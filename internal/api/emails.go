@@ -434,6 +434,9 @@ func (s *server) sendInvoice(ctx context.Context, in *struct {
 	if err != nil {
 		return nil, err
 	}
+	if err := notDraft(inv); err != nil {
+		return nil, err
+	}
 	b := &in.Body
 	to, cc := b.To, b.Cc
 	if len(to) == 0 && len(cc) == 0 {

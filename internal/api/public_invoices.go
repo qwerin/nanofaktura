@@ -136,7 +136,7 @@ func (s *server) publicInvoice(ctx context.Context, token string) (context.Conte
 	err := s.db.WithContext(ctx).
 		Preload("Lines", func(db *gorm.DB) *gorm.DB { return db.Order("position, id") }).
 		Preload("Payments", func(db *gorm.DB) *gorm.DB { return db.Order("paid_on, id") }).
-		Where("public_token = ?", token).First(&m).Error
+		Where("public_token = ? AND status <> ?", token, model.StatusDraft).First(&m).Error
 	if err != nil {
 		return nil, nil, dbErr(err, "invoice")
 	}

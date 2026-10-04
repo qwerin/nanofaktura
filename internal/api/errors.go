@@ -58,6 +58,7 @@ const (
 	CodeInvitationRevoked        = "invitation_revoked"
 	CodeRateLimited              = "rate_limited"
 	CodeExportBusy               = "export_in_progress"
+	CodeDraft                    = "invoice_draft"
 	CodeSetupToken               = "setup_token_invalid"
 	CodePasswordTooLong          = "password_too_long"
 	CodeCrossOrigin              = "cross_origin_request"

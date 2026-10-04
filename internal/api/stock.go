@@ -251,7 +251,7 @@ func rewriteDocStock(ctx context.Context, tx *gorm.DB, doc docStock, active bool
 // quantities return it), proformas never, cancelled documents not at all.
 func syncInvoiceStock(ctx context.Context, tx *gorm.DB, m *model.Invoice) error {
 	active := (m.DocumentType == model.DocInvoice || m.DocumentType == model.DocCorrection) &&
-		m.Status != model.StatusCancelled
+		m.Status != model.StatusCancelled && m.Status != model.StatusDraft
 	lines := make([]stockLine, len(m.Lines))
 	for i, l := range m.Lines {
 		lines[i] = stockLine{PriceItemID: l.PriceItemID, QuantityMilli: l.QuantityMilli}

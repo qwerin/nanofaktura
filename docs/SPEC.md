@@ -196,9 +196,10 @@ CRUD: `/api/accounts/{slug}/bank-accounts`.
 + `NumberCounter`: `number_format_id, period (např. "2026" nebo "" pokud formát neobsahuje rok), last_number` (unique pár).
 Formát: placeholdery `{YYYY}`, `{YY}`, `{MM}`, `{N}` … `{NNNNNN}` (počet N = zero-pad). Např. `{YYYY}-{NNNN}` → `2026-0001`.
 Období čítače = kombinace roku/měsíce obsaženého ve formátu (rok+měsíc pokud obsahuje `{MM}`), řada se tak resetuje sama.
-Číslo se přiděluje **při vytvoření** dokladu podle `issued_on`, v transakci (`SELECT … FOR UPDATE` na Postgresu / serializováno na SQLite).
+Číslo se přiděluje **při vytvoření** dokladu (u konceptu při vystavení, §4.5 „Koncepty“) podle `issued_on`, v transakci (`SELECT … FOR UPDATE` na Postgresu / serializováno na SQLite).
 Při založení účtu se vytvoří výchozí řady: invoice `{YYYY}-{NNNN}`, proforma `Z{YYYY}-{NNNN}`, correction `D{YYYY}-{NNNN}`.
-Klient smí poslat vlastní `number` (pak se čítač neposouvá). `(account_id, document_type, number)` unique → 409.
+Klient smí poslat vlastní `number` (pak se čítač neposouvá). `(account_id, document_type, number)` unique → 409
+(částečný index `WHERE number <> ''` — koncepty číslo nemají).
 CRUD: `/api/accounts/{slug}/number-formats` + `GET …/number-formats/{id}/preview?date=` → `{number}` (bez posunu čítače).
 
 ### 4.4 Subject (kontakt)
@@ -252,9 +253,18 @@ Pro `non_vat_payer` se všechny `vat_rate_bps` vynutí na 0. `correction` vyžad
 - `paid_amount = Σ payments.amount`, `remaining_amount = total − paid_amount`.
 - Součty se ukládají do DB (kvůli filtrům/statistikám) a přepočítávají při každé změně řádků/plateb.
 
-**Stavy**: uloženo `open | sent | paid | cancelled | uncollectible`; `overdue` se odvozuje při čtení
+**Stavy**: uloženo `draft | open | sent | paid | cancelled | uncollectible`; `overdue` se odvozuje při čtení
 (`open|sent` a `due_on < dnes`) a jde podle něj filtrovat. Proforma/correction mají stejné stavy.
 Dobropis se zápornou částkou: „zaplaceno“ = vráceno.
+
+**Koncepty** (`draft`): `POST …/invoices` s `draft: true` uloží doklad bez čísla (`number` a `variable_symbol` prázdné, pokud
+klient nepošle vlastní), se stejnou validací jako vystavený doklad. Koncept se nikde nepočítá (nástěnka, reporty, DPH/KH,
+součty seznamu, sklad, ZIP s PDF) a nejde k němu platba, e-mail, ISDOC, dobropis, vyúčtování, párování z banky ani veřejný
+odkaz (409 `invoice_draft`; veřejný odkaz 404). Jde upravit, zkopírovat (kopie je koncept), smazat a zobrazit PDF (označené
+„KONCEPT“, bez QR). Seznam ho ukazuje bez filtru i s `status=draft`; `unpaid`/`overdue` ho nezahrnují.
+Akce `issue` (draft → open): datum vystavení v minulosti se posune na dnešek (splatnost se přepočítá, DUZP zůstává), přidělí se
+další číslo řady (vlastní číslo konceptu zůstane), VS z čísla, pokud chybí; od té chvíle se doklad počítá (sklad, reporty);
+událost `invoice.issued`. Daňový doklad k platbě konceptem být nemůže.
 
 **Úpravy (`PATCH`)**: zakázané (409), pokud `locked_at != nil` nebo `status ∈ {cancelled, uncollectible}`.
 `lines` v PATCH = úplná náhrada seznamu (řádky s `id` se aktualizují, bez `id` vloží, chybějící smažou).
@@ -264,6 +274,7 @@ Změna `issued_on`/`due_days` přepočítá `due_on`. Změna `subject_id` znovu 
 **Akce `POST /api/accounts/{slug}/invoices/{id}/actions/{action}`** (vrací aktualizovanou fakturu):
 | akce | z | do |
 |---|---|---|
+| `issue` | draft | open (číslo, viz „Koncepty“) |
 | `mark_as_sent` | open | sent (`sent_at=now`) |
 | `cancel` | open, sent (bez plateb) | cancelled |
 | `undo_cancel` | cancelled | open/sent (podle `sent_at`) |
@@ -296,7 +307,7 @@ snižuje o daňové doklady její proformy (`deposits`, PDF „Odpočet záloh�
 **Dobropis**: `POST …/invoices/{id}/correction {correction_reason?}` → vytvoří `correction` k faktuře s řádky zkopírovanými a zápornými množstvími
 (klient ho pak upraví přes PATCH). U plátce je důvod opravy povinný (422 `body.correction_reason`). Vrací novou fakturu.
 
-**Duplikace**: `POST …/invoices/{id}/duplicate` → nová faktura (open, nové číslo, dnešní datum, stejné řádky a subjekt; cizí měna → kurz ČNB nového data).
+**Duplikace**: `POST …/invoices/{id}/duplicate` → nová faktura (open, nové číslo — kopie konceptu je koncept, dnešní datum, stejné řádky a subjekt; cizí měna → kurz ČNB nového data).
 
 **Seznam** `GET …/invoices`: filtry `status` (vč. `overdue`), `document_type`, `subject_id`, `since`/`until` (issued_on),
 `query` (číslo, client_name, VS), `sort` (`-issued_on` default, `issued_on`, `-number`, `due_on`, `-total`). Položky seznamu bez `lines`/`payments`.
@@ -526,8 +537,8 @@ pracovat s účtem za uživatele.
   s tokenem volajícího: přihlášení, členství, role, validace, události i limity jsou tytéž jako u REST.
   Úspěch → JSON těla odpovědi (text + `structuredContent`), chyba → `isError` s `HTTP <status>: <problem+json>`.
 - **Rozsah** (rozhodnutí 2026-10-04): čtení + bezpečné zápisy. Čtení: účty, nastavení účtu, hledání, nástěnka, faktury,
-  kontakty, ARES, náklady a jejich kategorie, ceník, DPH a roční přehled, úkoly. Zápisy: vystavení faktury (dostane číslo
-  hned, neodesílá se), úhrada faktury, nový/úprava kontaktu, nový náklad a jeho úhrada, nový úkol. **Nikdy**: odesílání
+  kontakty, ARES, náklady a jejich kategorie, ceník, DPH a roční přehled, úkoly. Zápisy: příprava faktury **vždy jako
+  koncept** (`draft` vynucen, vystavuje uživatel v aplikaci), úhrada faktury, nový/úprava kontaktu, nový náklad a jeho úhrada, nový úkol. **Nikdy**: vystavení konceptu, odesílání
   e-mailů, mazání, akce dokladů (storno …), nastavení, členové, webhooky, tokeny.
 - **UI**: Nastavení → API tokeny — karta „AI asistent (MCP)“ s adresou a příkazem pro připojení; po vytvoření tokenu
   příkaz i s tokenem.

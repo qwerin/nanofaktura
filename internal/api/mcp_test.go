@@ -124,22 +124,26 @@ func TestMCPTools(t *testing.T) {
 	})
 	inv := mustTool[api.Invoice](t, s, "create_invoice", map[string]any{
 		"account": a.slug,
-		"body": map[string]any{"subject_id": subj.ID, "lines": []map[string]any{
+		"body": map[string]any{"subject_id": subj.ID, "draft": false, "lines": []map[string]any{ // draft is forced
 			{"name": "Konzultace", "quantity": "2", "unit_price": 150000},
 		}},
 	})
-	if inv.Number != "2026-0001" || inv.Total != 300000 || inv.Status != "open" {
+	if inv.Number != "" || inv.Total != 300000 || inv.Status != "draft" {
 		t.Fatalf("invoice: %+v", inv.InvoiceSummary)
 	}
 	// nothing is e-mailed through MCP
 	if n := len(ts.mail.Messages()); n != 0 {
 		t.Fatalf("%d e-mails sent", n)
 	}
-
-	unpaid := mustTool[api.ListResponse[api.InvoiceSummary]](t, s, "list_invoices", map[string]any{"account": a.slug, "status": "unpaid", "per_page": 10})
-	if unpaid.Total != 1 || unpaid.PerPage != 10 {
-		t.Fatalf("unpaid: %+v", unpaid)
+	if text, isErr := callTool(t, s, "add_invoice_payment", map[string]any{"account": a.slug, "id": inv.ID, "body": map[string]any{}}); !isErr || !strings.Contains(text, "invoice_draft") {
+		t.Fatalf("payment of a draft: %v %s", isErr, text)
 	}
+	drafts := mustTool[api.ListResponse[api.InvoiceSummary]](t, s, "list_invoices", map[string]any{"account": a.slug, "status": "draft", "per_page": 10})
+	if drafts.Total != 1 || drafts.PerPage != 10 {
+		t.Fatalf("drafts: %+v", drafts)
+	}
+	action(a, inv.ID, "issue") // the user issues it in the app
+
 	paid := mustTool[api.PaymentResult](t, s, "add_invoice_payment", map[string]any{
 		"account": a.slug, "id": inv.ID, "body": map[string]any{"paid_on": "2026-03-15"},
 	})

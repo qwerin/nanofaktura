@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { calculateTotals, chargesNoVat, type CalcOptions } from './calc'
-import { allowedActions, dueInfo, isSettledProforma, plural, storedStatus } from './status'
+import { allowedActions, dueInfo, invoiceLabel, isSettledProforma, issuedMessage, plural, storedStatus } from './status'
 
 const net: CalcOptions = { pricesIncludeVat: false, reverseCharge: false, roundTotal: false, nonVatPayer: false }
 
@@ -81,6 +81,22 @@ describe('dueInfo', () => {
   it('has nothing for closed documents', () => {
     expect(dueInfo({ ...base, status: 'cancelled', due_on: '2026-09-01' }, today)).toBeNull()
     expect(dueInfo({ ...base, status: 'paid', due_on: '2026-09-01' }, today)?.tone).toBe('success')
+  })
+  it('has nothing for drafts (not payable yet)', () => {
+    expect(dueInfo({ ...base, status: 'draft', due_on: '2026-09-01' }, today)).toBeNull()
+  })
+})
+
+describe('invoiceLabel / issuedMessage', () => {
+  it('shows „Koncept“ instead of an empty number', () => {
+    expect(invoiceLabel({ number: '2026001' })).toBe('2026001')
+    expect(invoiceLabel({ number: '' })).toBe('Koncept')
+    expect(invoiceLabel({ number: '' }, { lower: true })).toBe('koncept')
+    expect(invoiceLabel({ number: 'FV1' }, { lower: true })).toBe('FV1')
+  })
+  it('agrees with the document type', () => {
+    expect(issuedMessage({ document_type: 'invoice', number: '2026001' })).toBe('Faktura vystavena · 2026001')
+    expect(issuedMessage({ document_type: 'correction', number: 'D1' })).toBe('Opravný doklad vystaven · D1')
   })
 })
 
@@ -165,5 +181,19 @@ describe('allowedActions', () => {
       expect(a.has(x), x).toBe(false)
     }
     expect(a.has('lock')).toBe(true)
+  })
+
+  it('draft: edit, issue, duplicate, delete, lock — nothing that needs a number', () => {
+    const a = allowedActions({ ...inv, status: 'draft' })
+    for (const x of ['edit', 'issue', 'duplicate', 'delete', 'lock'] as const) {
+      expect(a.has(x), x).toBe(true)
+    }
+    for (const x of ['mark_as_sent', 'cancel', 'mark_as_uncollectible', 'correction', 'add_payment', 'final_invoice'] as const) {
+      expect(a.has(x), x).toBe(false)
+    }
+    expect(allowedActions({ ...inv, status: 'draft', document_type: 'proforma' }).has('final_invoice')).toBe(false)
+    const locked = allowedActions({ ...inv, status: 'draft', locked_at: '2026-09-01T00:00:00Z' })
+    expect([...locked].sort()).toEqual(['duplicate', 'unlock'])
+    expect(allowedActions(inv).has('issue')).toBe(false)
   })
 })

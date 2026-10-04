@@ -132,7 +132,7 @@ describe('formulář faktury (desktop)', () => {
     await user.click(await screen.findByRole('option', { name: /ACME a\.s\./ }))
     await user.type(screen.getByLabelText('Položka 1: název'), 'Vývoj')
     await user.type(screen.getByLabelText('Položka 1: cena za jednotku'), '1 234,50')
-    await user.click(screen.getByRole('button', { name: 'Uložit' }))
+    await user.click(screen.getByRole('button', { name: 'Vystavit' }))
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/a/firma/invoices/42'))
     expect(created).toHaveLength(1)
@@ -141,6 +141,42 @@ describe('formulář faktury (desktop)', () => {
       document_type: 'invoice',
       lines: [{ name: 'Vývoj', quantity: '1', unit_price: 123_450, vat_rate_bps: 2100 }],
     })
+  })
+
+  it('uloží koncept (draft: true) a přejde na detail', async () => {
+    setSession('owner')
+    const created = useInvoiceApi()
+    const { user, router } = await openNewInvoice()
+    await user.click(screen.getByRole('button', { name: 'Odběratel' }))
+    await user.click(await screen.findByRole('option', { name: /ACME a\.s\./ }))
+    await user.type(screen.getByLabelText('Položka 1: název'), 'Vývoj')
+    await user.type(screen.getByLabelText('Položka 1: cena za jednotku'), '100')
+    await user.click(screen.getByRole('button', { name: 'Uložit jako koncept' }))
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/a/firma/invoices/42'))
+    expect(created).toHaveLength(1)
+    expect(created[0]).toMatchObject({ subject_id: 7, draft: true })
+  })
+
+  it('úprava konceptu: „Uložit a vystavit“ zavolá vystavení', async () => {
+    setSession('owner')
+    useInvoiceApi()
+    const draft = makeInvoice({ status: 'draft', number: '', variable_symbol: '' })
+    const issued: string[] = []
+    server.use(
+      http.get(`${API}/api/accounts/:slug/invoices/:id`, () => HttpResponse.json(draft)),
+      http.post(`${API}/api/accounts/:slug/invoices/:id/actions/:action`, ({ params }) => {
+        issued.push(String(params.action))
+        return HttpResponse.json({ ...draft, status: 'open', number: '2026-0007' })
+      }),
+    )
+    const { user, router } = await renderApp('/a/firma/invoices/42/edit')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Upravit koncept' })).toBeInTheDocument()
+    // bez změn jde koncept rovnou vystavit, „Uložit koncept“ čeká na změnu
+    expect(screen.getByRole('button', { name: 'Uložit koncept' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Uložit a vystavit' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/a/firma/invoices/42'))
+    expect(issued).toEqual(['issue'])
   })
 
   it('chybu 422 z API promítne do polí', async () => {
@@ -161,7 +197,7 @@ describe('formulář faktury (desktop)', () => {
     await user.click(await screen.findByRole('option', { name: /ACME/ }))
     await user.type(screen.getByLabelText('Položka 1: název'), 'X')
     await user.type(screen.getByLabelText('Položka 1: cena za jednotku'), '100')
-    await user.click(screen.getByRole('button', { name: 'Uložit' }))
+    await user.click(screen.getByRole('button', { name: 'Vystavit' }))
 
     expect(await screen.findByText('odběratel neexistuje')).toBeInTheDocument()
     expect(screen.getByText('název je povinný na serveru')).toBeInTheDocument()
@@ -173,7 +209,7 @@ describe('formulář faktury (desktop)', () => {
     setSession('owner')
     const created = useInvoiceApi()
     const { user } = await openNewInvoice()
-    await user.click(screen.getByRole('button', { name: 'Uložit' }))
+    await user.click(screen.getByRole('button', { name: 'Vystavit' }))
     await waitFor(() => expect(screen.getByLabelText('Položka 1: název')).toHaveAttribute('aria-invalid', 'true'))
     expect(screen.getByRole('button', { name: 'Odběratel' })).toHaveAttribute('aria-invalid', 'true')
     expect(created).toHaveLength(0)
@@ -212,7 +248,7 @@ describe('formulář faktury (desktop)', () => {
     useInvoiceApi()
     await renderApp('/a/firma/invoices/new')
     expect(await screen.findByText('Jen pro čtení')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Uložit' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Vystavit' })).not.toBeInTheDocument()
   })
 })
 

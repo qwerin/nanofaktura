@@ -106,3 +106,46 @@ func TestLoggerQuietAndWithoutValues(t *testing.T) {
 		t.Error("unknown level must fail")
 	}
 }
+
+// TestMigrateInvoiceNumberIndex: the unique number index of older databases is
+// replaced by a partial one, so drafts (number "") do not collide.
+func TestMigrateInvoiceNumberIndex(t *testing.T) {
+	d, err := Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Migrate(d); err != nil {
+		t.Fatal(err)
+	}
+	// the schema before drafts
+	for _, q := range []string{
+		"DROP INDEX idx_invoices_number",
+		"CREATE UNIQUE INDEX idx_invoices_account_type_number ON invoices (account_id, document_type, number)",
+	} {
+		if err := d.Exec(q).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := Migrate(d); err != nil {
+		t.Fatal(err)
+	}
+	if d.Migrator().HasIndex(&model.Invoice{}, "idx_invoices_account_type_number") {
+		t.Fatal("old index kept")
+	}
+	doc := func(number, token string) error {
+		return d.Create(&model.Invoice{AccountID: 1, DocumentType: model.DocInvoice, Number: number, Status: model.StatusDraft,
+			SubjectID: 1, IssuedOn: "2026-01-01", PublicToken: token}).Error
+	}
+	if err := doc("", "t1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := doc("", "t2"); err != nil {
+		t.Fatalf("second draft: %v", err)
+	}
+	if err := doc("2026-0001", "t3"); err != nil {
+		t.Fatal(err)
+	}
+	if err := doc("2026-0001", "t4"); !errors.Is(err, gorm.ErrDuplicatedKey) {
+		t.Fatalf("duplicate number: got %v, want ErrDuplicatedKey", err)
+	}
+}

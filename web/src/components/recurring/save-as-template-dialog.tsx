@@ -24,7 +24,7 @@ export function SaveAsTemplateDialog({
 }) {
   const navigate = useNavigate()
   const save = useSaveAsTemplate(slug, invoice.id)
-  const defaultName = `${invoice.client_name} ${invoice.number}`
+  const defaultName = [invoice.client_name, invoice.number].filter(Boolean).join(' ')
   const [name, setName] = useState('')
   const id = useId()
 

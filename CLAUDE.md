@@ -156,6 +156,12 @@ exports/reports → `auth.Allow(owner, admin, accountant[, member])`. Rules that
 fails for any account-scoped POST/PUT/PATCH/DELETE without a declaration — add one (or an explicit exception).
 `TestRoleMatrix` (roles_test.go) lists every operation × role; extend it with new endpoints.
 
+## Invoice drafts (SPEC §4.5 "Koncepty")
+
+Status `draft` = no number (`""`, partial unique index), counts nowhere. Code that sums or reports invoices must exclude
+drafts (`notCounted` = cancelled + draft, or positive `status IN (open, sent…)` lists); operations needing an issued
+document call `notDraft(m)` (409 `invoice_draft`). `POST …/actions/issue` → `issueDraft` assigns the number.
+
 ## Mail, attachments
 
 - `s.deps.Mailer.Send(ctx, mail.Message{To, Subject, Text, …})`; `From` empty = `NANOFAKTURA_MAIL_FROM`.
@@ -262,7 +268,7 @@ straight against the configured SMTP (not through `deps.Mailer`); tests inject `
 A tool is an entry in `mcpTools` (name, method, path relative to the account or absolute `/api/…`, `Write`): its input schema
 is derived from the OpenAPI operation and calls are dispatched in-process to the router with the caller's token — no
 handler code is duplicated, roles/validation/events apply as in REST. Only reads and safe writes: never e-mails,
-deletions, document actions or settings. A new tool needs a call in `mcp_test.go` (`TestMCPEveryTool`).
+deletions, document actions or settings; `create_invoice` forces `draft: true` (`mcpTool.Force`). A new tool needs a call in `mcp_test.go` (`TestMCPEveryTool`).
 
 ## Backup (SPEC §7.16)
 

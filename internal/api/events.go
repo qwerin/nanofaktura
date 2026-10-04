@@ -71,6 +71,7 @@ func docNoun(docType string) (string, bool) {
 // invoiceTexts are the event texts: [feminine, masculine] with {doc} {n}.
 var invoiceTexts = map[string][2]string{
 	events.InvoiceCreated:              {"{doc} {n} byla vystavena", "{doc} {n} byl vystaven"},
+	events.InvoiceIssued:               {"{doc} {n} byla vystavena", "{doc} {n} byl vystaven"},
 	events.InvoiceUpdated:              {"{doc} {n} byla upravena", "{doc} {n} byl upraven"},
 	events.InvoiceDeleted:              {"{doc} {n} byla smazána", "{doc} {n} byl smazán"},
 	events.InvoiceSent:                 {"{doc} {n} byla označena jako odeslaná", "{doc} {n} byl označen jako odeslaný"},
@@ -86,7 +87,19 @@ var invoiceTexts = map[string][2]string{
 	events.PublicViewed:                {"{doc} {n}: klient poprvé otevřel veřejný odkaz", "{doc} {n}: klient poprvé otevřel veřejný odkaz"},
 }
 
+// draftNouns name a draft by its document type (genitive).
+var draftNouns = map[string]string{
+	model.DocInvoice: "faktury", model.DocProforma: "zálohové faktury", model.DocCorrection: "opravného daňového dokladu",
+}
+
 func invoiceText(name string, m *model.Invoice) string {
+	if m.Status == model.StatusDraft {
+		verb := map[string]string{events.InvoiceCreated: "uložen", events.InvoiceUpdated: "upraven", events.InvoiceDeleted: "smazán"}[name]
+		if verb == "" {
+			verb = name
+		}
+		return "Koncept " + defaultStr(draftNouns[m.DocumentType], "dokladu") + " pro " + m.ClientName + " byl " + verb
+	}
 	noun, fem := docNoun(m.DocumentType)
 	t, ok := invoiceTexts[name]
 	if !ok {
@@ -117,7 +130,7 @@ func recordInvoice(ctx context.Context, tx *gorm.DB, name string, m *model.Invoi
 
 // invoiceActionEvents maps POST /invoices/{id}/actions/{action} to events.
 var invoiceActionEvents = map[string]string{
-	"mark_as_sent": events.InvoiceSent, "cancel": events.InvoiceCancelled, "undo_cancel": events.InvoiceCancelUndone,
+	"issue": events.InvoiceIssued, "mark_as_sent": events.InvoiceSent, "cancel": events.InvoiceCancelled, "undo_cancel": events.InvoiceCancelUndone,
 	"mark_as_uncollectible": events.InvoiceUncollectible, "undo_uncollectible": events.InvoiceUncollectibleUndone,
 	"lock": events.InvoiceLocked, "unlock": events.InvoiceUnlocked,
 }

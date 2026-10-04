@@ -22,6 +22,8 @@ import {
   MailIcon,
   FileCheckIcon,
   Link2Icon,
+  StampIcon,
+  PencilLineIcon,
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
@@ -43,11 +45,14 @@ import { AddPaymentDialog } from '@/components/invoice/add-payment-dialog'
 import { CorrectionDialog } from '@/components/invoice/correction-dialog'
 import { FinalInvoiceDialog } from '@/components/invoice/final-invoice-dialog'
 import { DueText } from '@/components/invoice/due-text'
+import { InvoiceNumber } from '@/components/invoice/invoice-number'
 import { StatusBadge } from '@/components/invoice/status-badge'
 import {
   allowedActions,
   documentTypeLabels,
+  invoiceLabel,
   isSettledProforma,
+  issuedMessage,
   paymentMethodLabels,
   statusLabels,
   type UiAction,
@@ -136,16 +141,19 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
   const allowed = canEdit ? allowedActions({ ...inv, payment_count: inv.payments.length }) : new Set<UiAction>()
   const payer = inv.your_vat_mode !== 'non_vat_payer'
   const taxDocument = inv.document_type === 'tax_document'
+  const draft = inv.status === 'draft'
   const settled = isSettledProforma(inv)
   const finalInvoice = settled ? inv.related_documents.find((d) => d.document_type === 'invoice') : undefined
   const pdfUrl = invoicePdfUrl(slug, inv.id)
-  const pdfName = `faktura-${inv.number.replace(/[^A-Za-z0-9._-]/g, '-')}.pdf`
-  const publicUrl = inv.public_token ? `${window.location.origin}/p/${inv.public_token}` : null
+  const pdfName = `faktura-${invoiceLabel(inv, { lower: true }).replace(/[^A-Za-z0-9._-]/g, '-')}.pdf`
+  // Koncept veřejný odkaz nemá (klient by dostal 404).
+  const publicUrl = inv.public_token && !draft ? `${window.location.origin}/p/${inv.public_token}` : null
 
   const run = (a: InvoiceAction, msg: string) =>
     action.mutate(a, { onSuccess: () => toast.success(msg) })
 
   const ask = (c: Confirm) => setConfirm(c)
+  const issueDraft = () => action.mutate('issue', { onSuccess: (issued) => toast.success(issuedMessage(issued)) })
 
   const sharePublic = async () => {
     if (!publicUrl) return
@@ -166,7 +174,7 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
   }
 
   const openSend = (kind: EmailKind) => setSend((s) => ({ open: true, kind, key: s.key + 1 }))
-  const canSend = canEdit && inv.status !== 'cancelled'
+  const canSend = canEdit && inv.status !== 'cancelled' && !draft
   const canRemind = canSend && sendableKinds(inv).includes('reminder')
   const notSent = !inv.sent_at && (inv.status === 'open' || inv.status === 'overdue')
   const sendActions: PageAction[] = canSend
@@ -198,6 +206,14 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
   const act = (key: UiAction, a: Omit<PageAction, 'label'> & { label: string }): PageAction[] => (allowed.has(key) ? [a] : [])
 
   const actions: PageAction[] = [
+    ...act('issue', {
+      label: 'Vystavit',
+      icon: StampIcon,
+      primary: true,
+      variant: 'default',
+      disabled: action.isPending,
+      onClick: issueDraft,
+    }),
     ...sendActions,
     ...act('edit', {
       label: 'Upravit',
@@ -222,7 +238,9 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
       ? []
       : [{ label: 'Stáhnout PDF', icon: DownloadIcon, overflow: true, render: <a href={pdfUrl} download={pdfName} /> }]),
     // ISDOC (strojově čitelná faktura pro účetní software)
-    { label: 'Stáhnout ISDOC', icon: FileCodeIcon, overflow: true, render: <a href={pdfUrl.replace(/\/pdf$/, '/isdoc')} download={pdfName.replace(/\.pdf$/, '.isdoc')} /> },
+    ...(draft
+      ? []
+      : [{ label: 'Stáhnout ISDOC', icon: FileCodeIcon, overflow: true, render: <a href={pdfUrl.replace(/\/pdf$/, '/isdoc')} download={pdfName.replace(/\.pdf$/, '.isdoc')} /> }]),
     ...act('mark_as_sent', {
       label: 'Označit jako odeslanou',
       icon: SendIcon,
@@ -254,7 +272,7 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
             onClick: () =>
               duplicate.mutate(undefined, {
                 onSuccess: (d) => {
-                  toast.success(`Vytvořena kopie ${d.number}`)
+                  toast.success(d.status === 'draft' ? 'Vytvořena kopie (koncept)' : `Vytvořena kopie ${invoiceLabel(d)}`)
                   void navigate({ to: '/a/$slug/invoices/$invoiceId/edit', params: { slug, invoiceId: d.id } })
                 },
               }),
@@ -325,8 +343,10 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
       variant: 'destructive',
       onClick: () =>
         ask({
-          title: `Smazat ${inv.number}?`,
-          description: 'Doklad se trvale odstraní. Pokud už byl odeslán klientovi, raději ho stornujte.',
+          title: `Smazat ${invoiceLabel(inv, { lower: true })}?`,
+          description: draft
+            ? 'Koncept se trvale odstraní.'
+            : 'Doklad se trvale odstraní. Pokud už byl odeslán klientovi, raději ho stornujte.',
           confirmLabel: 'Smazat',
           destructive: true,
           run: () =>
@@ -338,7 +358,7 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
     }),
   ]
 
-  const title = inv.number
+  const title = <InvoiceNumber number={inv.number} />
   const client = [inv.client_street, [inv.client_zip, inv.client_city].filter(Boolean).join(' ')].filter(Boolean)
   const busy = action.isPending || duplicate.isPending
 
@@ -356,6 +376,10 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
         actions={actions}
       />
       <PageBody>
+        {draft && (
+          <DraftNotice canIssue={allowed.has('issue')} locked={Boolean(inv.locked_at)} pending={action.isPending} onIssue={issueDraft} />
+        )}
+
         {/* Souhrn */}
         <section className="mb-4 flex flex-col gap-4 rounded-xl border bg-card p-4 md:flex-row md:items-center md:justify-between md:p-5">
           <div className="flex min-w-0 flex-col gap-1.5">
@@ -371,7 +395,7 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
             </div>
             <p className="truncate text-lg font-semibold tracking-tight md:text-xl">{inv.client_name}</p>
             <p className="text-sm text-muted-foreground">
-              Vystaveno {formatDate(inv.issued_on)} · splatnost {formatDate(inv.due_on)}{' '}
+              {draft ? 'Datum vystavení' : 'Vystaveno'} {formatDate(inv.issued_on)} · splatnost {formatDate(inv.due_on)}{' '}
               <DueText invoice={inv} className="whitespace-nowrap" />
             </p>
           </div>
@@ -496,58 +520,62 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
               </Section>
             )}
 
-            <Section
-              title="Platby"
-              action={
-                allowed.has('add_payment') && (
-                  <Button variant="ghost" size="sm" onClick={() => setPaymentOpen(true)} className="max-md:h-9">
-                    <BanknoteIcon data-icon="inline-start" />
-                    Přidat
-                  </Button>
-                )
-              }
-            >
-              {inv.payments.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Zatím žádná platba.</p>
-              ) : (
-                <ul className="-my-1 divide-y">
-                  {inv.payments.map((p) => (
-                    <PaymentRow
-                      key={p.id}
-                      p={p}
-                      slug={slug}
-                      currency={inv.currency}
-                      canDelete={canEdit}
-                      onDelete={() =>
-                        ask({
-                          title: 'Smazat platbu?',
-                          description: `Platba ${formatMoney(p.amount, inv.currency)} z ${formatDate(p.paid_on)} se odstraní a stav faktury se přepočítá.${
-                            p.tax_document_id ? ' Smaže se i daňový doklad k této platbě.' : ''
-                          }`,
-                          confirmLabel: 'Smazat platbu',
-                          destructive: true,
-                          run: () => deletePayment.mutateAsync(p.id).then(() => toast.success('Platba smazána')),
-                        })
-                      }
-                    />
-                  ))}
-                </ul>
-              )}
-            </Section>
+            {!draft && (
+              <>
+                <Section
+                  title="Platby"
+                  action={
+                    allowed.has('add_payment') && (
+                      <Button variant="ghost" size="sm" onClick={() => setPaymentOpen(true)} className="max-md:h-9">
+                        <BanknoteIcon data-icon="inline-start" />
+                        Přidat
+                      </Button>
+                    )
+                  }
+                >
+                  {inv.payments.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Zatím žádná platba.</p>
+                  ) : (
+                    <ul className="-my-1 divide-y">
+                      {inv.payments.map((p) => (
+                        <PaymentRow
+                          key={p.id}
+                          p={p}
+                          slug={slug}
+                          currency={inv.currency}
+                          canDelete={canEdit}
+                          onDelete={() =>
+                            ask({
+                              title: 'Smazat platbu?',
+                              description: `Platba ${formatMoney(p.amount, inv.currency)} z ${formatDate(p.paid_on)} se odstraní a stav faktury se přepočítá.${
+                                p.tax_document_id ? ' Smaže se i daňový doklad k této platbě.' : ''
+                              }`,
+                              confirmLabel: 'Smazat platbu',
+                              destructive: true,
+                              run: () => deletePayment.mutateAsync(p.id).then(() => toast.success('Platba smazána')),
+                            })
+                          }
+                        />
+                      ))}
+                    </ul>
+                  )}
+                </Section>
 
-            <Section
-              title="E-maily"
-              action={
-                canSend && (
-                  <Button variant="ghost" size="sm" onClick={() => openSend(canRemind && !notSent && inv.status === 'overdue' ? 'reminder' : 'invoice')} className="max-md:h-9">
-                    <MailIcon data-icon="inline-start" />
-                    Odeslat
-                  </Button>
-                )
-              }
-            >
-              <EmailHistory slug={slug} invoiceId={inv.id} />
-            </Section>
+                <Section
+                  title="E-maily"
+                  action={
+                    canSend && (
+                      <Button variant="ghost" size="sm" onClick={() => openSend(canRemind && !notSent && inv.status === 'overdue' ? 'reminder' : 'invoice')} className="max-md:h-9">
+                        <MailIcon data-icon="inline-start" />
+                        Odeslat
+                      </Button>
+                    )
+                  }
+                >
+                  <EmailHistory slug={slug} invoiceId={inv.id} />
+                </Section>
+              </>
+            )}
 
             <Section title="Údaje">
               <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-sm">
@@ -642,6 +670,30 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
         }
       />
     </>
+  )
+}
+
+/** Koncept: vysvětlení + hlavní akce „Vystavit“ (na mobilu přes celou šířku). */
+function DraftNotice({ canIssue, locked, pending, onIssue }: { canIssue: boolean; locked: boolean; pending: boolean; onIssue: () => void }) {
+  return (
+    <section className="mb-4 flex flex-col gap-3 rounded-xl border border-dashed border-muted-foreground/40 bg-muted/40 p-4 md:flex-row md:items-center md:justify-between md:p-5">
+      <div className="flex min-w-0 gap-3">
+        <PencilLineIcon className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <p className="font-medium">Koncept — zatím nevystaveno</p>
+          <p className="text-sm text-muted-foreground">
+            Nemá číslo ani variabilní symbol a nikam se nepočítá. Číslo dostane až při vystavení; datum vystavení v minulosti
+            se posune na dnešek.{locked && ' Před vystavením ho odemkněte.'}
+          </p>
+        </div>
+      </div>
+      {canIssue && (
+        <Button className="max-md:h-11 max-md:w-full md:shrink-0" disabled={pending} onClick={onIssue}>
+          {pending ? <Spinner data-icon="inline-start" /> : <StampIcon data-icon="inline-start" />}
+          Vystavit
+        </Button>
+      )}
+    </section>
   )
 }
 
@@ -759,7 +811,7 @@ function RelatedRow({ slug, doc, current }: { slug: string; doc: RelatedDocument
           params={{ slug, invoiceId: doc.id }}
           className="truncate font-medium text-primary underline-offset-4 hover:underline"
         >
-          {doc.number}
+          <InvoiceNumber number={doc.number} />
         </Link>
       </div>
       <div className="flex shrink-0 flex-col items-end">

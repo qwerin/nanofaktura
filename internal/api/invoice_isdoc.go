@@ -45,6 +45,9 @@ func (s *server) getInvoiceISDOC(ctx context.Context, in *invoiceID) (*FileOutpu
 	if err != nil {
 		return nil, err
 	}
+	if err := notDraft(inv); err != nil {
+		return nil, err
+	}
 	b, err := s.renderISDOC(ctx, inv)
 	if err != nil {
 		return nil, err

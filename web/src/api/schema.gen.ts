@@ -3824,10 +3824,10 @@ export interface components {
             /** Format: date-time */
             sent_at?: string;
             /**
-             * @description Stored status, or overdue when open/sent and due_on < today
+             * @description Stored status, or overdue when open/sent and due_on < today. A draft has no number (empty) until issued
              * @enum {string}
              */
-            status: "open" | "sent" | "overdue" | "paid" | "cancelled" | "uncollectible";
+            status: "draft" | "open" | "sent" | "overdue" | "paid" | "cancelled" | "uncollectible";
             /** Format: int64 */
             subject_id: number;
             /**
@@ -3893,6 +3893,8 @@ export interface components {
              * @enum {string}
              */
             document_type?: "invoice" | "proforma" | "correction";
+            /** @description Save as a draft: no number yet, not counted anywhere, not payable or sendable until issued (POST …/actions/issue) */
+            draft?: boolean;
             /**
              * Format: int64
              * @description Default: subject due_days, then account default_due_days
@@ -4159,10 +4161,10 @@ export interface components {
             /** Format: date-time */
             sent_at?: string;
             /**
-             * @description Stored status, or overdue when open/sent and due_on < today
+             * @description Stored status, or overdue when open/sent and due_on < today. A draft has no number (empty) until issued
              * @enum {string}
              */
-            status: "open" | "sent" | "overdue" | "paid" | "cancelled" | "uncollectible";
+            status: "draft" | "open" | "sent" | "overdue" | "paid" | "cancelled" | "uncollectible";
             /** Format: int64 */
             subject_id: number;
             /**
@@ -5141,6 +5143,8 @@ export interface components {
              * @enum {string}
              */
             document_type?: "invoice" | "proforma";
+            /** @description Create a draft (no number until issued) */
+            draft?: boolean;
             /**
              * Format: date
              * @description Default today; also the date of the placeholders
@@ -7150,7 +7154,7 @@ export interface operations {
     "export-invoices-csv": {
         parameters: {
             query?: {
-                /** @description Effective status, comma-separated for several: open, sent, overdue, paid, cancelled, uncollectible, unpaid (= open + sent + overdue). open/sent exclude overdue documents */
+                /** @description Effective status, comma-separated for several: draft, open, sent, overdue, paid, cancelled, uncollectible, unpaid (= open + sent + overdue). open/sent exclude overdue documents */
                 status?: string;
                 document_type?: "invoice" | "proforma" | "correction" | "tax_document";
                 subject_id?: number;
@@ -7198,7 +7202,7 @@ export interface operations {
     "export-invoices-xlsx": {
         parameters: {
             query?: {
-                /** @description Effective status, comma-separated for several: open, sent, overdue, paid, cancelled, uncollectible, unpaid (= open + sent + overdue). open/sent exclude overdue documents */
+                /** @description Effective status, comma-separated for several: draft, open, sent, overdue, paid, cancelled, uncollectible, unpaid (= open + sent + overdue). open/sent exclude overdue documents */
                 status?: string;
                 document_type?: "invoice" | "proforma" | "correction" | "tax_document";
                 subject_id?: number;
@@ -7246,7 +7250,7 @@ export interface operations {
     "export-pdf-zip": {
         parameters: {
             query?: {
-                /** @description Effective status, comma-separated for several: open, sent, overdue, paid, cancelled, uncollectible, unpaid (= open + sent + overdue). open/sent exclude overdue documents */
+                /** @description Effective status, comma-separated for several: draft, open, sent, overdue, paid, cancelled, uncollectible, unpaid (= open + sent + overdue). open/sent exclude overdue documents */
                 status?: string;
                 document_type?: "invoice" | "proforma" | "correction" | "tax_document";
                 subject_id?: number;
@@ -7471,7 +7475,7 @@ export interface operations {
             query?: {
                 page?: number;
                 per_page?: number;
-                /** @description Effective status, comma-separated for several: open, sent, overdue, paid, cancelled, uncollectible, unpaid (= open + sent + overdue). open/sent exclude overdue documents */
+                /** @description Effective status, comma-separated for several: draft, open, sent, overdue, paid, cancelled, uncollectible, unpaid (= open + sent + overdue). open/sent exclude overdue documents */
                 status?: string;
                 document_type?: "invoice" | "proforma" | "correction" | "tax_document";
                 subject_id?: number;
@@ -7555,7 +7559,7 @@ export interface operations {
     "post-api-accounts-by-slug-invoices-mark-paid": {
         parameters: {
             query?: {
-                /** @description Effective status, comma-separated for several: open, sent, overdue, paid, cancelled, uncollectible, unpaid (= open + sent + overdue). open/sent exclude overdue documents */
+                /** @description Effective status, comma-separated for several: draft, open, sent, overdue, paid, cancelled, uncollectible, unpaid (= open + sent + overdue). open/sent exclude overdue documents */
                 status?: string;
                 document_type?: "invoice" | "proforma" | "correction" | "tax_document";
                 subject_id?: number;
@@ -7713,7 +7717,7 @@ export interface operations {
                 /** @description Account slug */
                 slug: string;
                 id: number;
-                action: "mark_as_sent" | "cancel" | "undo_cancel" | "mark_as_uncollectible" | "undo_uncollectible" | "lock" | "unlock";
+                action: "issue" | "mark_as_sent" | "cancel" | "undo_cancel" | "mark_as_uncollectible" | "undo_uncollectible" | "lock" | "unlock";
             };
             cookie?: never;
         };

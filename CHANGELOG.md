@@ -9,9 +9,10 @@ Pravidla (viz CLAUDE.md → „Novinky“):
 - Podporováno: odstavce, `###`, odrážky, **tučně**, *zvýraznění* (např. cesta v menu), `kód`, [odkazy](https://…). Nic dalšího.
 -->
 
-## 2026-10-04 · AI asistent
+## 2026-10-04 · Koncepty faktur a AI asistent
 
-- **Připojení AI asistenta (MCP)** — v *Nastavení → API tokeny* najdete adresu a hotový příkaz pro připojení AI asistenta, třeba Claude. Asistent pak za vás najde fakturu nebo kontakt, řekne, kdo vám dluží, připraví přehled DPH, vystaví fakturu nebo zapíše náklad a úhradu. Nic neodesílá e-mailem, nic nemaže a nemění nastavení. Přihlašuje se API tokenem, takže smí jen to, co vy, a přístup kdykoli zrušíte zrušením tokenu.
+- **Koncepty faktur** — fakturu můžete uložit jako koncept a vystavit ji později. Koncept ještě nemá číslo, nepočítá se do přehledů, DPH ani skladu a nejde ho odeslat ani zaplatit. Až je hotový, stačí v detailu kliknout na *Vystavit*: dostane další číslo řady, a pokud byl připravený dřív, datum vystavení se posune na dnešek. Rozpracovaný koncept při úpravě vystavíte tlačítkem *Uložit a vystavit*. Všechny koncepty najdete v seznamu faktur pod filtrem *Koncepty*.
+- **Připojení AI asistenta (MCP)** — v *Nastavení → API tokeny* najdete adresu a hotový příkaz pro připojení AI asistenta, třeba Claude. Asistent pak za vás najde fakturu nebo kontakt, řekne, kdo vám dluží, připraví přehled DPH, připraví koncept faktury (vystavíte ho sami) nebo zapíše náklad a úhradu. Nic neodesílá e-mailem, nic nemaže a nemění nastavení. Přihlašuje se API tokenem, takže smí jen to, co vy, a přístup kdykoli zrušíte zrušením tokenu.
 
 ## 2026-10-01 · Aplikace na plochu, hromadná úhrada, zálohy a přesnější DPH
 

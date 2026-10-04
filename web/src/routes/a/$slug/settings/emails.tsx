@@ -357,9 +357,10 @@ function EmailPreviewCard({
   body: string
   signature: string
 }) {
-  const recent = useQuery(invoiceQueries.top(slug, {}, 1))
+  const recent = useQuery(invoiceQueries.top(slug, {}, 5))
   const [today] = useState(todayISO)
-  const inv = recent.data?.items[0]
+  // Koncept nemá číslo ani VS — náhled ukazuje poslední vystavený doklad.
+  const inv = recent.data?.items.find((i) => i.status !== 'draft')
   const vars = emailVars(inv ?? sampleEmailInvoice(today, account.default_currency || 'CZK'), {
     accountName: account.name,
     lang,

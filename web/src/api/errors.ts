@@ -115,6 +115,7 @@ export const codeMessages: Record<string, string> = {
   email_already_verified: 'E-mailová adresa už je ověřená.',
   rate_limited: 'Příliš mnoho pokusů v krátké době. Chvíli počkejte a zkuste to znovu.',
   export_in_progress: 'Jiný export tohoto účtu právě běží. Počkejte, až doběhne, a zkuste to znovu.',
+  invoice_draft: 'Doklad je zatím koncept. Nejdřív ho vystavte.',
   setup_token_invalid: 'Pro první registraci je potřeba správný instalační token.',
   password_too_long: 'Heslo je příliš dlouhé (nejvýše 72 bajtů — znaky s diakritikou se počítají dvakrát).',
   cross_origin_request: 'Požadavek byl odmítnut z bezpečnostních důvodů. Obnovte stránku a zkuste to znovu.',

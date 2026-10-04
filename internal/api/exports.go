@@ -282,7 +282,7 @@ var docTypeNames = map[string]string{
 }
 
 var statusNames = map[string]string{
-	model.StatusOpen: "vystavená", model.StatusSent: "odeslaná", billing.StatusOverdue: "po splatnosti",
+	model.StatusDraft: "koncept", model.StatusOpen: "vystavená", model.StatusSent: "odeslaná", billing.StatusOverdue: "po splatnosti",
 	model.StatusPaid: "zaplacená", model.StatusCancelled: "stornovaná", model.StatusUncollectible: "nedobytná",
 }
 
@@ -422,7 +422,9 @@ func (s *server) exportPDFZip(ctx context.Context, in *struct {
 	// Only ids are collected up front; documents are loaded and rendered one
 	// by one while the archive is streamed.
 	var ids []uint
-	if err := in.InvoiceFilter.query(s.scoped(ctx), s.today()).Limit(maxZipDocuments+1).Pluck("id", &ids).Error; err != nil {
+	// drafts have no number and are no documents yet
+	if err := in.InvoiceFilter.query(s.scoped(ctx), s.today()).Where("status <> ?", model.StatusDraft).
+		Limit(maxZipDocuments+1).Pluck("id", &ids).Error; err != nil {
 		return nil, dbErr(err, "invoices")
 	}
 	if len(ids) > maxZipDocuments {

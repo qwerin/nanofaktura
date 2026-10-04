@@ -245,3 +245,49 @@ describe('detail faktury — oprávnění', () => {
     expect(within(menu).getByText('Sdílet odkaz pro klienta')).toBeInTheDocument()
   })
 })
+
+describe('detail faktury — koncept', () => {
+  const draft = makeInvoice({ status: 'draft', number: '', variable_symbol: '', public_token: 'tok' })
+
+  it('nabízí vystavení a skrývá akce, které koncept nemá', async () => {
+    mockInvoice(draft)
+    const issued: string[] = []
+    server.use(
+      http.post(`${API}/api/accounts/:slug/invoices/:id/actions/:action`, ({ params }) => {
+        issued.push(String(params.action))
+        return HttpResponse.json({ ...draft, status: 'open', number: '2026-0007' })
+      }),
+    )
+    const { user } = await openDetail(draft)
+    expect(screen.getByRole('heading', { level: 1, name: 'Koncept' })).toBeInTheDocument()
+    expect(screen.getByText('Koncept — zatím nevystaveno')).toBeInTheDocument()
+    for (const name of ['Přidat platbu', 'Odeslat e-mailem']) expect(action(name)).toBeNull()
+    expect(action('Upravit')).toBeInTheDocument()
+    expect(action('Otevřít PDF')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Další akce' }))
+    const menu = await screen.findByRole('menu')
+    for (const name of ['Duplikovat', 'Smazat', 'Zamknout']) {
+      expect(within(menu).getByRole('menuitem', { name })).toBeInTheDocument()
+    }
+    for (const name of ['Stáhnout ISDOC', 'Označit jako odeslanou', 'Stornovat', 'Označit jako nedobytnou', 'Vystavit opravný doklad', 'Kopírovat odkaz pro klienta']) {
+      expect(within(menu).queryByRole('menuitem', { name })).not.toBeInTheDocument()
+    }
+    await user.keyboard('{Escape}')
+
+    // hlavní akce v hlavičce i v upozornění
+    expect(screen.getAllByRole('button', { name: 'Vystavit' })).toHaveLength(2)
+    await user.click(screen.getAllByRole('button', { name: 'Vystavit' })[0]!)
+    expect(await screen.findByRole('heading', { level: 1, name: '2026-0007' })).toBeInTheDocument()
+    expect(issued).toEqual(['issue'])
+    expect(screen.queryByText('Koncept — zatím nevystaveno')).not.toBeInTheDocument()
+  })
+
+  it('mobil: Vystavit jako primární akce', async () => {
+    setMobile()
+    mockInvoice(draft)
+    await openDetail(draft)
+    expect(screen.getAllByRole('button', { name: 'Vystavit' }).length).toBeGreaterThan(0)
+    expect(action('Přidat platbu')).toBeNull()
+  })
+})

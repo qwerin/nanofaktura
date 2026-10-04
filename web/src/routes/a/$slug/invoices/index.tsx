@@ -16,6 +16,7 @@ import {
   type InvoiceSort,
 } from '@/components/invoice/filters'
 import { InvoiceFilterBar, StatusChips } from '@/components/invoice/invoice-filters'
+import { InvoiceNumber } from '@/components/invoice/invoice-number'
 import { StatusBadge } from '@/components/invoice/status-badge'
 import { documentTypeShortLabels } from '@/components/invoice/status'
 import { useDebouncedValue } from '@/components/invoice/use-debounced'
@@ -110,7 +111,7 @@ function InvoicesPage() {
       header: sortHeader('Číslo', '-number'),
       cell: (i) => (
         <div className="flex items-center gap-2">
-          <span className="font-medium tabular-nums">{i.number}</span>
+          <InvoiceNumber number={i.number} className="font-medium tabular-nums" />
           {i.document_type !== 'invoice' && (
             <Badge variant="outline" className="font-normal text-muted-foreground">
               {documentTypeShortLabels[i.document_type]}
@@ -247,7 +248,7 @@ function InvoiceCard({ invoice: i }: { invoice: InvoiceSummary }) {
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-2">
-          <span className="truncate font-medium tabular-nums">{i.number}</span>
+          <InvoiceNumber number={i.number} className="truncate font-medium tabular-nums" />
           {i.document_type !== 'invoice' && (
             <Badge variant="outline" className="font-normal text-muted-foreground">
               {documentTypeShortLabels[i.document_type]}

@@ -103,8 +103,8 @@ func (s *server) vatReport(ctx context.Context, period string) (*reports.VatRepo
 func (s *server) vatSales(ctx context.Context, r *reports.VatReport, from, to string) error {
 	var invs []model.Invoice
 	err := s.scoped(ctx).Preload("Lines").
-		Where("document_type IN ? AND status <> ? AND your_vat_mode = ?",
-			[]string{model.DocInvoice, model.DocCorrection, model.DocTaxDocument}, model.StatusCancelled, model.VatModePayer).
+		Where("document_type IN ? AND status NOT IN ? AND your_vat_mode = ?",
+			[]string{model.DocInvoice, model.DocCorrection, model.DocTaxDocument}, notCounted, model.VatModePayer).
 		Where("taxable_fulfillment_due BETWEEN ? AND ? OR (taxable_fulfillment_due = '' AND issued_on BETWEEN ? AND ?)", from, to, from, to).
 		Order("taxable_fulfillment_due, number, id").Find(&invs).Error
 	if err != nil {
@@ -400,8 +400,8 @@ func (s *server) getOverview(ctx context.Context, in *struct {
 	var invs []model.Invoice
 	err := s.scoped(ctx).
 		Select("id", "number", "document_type", "status", "subject_id", "client_name", "issued_on", "paid_on", "currency", "exchange_rate", "total").
-		Where("document_type IN ? AND status <> ? AND issued_on BETWEEN ? AND ?",
-			[]string{model.DocInvoice, model.DocCorrection}, model.StatusCancelled, from, to).
+		Where("document_type IN ? AND status NOT IN ? AND issued_on BETWEEN ? AND ?",
+			[]string{model.DocInvoice, model.DocCorrection}, notCounted, from, to).
 		Order("issued_on, id").Find(&invs).Error
 	if err != nil {
 		return nil, dbErr(err, "invoices")

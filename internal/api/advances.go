@@ -169,6 +169,9 @@ func (s *server) createFinalInvoice(ctx context.Context, tx *gorm.DB, pro *model
 	if pro.DocumentType != model.DocProforma {
 		return nil, invalid("create_final_invoice", "a final invoice can only be created for a proforma")
 	}
+	if err := notDraft(pro); err != nil {
+		return nil, err
+	}
 	if pro.Status == model.StatusCancelled || pro.Status == model.StatusUncollectible {
 		return nil, conflict(CodeInvalidTransition, "a "+pro.Status+" proforma cannot be settled")
 	}

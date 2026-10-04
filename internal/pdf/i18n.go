@@ -63,6 +63,7 @@ const (
 	lQR                   = "qr"
 	lStampPaid            = "stamp_paid"
 	lStampCancelled       = "stamp_cancelled"
+	lStampDraft           = "stamp_draft"
 	lPage                 = "page"
 	lContinued            = "continued"
 	lPayBank              = "pay_bank"
@@ -132,6 +133,7 @@ var translations = map[string]map[string]string{
 	lQR:                   {"cs": "QR Platba", "en": "QR Platba", "sk": "QR Platba", "de": "QR Platba"},
 	lStampPaid:            {"cs": "ZAPLACENO", "en": "PAID", "sk": "ZAPLATENÉ", "de": "BEZAHLT"},
 	lStampCancelled:       {"cs": "STORNO", "en": "CANCELLED", "sk": "STORNO", "de": "STORNIERT"},
+	lStampDraft:           {"cs": "KONCEPT", "en": "DRAFT", "sk": "KONCEPT", "de": "ENTWURF"},
 	lPage:                 {"cs": "Strana", "en": "Page", "sk": "Strana", "de": "Seite"},
 	lContinued:            {"cs": "pokračování", "en": "continued", "sk": "pokračovanie", "de": "Fortsetzung"},
 	lPayBank:              {"cs": "Bankovní převod", "en": "Bank transfer", "sk": "Bankový prevod", "de": "Überweisung"},

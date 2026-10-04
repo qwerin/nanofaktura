@@ -48,6 +48,7 @@ type mcpTool struct {
 	Method      string // http.MethodGet …
 	Path        string // relative to /api/accounts/{slug} (account tools) or absolute ("/api/…")
 	Write       bool   // false = read-only
+	Force       map[string]any // body fields always set, whatever the model sends
 }
 
 // account tools need the account slug; absolute paths do not.
@@ -75,8 +76,9 @@ var mcpTools = []mcpTool{
 		Description: "List issued documents (invoices, proformas, corrections, tax documents) with filters. status=unpaid returns receivables, status=overdue those after due date."},
 	{Name: "get_invoice", Title: "Detail faktury", Method: http.MethodGet, Path: "/invoices/{id}",
 		Description: "Full invoice detail including lines, VAT summary, payments and attachments."},
-	{Name: "create_invoice", Title: "Vystavit fakturu", Method: http.MethodPost, Path: "/invoices", Write: true,
-		Description: "Issue a new document. It gets the next number of its series immediately (there are no drafts) but is NOT sent to the client. Look the client up first (list_subjects / search) and pass subject_id; confirm the content with the user before calling."},
+	{Name: "create_invoice", Title: "Připravit fakturu", Method: http.MethodPost, Path: "/invoices", Write: true,
+		Force: map[string]any{"draft": true},
+		Description: "Prepare a new document as a DRAFT (always): it has no number yet, counts nowhere and is not sent. The user reviews and issues it in the web app. Look the client up first (list_subjects / search) and pass subject_id."},
 	{Name: "add_invoice_payment", Title: "Zapsat úhradu faktury", Method: http.MethodPost, Path: "/invoices/{id}/payments", Write: true,
 		Description: "Record a received payment of an invoice (full or partial). The invoice becomes paid when payments cover its total."},
 	{Name: "list_subjects", Title: "Kontakty", Method: http.MethodGet, Path: "/subjects",
@@ -115,8 +117,9 @@ const mcpInstructions = `NanoFaktura is an invoicing app for Czech sole traders 
 Start with list_accounts and pass the account slug as "account" to the other tools.
 Conventions: money is an integer in minor units (haléře: 12100 = 121,00 Kč), VAT rates in basis points
 (2100 = 21 %), quantities are decimal strings ("1.5"), dates "YYYY-MM-DD". Texts of the data are Czech.
-Writing tools create real accounting records (an invoice gets its number immediately) – confirm with the user first.
-Nothing is ever e-mailed, deleted or reconfigured through these tools; point the user to the web app for that.`
+Invoices are created as drafts only; the user issues them (assigns the number) in the web app.
+Other writing tools create real records (subjects, expenses, payments) – confirm with the user first.
+Nothing is ever issued, e-mailed, deleted or reconfigured through these tools; point the user to the web app for that.`
 
 // mcpReq carries what the dispatcher needs from the outer HTTP request.
 type mcpReq struct {
@@ -340,6 +343,9 @@ func (s *server) mcpCall(router http.Handler, t mcpTool) mcp.ToolHandler {
 		var body io.Reader = http.NoBody
 		if b, ok := args["body"]; ok {
 			delete(args, "body")
+			if obj, ok := b.(map[string]any); ok {
+				maps.Copy(obj, t.Force)
+			}
 			raw, err := json.Marshal(b)
 			if err != nil {
 				return mcpError("invalid body"), nil

@@ -52,6 +52,9 @@ func (s *server) createPayment(ctx context.Context, in *struct {
 			return err
 		}
 		wasPaid = m.Status == model.StatusPaid
+		if err := notDraft(m); err != nil {
+			return err
+		}
 		if m.Status == model.StatusCancelled || m.Status == model.StatusUncollectible {
 			return conflict(CodeNotPayable, "cannot add a payment to a "+m.Status+" invoice")
 		}

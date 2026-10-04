@@ -6,6 +6,7 @@ import type { DocumentType, InvoiceAction, InvoiceStatus, PaymentMethod } from '
 import { daysBetween, formatDate, todayISO } from '@/lib/date'
 
 export const statusLabels: Record<InvoiceStatus, string> = {
+  draft: 'Koncept',
   open: 'Otevřená',
   sent: 'Odeslaná',
   overdue: 'Po splatnosti',
@@ -27,6 +28,20 @@ export const documentTypeShortLabels: Record<DocumentType, string> = {
   proforma: 'Zálohová',
   correction: 'Opravný',
   tax_document: 'Daňový doklad k platbě',
+}
+
+/**
+ * Číslo dokladu k zobrazení — koncept ho do vystavení nemá, místo prázdného textu „Koncept“.
+ * `lower` pro použití uprostřed věty („Smazat koncept?“).
+ */
+export function invoiceLabel(inv: { number: string }, opts?: { lower?: boolean }): string {
+  return inv.number || (opts?.lower ? 'koncept' : 'Koncept')
+}
+
+/** Toast po vystavení: „Faktura vystavena · 2026001“, „Opravný doklad vystaven · …“. */
+export function issuedMessage(inv: { document_type: DocumentType; number: string }): string {
+  const verb = inv.document_type === 'correction' ? 'vystaven' : 'vystavena'
+  return `${documentTypeLabels[inv.document_type]} ${verb} · ${invoiceLabel(inv)}`
 }
 
 export const paymentMethodLabels: Record<PaymentMethod, string> = {
@@ -68,11 +83,11 @@ interface DueSource {
 
 /**
  * Text o splatnosti do seznamu: „splatná za 3 dny“, „splatná dnes“, „5 dní po splatnosti“,
- * „uhrazena 3. 9. 2026“. Pro stornované a nedobytné vrací `null`.
+ * „uhrazena 3. 9. 2026“. Pro stornované, nedobytné a koncepty vrací `null`.
  */
 export function dueInfo(inv: DueSource, today: string = todayISO()): { text: string; tone: DueTone } | null {
   if (inv.status === 'paid') return { text: inv.paid_on ? `uhrazena ${formatDate(inv.paid_on)}` : 'uhrazena', tone: 'success' }
-  if (inv.status === 'cancelled' || inv.status === 'uncollectible') return null
+  if (inv.status === 'cancelled' || inv.status === 'uncollectible' || inv.status === 'draft') return null
   if (!inv.due_on) return null
   const diff = daysBetween(today, inv.due_on)
   if (diff < 0) return { text: `${daysText(-diff)} po splatnosti`, tone: 'destructive' }
@@ -128,6 +143,18 @@ export function allowedActions(inv: ActionSource): Set<UiAction> {
     return out
   }
   const settled = isSettledProforma(inv)
+
+  // Koncept: jen úpravy, vystavení, kopie, mazání a zámek — platby, e-maily, opravy apod. až po vystavení.
+  if (s === 'draft') {
+    out.add('duplicate')
+    if (!locked) {
+      out.add('edit')
+      out.add('issue')
+      if (inv.payment_count === 0) out.add('delete')
+    }
+    out.add(locked ? 'unlock' : 'lock')
+    return out
+  }
 
   out.add('duplicate')
   if (!locked && !settled && s !== 'cancelled' && s !== 'uncollectible') out.add('edit')

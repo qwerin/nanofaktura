@@ -59,6 +59,7 @@ func PaymentStatus(status string, total, paid int64, payments int, sent bool) st
 
 // Invoice actions (POST …/invoices/{id}/actions/{action}).
 const (
+	ActionIssue               = "issue" // draft → open; numbering is done by the API
 	ActionMarkAsSent          = "mark_as_sent"
 	ActionCancel              = "cancel"
 	ActionUndoCancel          = "undo_cancel"
@@ -70,7 +71,7 @@ const (
 
 // Actions lists every action in documentation order.
 var Actions = []string{
-	ActionMarkAsSent, ActionCancel, ActionUndoCancel, ActionMarkAsUncollectible,
+	ActionIssue, ActionMarkAsSent, ActionCancel, ActionUndoCancel, ActionMarkAsUncollectible,
 	ActionUndoUncollectible, ActionLock, ActionUnlock,
 }
 
@@ -94,6 +95,7 @@ func refuse(msg string) (State, error) { return State{}, &TransitionError{Msg: m
 // ApplyAction runs action on s at now and returns the new state, or a
 // *TransitionError when the transition is not allowed (SPEC §4.5):
 //
+//	issue                  draft → open (the caller assigns the number)
 //	mark_as_sent           open → sent (sent_at = now)
 //	cancel                 open|sent without payments → cancelled
 //	undo_cancel            cancelled → sent if sent_at is set, else open
@@ -134,6 +136,11 @@ func ApplyAction(s State, action string, now time.Time) (State, error) {
 			return refuse("the document is not marked as uncollectible")
 		}
 		s.Status, s.UncollectibleAt = restored, nil
+	case ActionIssue:
+		if s.Status != model.StatusDraft {
+			return refuse("the document is already issued")
+		}
+		s.Status = model.StatusOpen
 	case ActionLock:
 		s.LockedAt = &now
 	case ActionUnlock:

@@ -56,6 +56,7 @@ const (
 // Event names.
 const (
 	InvoiceCreated              = "invoice.created"
+	InvoiceIssued               = "invoice.issued"
 	InvoiceUpdated              = "invoice.updated"
 	InvoiceDeleted              = "invoice.deleted"
 	InvoiceSent                 = "invoice.sent"
@@ -108,7 +109,8 @@ type CatalogEntry struct {
 
 // Catalog lists every event name with a Czech description.
 var Catalog = []CatalogEntry{
-	{InvoiceCreated, "Doklad vystaven"},
+	{InvoiceCreated, "Doklad vystaven nebo uložen jako koncept"},
+	{InvoiceIssued, "Koncept dokladu vystaven (dostal číslo)"},
 	{InvoiceUpdated, "Doklad upraven"},
 	{InvoiceDeleted, "Doklad smazán"},
 	{InvoiceSent, "Doklad označen jako odeslaný"},

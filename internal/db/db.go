@@ -113,6 +113,10 @@ func Migrate(db *gorm.DB) error {
 	// expenses.vat_deductible (VAT deduction) was split from tax_deductible
 	// (income tax): existing expenses keep their previous VAT behaviour.
 	newVatDeductible := db.Migrator().HasTable(&model.Expense{}) && !db.Migrator().HasColumn(&model.Expense{}, "VatDeductible")
+	// the unique invoice number index became partial (drafts have no number)
+	if err := db.Exec("DROP INDEX IF EXISTS idx_invoices_account_type_number").Error; err != nil {
+		return fmt.Errorf("drop old invoice number index: %w", err)
+	}
 	if err := db.AutoMigrate(model.All()...); err != nil {
 		return err
 	}

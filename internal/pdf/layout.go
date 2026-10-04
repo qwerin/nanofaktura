@@ -138,6 +138,9 @@ func drawImage(p core.Provider, img []byte, ext string, x, y, w, h float64, righ
 func (r *renderer) header() []core.Row {
 	d, th := r.d, r.th
 	num := d.inv.Number
+	if d.inv.Status == model.StatusDraft {
+		num = r.t(lStampDraft)
+	}
 	switch th.name {
 	case TemplateModern:
 		const band = 26.0
@@ -782,6 +785,8 @@ func (r *renderer) bottom() *box {
 		stampText = r.t(lStampPaid)
 	case model.StatusCancelled:
 		stampText, stampColor = r.t(lStampCancelled), colVoid
+	case model.StatusDraft:
+		stampText, stampColor = r.t(lStampDraft), colVoid
 	}
 	hasImg := d.stampExt != ""
 	if qr == nil && payment == nil && stampText == "" && !hasImg {

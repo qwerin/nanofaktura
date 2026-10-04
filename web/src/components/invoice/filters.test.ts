@@ -16,6 +16,7 @@ describe('invoice filters', () => {
   it('maps to API filters without empty or default values', () => {
     expect(toApiFilters({ query: '  ', sort: '-issued_on', status: 'paid' })).toEqual({ status: 'paid' })
     expect(toApiFilters({ query: ' 2026 ', since: '2026-01-01' })).toEqual({ query: '2026', since: '2026-01-01' })
+    expect(toApiFilters(invoiceSearchSchema.parse({ status: 'draft' }))).toEqual({ status: 'draft' })
   })
 
   it('counts extra filters', () => {

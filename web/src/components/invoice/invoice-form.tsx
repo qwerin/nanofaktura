@@ -3,14 +3,14 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useBlocker, useNavigate } from '@tanstack/react-router'
-import { ChevronDownIcon, TriangleAlertIcon } from 'lucide-react'
+import { ChevronDownIcon, EllipsisIcon, SendIcon, TriangleAlertIcon } from 'lucide-react'
 import { useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Controller, useForm, useWatch, type Path } from 'react-hook-form'
 import { toast } from 'sonner'
 import { api, unwrap } from '@/api/client'
 import { errorMessage, isApiError } from '@/api/errors'
 import { bankAccountQueries } from '@/api/queries/bank-accounts'
-import { useCreateInvoice, useUpdateInvoice } from '@/api/queries/invoices'
+import { useCreateInvoice, useIssueInvoice, useUpdateInvoice } from '@/api/queries/invoices'
 import { keys } from '@/api/queries/keys'
 import type { Account, Invoice } from '@/api/types'
 import { SelectField, SwitchField, TextareaField, TextField, type SelectOption } from '@/components/form/fields'
@@ -18,6 +18,7 @@ import { ResponsiveDialog } from '@/components/responsive-dialog'
 import { StickyActionBar } from '@/components/sticky-action-bar'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -41,7 +42,7 @@ import {
   type InvoiceFormValues,
 } from './form-model'
 import { LinesEditor } from './lines-editor'
-import { documentTypeLabels, documentTypeShortLabels, paymentMethodLabels } from './status'
+import { documentTypeShortLabels, issuedMessage, paymentMethodLabels } from './status'
 import { SubjectPicker } from './subject-picker'
 import { TagInput } from './tag-input'
 import { TotalsPanel } from './totals-panel'
@@ -62,6 +63,12 @@ const supplyTypeOptions: SelectOption[] = [
   { value: 'goods', label: 'Zboží do EU – osvobozeno dle § 64' },
 ]
 
+/**
+ * Jak formulář uložit: `save` = vystavit novou / uložit změny, `sent` = vystavit a označit jako odeslanou,
+ * `draft` = nová jako koncept, `issue` = uložit změny konceptu a vystavit ho.
+ */
+type SubmitMode = 'save' | 'sent' | 'draft' | 'issue'
+
 
 interface InvoiceFormProps {
   slug: string
@@ -79,8 +86,10 @@ export function InvoiceForm({ slug, account, invoice, preset }: InvoiceFormProps
   const bankAccounts = useQuery(bankAccountQueries.list(slug))
   const create = useCreateInvoice(slug)
   const update = useUpdateInvoice(slug, invoice?.id ?? 0)
-  const pending = create.isPending || update.isPending
-  const [markSent, setMarkSent] = useState(false)
+  const issue = useIssueInvoice(slug)
+  const pending = create.isPending || update.isPending || issue.isPending
+  const [mode, setMode] = useState<SubmitMode>('save')
+  const isDraft = invoice?.status === 'draft'
   const allowLeave = useRef(false)
 
   const vatMode = invoice?.your_vat_mode ?? account.vat_mode
@@ -164,18 +173,34 @@ export function InvoiceForm({ slug, account, invoice, preset }: InvoiceFormProps
     return mapped
   }
 
-  const submit = (andMarkSent: boolean) =>
+  const submit = (submitMode: SubmitMode) =>
     form.handleSubmit(
       async (values) => {
-        setMarkSent(andMarkSent)
+        setMode(submitMode)
         try {
           let saved: Invoice
+          let message = 'Změny uloženy'
           if (invoice) {
             const patch = toPatchBody(values, formState.dirtyFields as Record<string, unknown>, payer)
             saved = Object.keys(patch).length ? await update.mutateAsync(patch) : invoice
+            if (submitMode === 'issue') {
+              try {
+                saved = await issue.mutateAsync(saved.id)
+                message = issuedMessage(saved)
+              } catch (err) {
+                toast.error(`Změny jsou uložené, ale doklad se nevystavil: ${errorMessage(err)}`)
+                allowLeave.current = true
+                void navigate({ to: '/a/$slug/invoices/$invoiceId', params: { slug, invoiceId: saved.id } })
+                return
+              }
+            }
+          } else if (submitMode === 'draft') {
+            saved = await create.mutateAsync({ ...toCreateBody(values, payer), draft: true })
+            message = 'Koncept uložen'
           } else {
             saved = await create.mutateAsync(toCreateBody(values, payer))
-            if (andMarkSent) {
+            message = issuedMessage(saved)
+            if (submitMode === 'sent') {
               try {
                 saved = await unwrap(
                   api.POST('/api/accounts/{slug}/invoices/{id}/actions/{action}', {
@@ -188,7 +213,7 @@ export function InvoiceForm({ slug, account, invoice, preset }: InvoiceFormProps
               }
             }
           }
-          toast.success(isEdit ? 'Změny uloženy' : `${documentTypeLabels[saved.document_type]} ${saved.number} vystavena`)
+          toast.success(message)
           if (saved.warnings.some((w) => w.code === 'no_bank_account')) {
             toast.warning(`Pro měnu ${saved.currency} nemáte bankovní účet — doklad je bez platebních údajů a QR.`)
           }
@@ -210,7 +235,7 @@ export function InvoiceForm({ slug, account, invoice, preset }: InvoiceFormProps
       noValidate
       onSubmit={(e) => {
         e.preventDefault()
-        void submit(false)
+        void submit('save')
       }}
     >
       <div className="flex flex-col gap-4 lg:gap-6">
@@ -455,7 +480,7 @@ export function InvoiceForm({ slug, account, invoice, preset }: InvoiceFormProps
                   name="number"
                   label="Číslo dokladu"
                   autoComplete="off"
-                  placeholder={isEdit ? undefined : 'Přidělí se automaticky'}
+                  placeholder={isEdit && !isDraft ? undefined : isDraft ? 'Přidělí se při vystavení' : 'Přidělí se automaticky'}
                 />
                 <TextField
                   control={control}
@@ -464,7 +489,7 @@ export function InvoiceForm({ slug, account, invoice, preset }: InvoiceFormProps
                   inputMode="numeric"
                   maxLength={10}
                   autoComplete="off"
-                  placeholder={isEdit ? undefined : 'Podle čísla dokladu'}
+                  placeholder={isEdit && !isDraft ? undefined : 'Podle čísla dokladu'}
                 />
                 <TextField control={control} name="order_number" label="Číslo objednávky" autoComplete="off" />
                 <SelectField control={control} name="language" label="Jazyk dokladu" options={languageOptions} />
@@ -484,16 +509,52 @@ export function InvoiceForm({ slug, account, invoice, preset }: InvoiceFormProps
         }
       >
         {!isEdit && (
-          <Button type="button" variant="outline" disabled={pending} onClick={() => void submit(true)}>
-            {pending && markSent && <Spinner data-icon="inline-start" />}
-            <span className="md:hidden">Uložit jako odeslanou</span>
-            <span className="max-md:hidden">Uložit a označit jako odeslanou</span>
+          <>
+            {/* Mobil: „jako odeslanou“ v menu, ať se vejdou Koncept + Vystavit. */}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={<Button type="button" variant="ghost" size="icon" aria-label="Další možnosti uložení" className="flex-none! md:hidden" />}
+                disabled={pending}
+              >
+                <EllipsisIcon />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" side="top" className="w-auto min-w-52">
+                <DropdownMenuItem className="min-h-11" onClick={() => void submit('sent')}>
+                  <SendIcon />
+                  Vystavit a označit jako odeslanou
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button type="button" variant="outline" disabled={pending} onClick={() => void submit('draft')}>
+              {pending && mode === 'draft' && <Spinner data-icon="inline-start" />}
+              <span className="md:hidden">Koncept</span>
+              <span className="max-md:hidden">Uložit jako koncept</span>
+            </Button>
+            <Button type="button" variant="outline" disabled={pending} onClick={() => void submit('sent')} className="max-md:hidden">
+              {pending && mode === 'sent' && <Spinner data-icon="inline-start" />}
+              Vystavit a označit jako odeslanou
+            </Button>
+          </>
+        )}
+        {isDraft ? (
+          <>
+            <Button type="submit" variant="outline" disabled={pending || !formState.isDirty}>
+              {pending && mode === 'save' && <Spinner data-icon="inline-start" />}
+              <span className="md:hidden">Uložit</span>
+              <span className="max-md:hidden">Uložit koncept</span>
+            </Button>
+            <Button type="button" disabled={pending} onClick={() => void submit('issue')}>
+              {pending && mode === 'issue' && <Spinner data-icon="inline-start" />}
+              <span className="md:hidden">Vystavit</span>
+              <span className="max-md:hidden">Uložit a vystavit</span>
+            </Button>
+          </>
+        ) : (
+          <Button type="submit" disabled={pending || (isEdit && !formState.isDirty)}>
+            {pending && mode === 'save' && <Spinner data-icon="inline-start" />}
+            {isEdit ? 'Uložit změny' : 'Vystavit'}
           </Button>
         )}
-        <Button type="submit" disabled={pending || (isEdit && !formState.isDirty)}>
-          {pending && !markSent && <Spinner data-icon="inline-start" />}
-          {isEdit ? 'Uložit změny' : 'Uložit'}
-        </Button>
       </StickyActionBar>
 
       <ResponsiveDialog
@@ -578,6 +639,8 @@ function RelatedInvoiceField({
   })
   const items: SelectOption[] = (list.data?.items ?? [])
     .filter((i) => i.id !== currentId)
+    // Koncept se opravit nedá — nemá číslo a nikde se nepočítá.
+    .filter((i) => i.status !== 'draft')
     .map((i) => ({ value: String(i.id), label: `${i.number} · ${formatDate(i.issued_on)} · ${formatMoney(i.total, i.currency)}` }))
 
   return (

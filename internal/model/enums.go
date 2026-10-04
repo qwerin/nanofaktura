@@ -40,7 +40,9 @@ const (
 )
 
 // Stored invoice statuses. "overdue" is derived on read, never stored.
+// A draft has no number yet and does not count anywhere (SPEC §4.5 "Koncepty").
 const (
+	StatusDraft         = "draft"
 	StatusOpen          = "open"
 	StatusSent          = "sent"
 	StatusPaid          = "paid"

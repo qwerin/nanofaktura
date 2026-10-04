@@ -13,6 +13,7 @@ import (
 	"github.com/qwerin/nanofaktura/internal/billing"
 	"github.com/qwerin/nanofaktura/internal/events"
 	"github.com/qwerin/nanofaktura/internal/model"
+	"github.com/qwerin/nanofaktura/internal/spayd"
 )
 
 func (s *server) registerInvoiceActions(g huma.API) {
@@ -24,12 +25,15 @@ func (s *server) registerInvoiceActions(g huma.API) {
 
 func (s *server) invoiceAction(ctx context.Context, in *struct {
 	ID     uint   `path:"id"`
-	Action string `path:"action" enum:"mark_as_sent,cancel,undo_cancel,mark_as_uncollectible,undo_uncollectible,lock,unlock"`
+	Action string `path:"action" enum:"issue,mark_as_sent,cancel,undo_cancel,mark_as_uncollectible,undo_uncollectible,lock,unlock"`
 }) (*Out[Invoice], error) {
 	return s.mutateInvoice(ctx, func(tx *gorm.DB) (uint, error) {
 		m, err := loadInvoiceForUpdate(ctx, tx, in.ID)
 		if err != nil {
 			return 0, err
+		}
+		if in.Action == billing.ActionIssue {
+			return m.ID, s.issueDraft(ctx, tx, m)
 		}
 		if in.Action == billing.ActionCancel && isTaxDocument(m) && (m.SentAt != nil || m.PublicViewedAt != nil) {
 			// a tax document delivered to the customer is corrected, not withdrawn (§ 42, § 45 ZDPH)
@@ -61,6 +65,47 @@ func (s *server) invoiceAction(ctx context.Context, in *struct {
 	})
 }
 
+// issueDraft turns draft m (locked) into an issued document (SPEC §4.5
+// "Koncepty"): an issue date in the past moves to today (due date follows),
+// the next number of the series is assigned (unless the draft carries its
+// own), the variable symbol defaults to its digits, and from now on the
+// document counts (stock, reports).
+func (s *server) issueDraft(ctx context.Context, tx *gorm.DB, m *model.Invoice) error {
+	if m.Status != model.StatusDraft {
+		return conflict(CodeInvalidTransition, "the document is already issued")
+	}
+	if m.LockedAt != nil {
+		return conflict(CodeLocked, "the invoice is locked; unlock it first")
+	}
+	if today := s.today(); m.IssuedOn < today {
+		m.IssuedOn = today
+		if err := recalc(m); err != nil { // due_on = issued_on + due_days
+			return err
+		}
+	}
+	if m.Number == "" {
+		n, err := s.deps.NextNumber(tx, m.AccountID, m.DocumentType, m.IssuedOn)
+		if err != nil {
+			return numberingErr(err)
+		}
+		m.Number = n
+		if m.VariableSymbol == "" {
+			m.VariableSymbol = spayd.Digits(m.Number, 10)
+		}
+	}
+	if err := checkTaxNumberUnique(ctx, tx, m); err != nil {
+		return err
+	}
+	m.Status = model.StatusOpen
+	if err := tx.Omit(clause.Associations).Save(m).Error; err != nil {
+		return numberErr(err, m.Number)
+	}
+	if err := syncInvoiceStock(ctx, tx, m); err != nil {
+		return err
+	}
+	return recordInvoice(ctx, tx, events.InvoiceIssued, m)
+}
+
 // CorrectionCreate is the optional body of POST /invoices/{id}/correction.
 type CorrectionCreate struct {
 	CorrectionReason string `json:"correction_reason,omitempty" maxLength:"500" doc:"Reason of the correction (§ 45 ZDPH), e.g. 'Vrácení zboží'; required for VAT payers"`
@@ -75,6 +120,9 @@ func (s *server) createCorrection(ctx context.Context, in *struct {
 	return s.mutateInvoice(ctx, func(tx *gorm.DB) (uint, error) {
 		src, err := loadInvoice(ctx, tx, in.ID)
 		if err != nil {
+			return 0, err
+		}
+		if err := notDraft(src); err != nil {
 			return 0, err
 		}
 		if src.DocumentType != model.DocInvoice {
@@ -104,6 +152,7 @@ func (s *server) duplicateInvoice(ctx context.Context, in *invoiceID) (*Out[Invo
 		return nil, conflict(CodeTaxDocumentFixed, "a tax document for a received payment cannot be duplicated")
 	}
 	body := copyInvoice(src, src.DocumentType, false, false)
+	body.Draft = src.Status == model.StatusDraft // a copy of a draft stays a draft
 	if src.DocumentType == model.DocCorrection {
 		body.RelatedID = src.RelatedID
 		body.CorrectionReason = src.CorrectionReason
