@@ -2,7 +2,7 @@
 # builds). Update both together, e.g. `docker buildx imagetools inspect golang:1.26.9-alpine3.24`.
 
 # ── Stage 1: frontend ────────────────────────────────────────────────────────
-FROM node:22.23.3-alpine3.24@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS frontend-builder
+FROM node:24.21.0-alpine3.24@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS frontend-builder
 WORKDIR /app/web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci

@@ -7,7 +7,7 @@ import { resetState, server } from './server'
 import { applyViewport, resetViewport, viewport } from './viewport'
 
 // msw musí nahradit fetch dřív, než se naimportuje api klient (openapi-fetch si fetch drží).
-server.listen({ onUnhandledRequest: 'warn' })
+server.listen({ onUnhandledFrame: 'warn' })
 
 function matchMedia(query: string): MediaQueryList {
   const max = /max-width:\s*(\d+)px/.exec(query)
