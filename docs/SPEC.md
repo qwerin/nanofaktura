@@ -203,7 +203,9 @@ Období čítače = kombinace roku/měsíce obsaženého ve formátu (rok+měsí
 Číslo se přiděluje **při vytvoření** dokladu (u konceptu při vystavení, §4.5 „Koncepty“) podle `issued_on`, v transakci (`SELECT … FOR UPDATE` na Postgresu / serializováno na SQLite).
 Při založení účtu se vytvoří výchozí řady: invoice `{YYYY}-{NNNN}`, proforma `Z{YYYY}-{NNNN}`, correction `D{YYYY}-{NNNN}`.
 Klient smí poslat vlastní `number` (pak se čítač neposouvá). `(account_id, document_type, number)` unique → 409
-(částečný index `WHERE number <> ''` — koncepty číslo nemají).
+(částečný index `WHERE number <> ''` — koncepty číslo nemají). Automatické číslo, které už má jiný doklad (ve stejném
+prostoru čísel: typ dokladu, u faktury/dobropisu/daňového dokladu všechny tři), se přeskočí a čítač jde dál
+(ručně zadané číslo řady by jinak řadu zablokovalo; nejvýš 1000 přeskoků, pak 409).
 CRUD: `/api/accounts/{slug}/number-formats` + `GET …/number-formats/{id}/preview?date=` → `{number}` (bez posunu čítače).
 
 ### 4.4 Subject (kontakt)
@@ -543,8 +545,10 @@ pracovat s účtem za uživatele.
   Úspěch → JSON těla odpovědi (text + `structuredContent`), chyba → `isError` s `HTTP <status>: <problem+json>`.
 - **Rozsah** (rozhodnutí 2026-10-04): čtení + bezpečné zápisy. Čtení: účty, nastavení účtu, hledání, nástěnka, faktury,
   kontakty, ARES, náklady a jejich kategorie, ceník, DPH a roční přehled, úkoly. Zápisy: příprava faktury **vždy jako
-  koncept** (`draft` vynucen, vystavuje uživatel v aplikaci), úhrada faktury, nový/úprava kontaktu, nový náklad a jeho úhrada, nový úkol. **Nikdy**: vystavení konceptu, odesílání
-  e-mailů, mazání, akce dokladů (storno …), nastavení, členové, webhooky, tokeny.
+  koncept** (`draft` vynucen, vystavuje uživatel v aplikaci), úprava konceptu (`update_invoice` = PATCH, jen když je
+  doklad `draft` — ověří se čtením faktury předem), úhrada faktury, nový/úprava kontaktu, nový náklad a jeho úhrada, nový úkol. **Nikdy**: vystavení konceptu, odesílání
+  e-mailů, mazání, akce dokladů (storno …), úprava vystaveného dokladu, nastavení, členové, webhooky, tokeny.
+  Pole `number` se u konceptů z MCP neposílá (vypuštěno ze schématu i z volání, `mcpTool.Omit`) — číslo přidělí vystavení.
 - **UI**: Nastavení → API tokeny — karta „AI asistent (MCP)“ s adresou a příkazem pro připojení; po vytvoření tokenu
   příkaz i s tokenem; seznam „Připojené aplikace“ (OAuth) s odpojením.
 - **OAuth 2.1** (autorizace MCP; klienti jako vlastní konektor v claude.ai, které hlavičku s tokenem nastavit neumí):

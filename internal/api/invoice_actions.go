@@ -84,9 +84,9 @@ func (s *server) issueDraft(ctx context.Context, tx *gorm.DB, m *model.Invoice) 
 		}
 	}
 	if m.Number == "" {
-		n, err := s.deps.NextNumber(tx, m.AccountID, m.DocumentType, m.IssuedOn)
+		n, err := s.nextInvoiceNumber(ctx, tx, m)
 		if err != nil {
-			return numberingErr(err)
+			return err
 		}
 		m.Number = n
 		if m.VariableSymbol == "" {

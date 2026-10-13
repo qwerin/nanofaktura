@@ -21,6 +21,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/qwerin/nanofaktura/internal/auth"
+	"github.com/qwerin/nanofaktura/internal/model"
 )
 
 // MCP server (SPEC §7.17): POST /api/mcp speaks the Model Context Protocol
@@ -50,6 +51,8 @@ type mcpTool struct {
 	Path        string         // relative to /api/accounts/{slug} (account tools) or absolute ("/api/…")
 	Write       bool           // false = read-only
 	Force       map[string]any // body fields always set, whatever the model sends
+	Omit        []string       // body fields hidden from the schema and dropped from calls
+	DraftOnly   bool           // {id} must be an invoice draft (checked through get_invoice first)
 }
 
 // account tools need the account slug; absolute paths do not.
@@ -78,8 +81,11 @@ var mcpTools = []mcpTool{
 	{Name: "get_invoice", Title: "Detail faktury", Method: http.MethodGet, Path: "/invoices/{id}",
 		Description: "Full invoice detail including lines, VAT summary, payments and attachments."},
 	{Name: "create_invoice", Title: "Připravit fakturu", Method: http.MethodPost, Path: "/invoices", Write: true,
-		Force:       map[string]any{"draft": true},
+		Force: map[string]any{"draft": true}, Omit: []string{"number"},
 		Description: "Prepare a new document as a DRAFT (always): it has no number yet, counts nowhere and is not sent. The user reviews and issues it in the web app. Look the client up first (list_subjects / search) and pass subject_id; for an end customer without a contact pass client_name (and optional client_* address/e-mail) instead."},
+	{Name: "update_invoice", Title: "Upravit koncept faktury", Method: http.MethodPatch, Path: "/invoices/{id}", Write: true,
+		Omit: []string{"number"}, DraftOnly: true,
+		Description: "Change a DRAFT invoice (status draft); issued documents cannot be changed here. Omitted fields stay unchanged; lines, when sent, replace all lines (keep a line's id to update it)."},
 	{Name: "add_invoice_payment", Title: "Zapsat úhradu faktury", Method: http.MethodPost, Path: "/invoices/{id}/payments", Write: true,
 		Description: "Record a received payment of an invoice (full or partial). The invoice becomes paid when payments cover its total."},
 	{Name: "list_subjects", Title: "Kontakty", Method: http.MethodGet, Path: "/subjects",
@@ -118,7 +124,7 @@ const mcpInstructions = `NanoFaktura is an invoicing app for Czech sole traders 
 Start with list_accounts and pass the account slug as "account" to the other tools.
 Conventions: money is an integer in minor units (haléře: 12100 = 121,00 Kč), VAT rates in basis points
 (2100 = 21 %), quantities are decimal strings ("1.5"), dates "YYYY-MM-DD". Texts of the data are Czech.
-Invoices are created as drafts only; the user issues them (assigns the number) in the web app.
+Invoices are created as drafts only (update_invoice edits a draft); the user issues them (assigns the number) in the web app.
 Other writing tools create real records (subjects, expenses, payments) – confirm with the user first.
 Nothing is ever issued, e-mailed, deleted or reconfigured through these tools; point the user to the web app for that.`
 
@@ -223,7 +229,7 @@ func (t mcpTool) tool(oapi *huma.OpenAPI) *mcp.Tool {
 	}
 	if rb := op.RequestBody; rb != nil {
 		if c := rb.Content["application/json"]; c != nil && c.Schema != nil {
-			props["body"] = mcpSchemaJSON(c.Schema, oapi, defs)
+			props["body"] = mcpOmit(mcpSchemaJSON(c.Schema, oapi, defs), defs, t.Omit)
 			required = append(required, "body")
 		}
 	}
@@ -245,6 +251,28 @@ func (t mcpTool) tool(oapi *huma.OpenAPI) *mcp.Tool {
 			DestructiveHint: new(false), OpenWorldHint: new(t.Name == "lookup_ares"),
 		},
 	}
+}
+
+// mcpOmit removes fields from a body schema: a referenced component is
+// inlined without them.
+func mcpOmit(body, defs map[string]any, fields []string) map[string]any {
+	if len(fields) == 0 {
+		return body
+	}
+	if ref, ok := body["$ref"].(string); ok {
+		name := strings.TrimPrefix(ref, "#/$defs/")
+		body = maps.Clone(defs[name].(map[string]any))
+		delete(defs, name) // the request body component is not referenced elsewhere
+	}
+	props := maps.Clone(body["properties"].(map[string]any))
+	for _, f := range fields {
+		delete(props, f)
+	}
+	body["properties"] = props
+	if req, ok := body["required"].([]any); ok {
+		body["required"] = slices.DeleteFunc(slices.Clone(req), func(v any) bool { return slices.Contains(fields, v.(string)) })
+	}
+	return body
 }
 
 // mcpOperation finds a registered operation; the catalogue must match the API.
@@ -347,6 +375,9 @@ func (s *server) mcpCall(router http.Handler, t mcpTool) mcp.ToolHandler {
 		if b, ok := args["body"]; ok {
 			delete(args, "body")
 			if obj, ok := b.(map[string]any); ok {
+				for _, f := range t.Omit {
+					delete(obj, f)
+				}
 				maps.Copy(obj, t.Force)
 			}
 			raw, err := json.Marshal(b)
@@ -365,27 +396,61 @@ func (s *server) mcpCall(router http.Handler, t mcpTool) mcp.ToolHandler {
 			path += "?" + q.Encode()
 		}
 
-		// a fresh chi routing context: the outer one belongs to /api/mcp
-		r, err := http.NewRequestWithContext(context.WithValue(ctx, chi.RouteCtxKey, nil), t.Method, path, body)
+		if t.DraftOnly {
+			if res := mcpCheckDraft(ctx, router, req, strings.SplitN(path, "?", 2)[0]); res != nil {
+				return res, nil
+			}
+		}
+		rec, err := mcpDo(ctx, router, req, t.Method, path, body)
 		if err != nil {
 			return mcpError("invalid request: " + err.Error()), nil
 		}
-		if outer, ok := ctx.Value(mcpReqKey{}).(mcpReq); ok {
-			r.RemoteAddr = outer.remoteAddr
-			for k, v := range outer.header { // forwarded headers (client IP), Authorization
-				r.Header[k] = v
-			}
-		} else if req.Extra != nil {
-			r.Header = req.Extra.Header.Clone()
-		}
-		r.Header.Del("Cookie") // the token is the only credential
-		r.Header.Del("Content-Length")
-		r.Header.Set("Accept", "application/json")
-		r.Header.Set("Content-Type", "application/json")
-		rec := &mcpRecorder{header: http.Header{}, status: http.StatusOK}
-		router.ServeHTTP(rec, r)
 		return mcpResult(rec), nil
 	}
+}
+
+// mcpCheckDraft loads the invoice at path (with the caller's credentials) and
+// returns an error result unless it is a draft.
+func mcpCheckDraft(ctx context.Context, router http.Handler, req *mcp.CallToolRequest, path string) *mcp.CallToolResult {
+	rec, err := mcpDo(ctx, router, req, http.MethodGet, path, http.NoBody)
+	if err != nil {
+		return mcpError("invalid request: " + err.Error())
+	}
+	if rec.status >= 400 {
+		return mcpResult(rec)
+	}
+	var inv struct {
+		Status string `json:"status"`
+	}
+	if err := json.Unmarshal(rec.body.Bytes(), &inv); err != nil || inv.Status != model.StatusDraft {
+		return mcpError("only a draft can be changed here; the document is already issued — edit it in the web app")
+	}
+	return nil
+}
+
+// mcpDo dispatches one REST request through router with the credentials of
+// the MCP request.
+func mcpDo(ctx context.Context, router http.Handler, req *mcp.CallToolRequest, method, path string, body io.Reader) (*mcpRecorder, error) {
+	// a fresh chi routing context: the outer one belongs to /api/mcp
+	r, err := http.NewRequestWithContext(context.WithValue(ctx, chi.RouteCtxKey, nil), method, path, body)
+	if err != nil {
+		return nil, err
+	}
+	if outer, ok := ctx.Value(mcpReqKey{}).(mcpReq); ok {
+		r.RemoteAddr = outer.remoteAddr
+		for k, v := range outer.header { // forwarded headers (client IP), Authorization
+			r.Header[k] = v
+		}
+	} else if req.Extra != nil {
+		r.Header = req.Extra.Header.Clone()
+	}
+	r.Header.Del("Cookie") // the token is the only credential
+	r.Header.Del("Content-Length")
+	r.Header.Set("Accept", "application/json")
+	r.Header.Set("Content-Type", "application/json")
+	rec := &mcpRecorder{header: http.Header{}, status: http.StatusOK}
+	router.ServeHTTP(rec, r)
+	return rec, nil
 }
 
 func mcpScalar(v any) string {

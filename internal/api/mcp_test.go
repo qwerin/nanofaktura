@@ -104,9 +104,15 @@ func TestMCPTools(t *testing.T) {
 	}
 	// the input schema comes from OpenAPI: account + query params, body with $defs
 	schema, _ := json.Marshal(byName["create_invoice"].InputSchema)
-	for _, want := range []string{`"account"`, `"body"`, `"$ref":"#/$defs/InvoiceCreate"`, `"subject_id"`, `"required":["account","body"]`} {
+	for _, want := range []string{`"account"`, `"body"`, `"$ref":"#/$defs/InvoiceLineInput"`, `"subject_id"`, `"required":["account","body"]`} {
 		if !strings.Contains(string(schema), want) {
 			t.Fatalf("create_invoice schema lacks %s: %s", want, schema)
+		}
+	}
+	// a draft gets its number when issued, never from the model
+	for _, name := range []string{"create_invoice", "update_invoice"} {
+		if schema, _ := json.Marshal(byName[name].InputSchema); strings.Contains(string(schema), `"number":`) {
+			t.Fatalf("%s schema offers number: %s", name, schema)
 		}
 	}
 	schema, _ = json.Marshal(byName["list_invoices"].InputSchema)
@@ -124,10 +130,20 @@ func TestMCPTools(t *testing.T) {
 	})
 	inv := mustTool[api.Invoice](t, s, "create_invoice", map[string]any{
 		"account": a.slug,
-		"body": map[string]any{"subject_id": subj.ID, "draft": false, "lines": []map[string]any{ // draft is forced
-			{"name": "Konzultace", "quantity": "2", "unit_price": 150000},
+		"body": map[string]any{"subject_id": subj.ID, "draft": false, "number": "2026-0001", "lines": []map[string]any{ // draft is forced, number dropped
+			{"name": "Konzultace", "quantity": "1", "unit_price": 150000},
 		}},
 	})
+	// the draft can be changed (lines replaced, number ignored) until it is issued
+	inv = mustTool[api.Invoice](t, s, "update_invoice", map[string]any{
+		"account": a.slug, "id": inv.ID,
+		"body": map[string]any{"number": "X-1", "note": "Díky", "lines": []map[string]any{
+			{"id": inv.Lines[0].ID, "name": "Konzultace", "quantity": "2", "unit_price": 150000},
+		}},
+	})
+	if inv.Note != "Díky" {
+		t.Fatalf("update_invoice: %+v", inv)
+	}
 	if inv.Number != "" || inv.Total != 300000 || inv.Status != "draft" {
 		t.Fatalf("invoice: %+v", inv.InvoiceSummary)
 	}
@@ -142,7 +158,16 @@ func TestMCPTools(t *testing.T) {
 	if drafts.Total != 1 || drafts.PerPage != 10 {
 		t.Fatalf("drafts: %+v", drafts)
 	}
-	action(a, inv.ID, "issue") // the user issues it in the app
+	issued := action(a, inv.ID, "issue") // the user issues it in the app
+	if issued.Number != "2026-0001" {
+		t.Fatalf("issued: %+v", issued.InvoiceSummary)
+	}
+	if text, isErr := callTool(t, s, "update_invoice", map[string]any{"account": a.slug, "id": inv.ID, "body": map[string]any{"note": "x"}}); !isErr || !strings.Contains(text, "only a draft") {
+		t.Fatalf("update of an issued invoice: %v %s", isErr, text)
+	}
+	if text, isErr := callTool(t, s, "update_invoice", map[string]any{"account": a.slug, "id": 9999, "body": map[string]any{"note": "x"}}); !isErr || !strings.Contains(text, "HTTP 404") {
+		t.Fatalf("update of a missing invoice: %v %s", isErr, text)
+	}
 
 	paid := mustTool[api.PaymentResult](t, s, "add_invoice_payment", map[string]any{
 		"account": a.slug, "id": inv.ID, "body": map[string]any{"paid_on": "2026-03-15"},

@@ -149,3 +149,28 @@ func TestDraftNotInVatReport(t *testing.T) {
 		t.Fatalf("VAT report lacks the issued invoice: %s", b)
 	}
 }
+
+// TestIssueSkipsTakenNumber: a number of the series typed into another
+// document (e.g. a draft) is skipped instead of blocking the series.
+func TestIssueSkipsTakenNumber(t *testing.T) {
+	ts := newTestServer(t)
+	a := ts.signup("a@example.cz", "Firma A")
+	acme := newSubject(a, api.SubjectCreate{Name: "ACME"})
+	lines := []api.InvoiceLineInput{line("Práce", "1", 100, nil)}
+
+	typed := createInv(a, api.InvoiceCreate{Draft: true, SubjectID: new(acme.ID), Number: "2026-0001", Lines: lines})
+	auto := createInv(a, api.InvoiceCreate{Draft: true, SubjectID: new(acme.ID), Lines: lines})
+	if got := action(a, auto.ID, "issue"); got.Number != "2026-0002" {
+		t.Fatalf("issued: %+v", got.InvoiceSummary)
+	}
+	first := action(a, typed.ID, "issue")
+	if first.Number != "2026-0001" {
+		t.Fatalf("typed: %+v", first.InvoiceSummary)
+	}
+	// a correction shares the evidence-number space with invoices
+	createInv(a, api.InvoiceCreate{DocumentType: "correction", SubjectID: new(acme.ID), Number: "2026-0003",
+		RelatedID: &first.ID, CorrectionReason: "Sleva", Lines: []api.InvoiceLineInput{line("Sleva", "-1", 100, nil)}})
+	if got := createInv(a, api.InvoiceCreate{SubjectID: new(acme.ID), Lines: lines}); got.Number != "2026-0004" {
+		t.Fatalf("created: %+v", got.InvoiceSummary)
+	}
+}

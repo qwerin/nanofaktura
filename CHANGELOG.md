@@ -9,6 +9,11 @@ Pravidla (viz CLAUDE.md → „Novinky“):
 - Podporováno: odstavce, `###`, odrážky, **tučně**, *zvýraznění* (např. cesta v menu), `kód`, [odkazy](https://…). Nic dalšího.
 -->
 
+## 2026-10-13 · Oprava vystavení konceptu
+
+- **Vystavení konceptu už nehlásí „Záznam se stejným označením už existuje“** — když už číslo, které by řada přidělila, používá jiný doklad (třeba proto, že jste ho zadali ručně), vystavení ho přeskočí a použije další volné číslo. Totéž platí pro nově vytvořené faktury.
+- **AI asistent umí upravit koncept faktury** — připravený koncept může asistent dál upravovat (položky, poznámky, odběratel…). Vystavené doklady dál mění jen vy v aplikaci a číslo dokladu asistent nezadává, to se přidělí až při vystavení.
+
 ## 2026-10-04 · Koncepty faktur a AI asistent
 
 - **Faktura pro koncového zákazníka** — ve formuláři faktury zapněte *Koncový zákazník* a stačí napsat jméno (případně adresu a e-mail) přímo na fakturu, bez zakládání kontaktu. Hodí se pro jednorázové zákazníky. Kontakt můžete k faktuře přiřadit i později.

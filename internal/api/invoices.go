@@ -607,8 +607,8 @@ func (s *server) createInvoiceTx(ctx context.Context, tx *gorm.DB, in *InvoiceCr
 	if n := strings.TrimSpace(in.Number); n != "" {
 		m.Number = n
 	} else if !in.Draft {
-		if m.Number, err = s.deps.NextNumber(tx, acc.ID, m.DocumentType, m.IssuedOn); err != nil {
-			return nil, numberingErr(err)
+		if m.Number, err = s.nextInvoiceNumber(ctx, tx, m); err != nil {
+			return nil, err
 		}
 	}
 	m.VariableSymbol = spayd.Digits(m.Number, 10)
@@ -905,15 +905,50 @@ func checkTaxNumberUnique(ctx context.Context, tx *gorm.DB, m *model.Invoice) er
 	if m.Number == "" || !slices.Contains(taxNumberTypes, m.DocumentType) { // drafts have no number yet
 		return nil
 	}
-	var n int64
-	if err := tx.Model(&model.Invoice{}).Scopes(inAccount(ctx)).
-		Where("document_type IN ? AND number = ? AND id <> ?", taxNumberTypes, m.Number, m.ID).Count(&n).Error; err != nil {
-		return dbErr(err, "invoice")
+	taken, err := invoiceNumberTaken(ctx, tx, m, m.Number)
+	if err != nil {
+		return err
 	}
-	if n > 0 {
+	if taken {
 		return conflict(CodeAlreadyExists, "document number "+m.Number+" already exists")
 	}
 	return nil
+}
+
+// invoiceNumberTaken reports whether another document of the account already
+// has number in m's number space (its document type; all taxNumberTypes for
+// a tax document).
+func invoiceNumberTaken(ctx context.Context, tx *gorm.DB, m *model.Invoice, number string) (bool, error) {
+	types := []string{m.DocumentType}
+	if slices.Contains(taxNumberTypes, m.DocumentType) {
+		types = taxNumberTypes
+	}
+	var n int64
+	if err := tx.Model(&model.Invoice{}).Scopes(inAccount(ctx)).
+		Where("document_type IN ? AND number = ? AND id <> ?", types, number, m.ID).Count(&n).Error; err != nil {
+		return false, dbErr(err, "invoice")
+	}
+	return n > 0, nil
+}
+
+// maxNumberSkips bounds how many taken numbers nextInvoiceNumber skips.
+const maxNumberSkips = 1000
+
+// nextInvoiceNumber assigns the next number of m's default series, skipping
+// numbers another document already has (a custom number typed into the
+// series, e.g. on a draft, would otherwise block the series for good).
+func (s *server) nextInvoiceNumber(ctx context.Context, tx *gorm.DB, m *model.Invoice) (string, error) {
+	for range maxNumberSkips {
+		n, err := s.deps.NextNumber(tx, m.AccountID, m.DocumentType, m.IssuedOn)
+		if err != nil {
+			return "", numberingErr(err)
+		}
+		taken, err := invoiceNumberTaken(ctx, tx, m, n)
+		if err != nil || !taken {
+			return n, err
+		}
+	}
+	return "", conflict(CodeAlreadyExists, "the next numbers of the series are all taken; check the number format")
 }
 
 // needsCNBRate: a document in currency needs an exchange rate (the ČNB
