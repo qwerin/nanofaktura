@@ -87,3 +87,10 @@ jobs:
           tags: nanofaktura:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Build backup image
+        uses: docker/build-push-action@v7
+        with:
+          context: deploy/backup
+          push: false
+          tags: nanofaktura-backup:${{ github.sha }}

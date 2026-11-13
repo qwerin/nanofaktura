@@ -6,7 +6,7 @@ ducha dokumentu a odchylku zapiš do sekce „Otevřené otázky“ na konci.
 
 ## 1. Stack a struktura
 
-- Go 1.26, `huma/v2` (OpenAPI 3.1) nad `chi/v5`, GORM.
+- Go 1.27, `huma/v2` (OpenAPI 3.1) nad `chi/v5`, GORM.
 - DB: SQLite přes **pure-Go** driver `github.com/glebarez/sqlite` (bez CGO) + PostgreSQL (`gorm.io/driver/postgres`).
   Schéma přes GORM AutoMigrate.
 - Frontend: čistá SPA (bez SSR) — React 19 + Vite + TypeScript (strict) + Tailwind v4 + shadcn/ui (CLI v4, Base UI primitives),

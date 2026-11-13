@@ -16,6 +16,10 @@ services:
     networks:
       - internal
 
+  backup:
+    networks:
+      - internal
+
   app:
     # !reset zruší porty ze základního souboru (prosté "ports: []" se při slučování jen připojí)
     ports: !reset []

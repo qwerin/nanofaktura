@@ -48,6 +48,7 @@ internal/slug/    account slugs (Make, Unique)
 internal/events/  events.Record (activity log + webhook delivery queue, same tx) + event name catalogue
 internal/webhooks/ HMAC signing, SSRF-safe HTTP client, retry schedule; internal/search/ Fold (case/diacritics) for global search
 internal/httpsec/ client IP/HTTPS behind trusted proxies, security headers (CSP …), CSRF; internal/ratelimit/ keyed token buckets
+deploy/backup/    image of the stack's daily backup service (pg_dump + /data, docs/BACKUP.md); scripts/backup-pull.sh pulls backups to a PC
 internal/api/     api.New + one file per resource (DTOs next to handlers) + *_test.go (package api_test)
 ```
 

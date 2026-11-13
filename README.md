@@ -29,7 +29,7 @@ Co je nového pro uživatele, je v [`CHANGELOG.md`](CHANGELOG.md) — stejný te
 ### Lokálně (SQLite)
 
 ```bash
-# Go 1.26+ a Node 22+
+# Go 1.27+ a Node 22+
 make build-web   # sestaví frontend do web/dist
 make build       # sestaví Go binárku do bin/nanofaktura
 NANOFAKTURA_STATIC_DIR=web/dist ./bin/nanofaktura
@@ -148,6 +148,9 @@ Tyto nejsou pro aplikaci, ale pro compose soubory:
 | `DOMAIN` | – | Doména pro Traefik (overlay z ní odvodí `NANOFAKTURA_PUBLIC_URL`) |
 | `CERT_RESOLVER` | – | Certificate resolver Traefiku (např. `letsencrypt`) |
 | `TRAEFIK_NETWORK` | – | Externí síť Dockeru, ve které běží Traefik |
+| `BACKUP_DIR` | `/srv/nanofaktura-backups` | Adresář denních záloh na hostiteli ([docs/BACKUP.md](docs/BACKUP.md)) |
+| `BACKUP_SCHEDULE` | `30 2 * * *` | Čas zálohy (cron, Europe/Prague) |
+| `BACKUP_KEEP_DAYS` / `BACKUP_KEEP_MONTHS` | `14` / `12` | Kolik denních a měsíčních záloh ponechat |
 
 ### PostgreSQL DSN (bez Dockeru)
 
@@ -168,7 +171,9 @@ host=localhost user=nanofaktura password=tajne dbname=nanofaktura sslmode=disabl
 - **Správce instance** — do `NANOFAKTURA_ADMIN_EMAILS` zapište svůj e-mail, v *Nastavení → Můj profil* ho ověřte
   („Ověřit e-mail“, nebo `nanofaktura user verify-email --email …`) a v *Správa instance → Test e-mailu* zkontrolujte
   SMTP, SPF, DKIM a DMARC. Neověřená adresa ze seznamu práva nedává (nelze je tak získat pozvánkou na cizí adresu).
-- **Zálohujte** databázi i datový volume (`/data`: přílohy a `secret.key`), nebo nastavte `NANOFAKTURA_SECRET_KEY`.
+- **Zálohy** — služba `backup` stacku denně ukládá databázi i datový svazek (`/data`: přílohy a `secret.key`) do
+  `/srv/nanofaktura-backups` na hostiteli; `scripts/backup-pull.sh` je stáhne do PC. Postup a obnova:
+  [docs/BACKUP.md](docs/BACKUP.md).
 - **Logy** — výchozí `NANOFAKTURA_DB_LOG=error` vypisuje jen chyby databáze; při ladění `warn` nebo `info`.
 - Server při startu varuje, pokud něco z výše uvedeného chybí.
 
@@ -255,7 +260,7 @@ v [`CLAUDE.md`](CLAUDE.md). Interaktivní dokumentace API běží na `/api/docs`
 
 | Vrstva    | Technologie |
 |-----------|-------------|
-| Backend   | Go 1.26 (≥ 1.26.8), [chi](https://github.com/go-chi/chi), [Huma v2](https://github.com/danielgtaylor/huma), GORM |
+| Backend   | Go 1.27, [chi](https://github.com/go-chi/chi), [Huma v2](https://github.com/danielgtaylor/huma), GORM |
 | Databáze  | SQLite (pure Go, bez CGO) nebo PostgreSQL |
 | Frontend  | React 19, TypeScript, Vite, TanStack Router + Query, Tailwind v4, shadcn/ui, PWA |
 | Container | Docker (distroless), docker compose, PostgreSQL 17 |
