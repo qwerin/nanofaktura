@@ -263,7 +263,7 @@ configuration only as "is set" booleans (like secrets). The e-mail test runs `ma
 straight against the configured SMTP (not through `deps.Mailer`); tests inject `Deps.Resolver` and point
 `cfg.SMTPHost` at `smtptest.Start` (see `admin_test.go`).
 
-## EET — registration of sales (SPEC §7.19)
+## EET — registration of sales (SPEC §7.19; background and sources in `docs/EET.md`)
 
 `internal/api/eet.go`: account setup (`EETConfig`, certificate encrypted like other secrets) and `EETSale` rows. A contact
 payment (`PaymentCreate.eet`, default only for cash invoices of an account with EET on) queues a sale **in the payment's
