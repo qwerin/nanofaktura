@@ -9,7 +9,8 @@ on:
 jobs:
   test-backend:
     name: Go tests
-    runs-on: ubuntu-latest
+    # push to main → own runner "svobo" (isolated container, no Docker); pull requests stay on GitHub's runners
+    runs-on: ${{ github.event_name == 'push' && 'svobo' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -31,7 +32,7 @@ jobs:
 
   test-frontend:
     name: TypeScript typecheck
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'push' && 'svobo' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v7
 
