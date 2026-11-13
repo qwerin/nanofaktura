@@ -27,6 +27,18 @@ jobs:
         env:
           CGO_ENABLED: "0"
 
+  vulncheck:
+    name: Vulnerability check
+    # always on GitHub's runner: govulncheck needs more memory (> 2.5 GB) than the own runner's container gets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
       - name: Vulnerability check
         run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
@@ -60,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     # Spustí se jen při push (ne na PR z forků — nemají přístup k secrets)
     if: github.event_name == 'push'
-    needs: [test-backend, test-frontend]
+    needs: [test-backend, test-frontend, vulncheck]
     steps:
       - uses: actions/checkout@v7
 
