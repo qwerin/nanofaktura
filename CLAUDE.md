@@ -43,6 +43,7 @@ internal/storage/ Storage interface (Put/Get/Delete by key) + Local disk impleme
 internal/secret/  AES-256-GCM Box for secrets stored in the DB (Fio tokens) — see "Secrets"
 internal/bankimport/ bank statement parsers + Fio API client; internal/matching/ pure bank-transaction ↔ document matching
 internal/backup/  account backup ZIP (SPEC §7.16): Export / Import (new account, ID remapping) — see "Backup"
+internal/eet/     EET 2.0 client (signed SOAP OdeslaniTrzby, .p12 parsing); fake receiving system + test certificates in eet/eettest — see "EET"
 internal/slug/    account slugs (Make, Unique)
 internal/events/  events.Record (activity log + webhook delivery queue, same tx) + event name catalogue
 internal/webhooks/ HMAC signing, SSRF-safe HTTP client, retry schedule; internal/search/ Fold (case/diacritics) for global search
@@ -187,7 +188,7 @@ in the API: inputs accept them, outputs only expose `has_<name> bool`; never log
 ## Scheduler (background jobs)
 
 `cmd/server` runs `scheduler.New(nil, time.Minute, slog.Default())` in a goroutine: every registered job runs at
-start and then on every tick (each minute), sequentially — so **every job except `webhooks` declares `Every`**
+start and then on every tick (each minute), sequentially — so **every job except `webhooks` and `eet` declares `Every`**
 (`time.Hour`, `2 * time.Hour` …); the context is cancelled on shutdown. Errors/panics are logged only.
 A job is `scheduler.Job{Name, Run: func(ctx context.Context, now time.Time) error, Every}` (`Every` > 0 = run at most
 that often, e.g. `24 * time.Hour`). API jobs come from `api.Jobs(db, cfg, deps)` (same deps defaults as `api.New`):
@@ -261,6 +262,19 @@ details of the change in the handler (`slog.InfoContext(ctx, "admin …", "admin
 configuration only as "is set" booleans (like secrets). The e-mail test runs `maildiag.Run(ctx, EmailTestOptions(…))`
 straight against the configured SMTP (not through `deps.Mailer`); tests inject `Deps.Resolver` and point
 `cfg.SMTPHost` at `smtptest.Start` (see `admin_test.go`).
+
+## EET — registration of sales (SPEC §7.19)
+
+`internal/api/eet.go`: account setup (`EETConfig`, certificate encrypted like other secrets) and `EETSale` rows. A contact
+payment (`PaymentCreate.eet`, default only for cash invoices of an account with EET on) queues a sale **in the payment's
+transaction** (`s.registerEETSale`), the handler sends it after commit (`s.sendEETSales(ctx, invoiceID)`) and the `eet` job
+retries until the tax authority confirms (POK). The registered data of a sale never change; a resend only gets a new UUID,
+sending time and `first=false` (`attemptEETSale`: claim → send outside the transaction → store the outcome). Deleting a payment
+goes through `removePayment` → `cancelEETSale` (cancellation = a new sale with the opposite amount). Code that creates payments
+elsewhere (bank matching, bulk mark-paid, advances) deliberately registers nothing. `Deps.EET` is the sender; tests use the fake
+`ts.eet` (`eettest.Server`: `SetMode(ModeDown|ModeTemporary|ModeReject)`, `Requests()`), helpers `setupEET(c)` in `eet_test.go`.
+`go test ./internal/eet/ -run TestPlayground` talks to the real developer playground when `EET_PLAYGROUND_P12` /
+`EET_PLAYGROUND_PASSWORD` point at a test certificate from eet.gov.cz.
 
 ## MCP server (SPEC §7.17)
 

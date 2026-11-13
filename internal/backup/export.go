@@ -221,6 +221,9 @@ func readSnapshot(ctx context.Context, db *gorm.DB, accountID uint) (*snapshot, 
 		if err := exportAll[model.EmailLog, EmailLog](scoped(), addFile, FileEmailLogs); err != nil {
 			return err
 		}
+		if err := exportAll[model.EETSale, EETSale](scoped(), addFile, FileEETSales); err != nil {
+			return err
+		}
 
 		var hooks []model.Webhook
 		if err := scoped().Find(&hooks).Error; err != nil {

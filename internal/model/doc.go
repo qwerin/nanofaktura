@@ -20,5 +20,6 @@ func All() []any {
 		&BankTransaction{},
 		&Event{}, &Todo{}, &Webhook{}, &WebhookDelivery{},
 		&OAuthClient{}, &OAuthCode{}, &OAuthGrant{},
+		&EETConfig{}, &EETSale{},
 	}
 }

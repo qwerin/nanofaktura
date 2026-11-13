@@ -378,6 +378,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/accounts/{slug}/eet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug eet */
+        get: operations["get-api-accounts-by-slug-eet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Patch API accounts by slug eet
+         * @description Allowed roles: owner, admin.
+         */
+        patch: operations["patch-api-accounts-by-slug-eet"];
+        trace?: never;
+    };
+    "/api/accounts/{slug}/eet-sales": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get API accounts by slug eet sales */
+        get: operations["get-api-accounts-by-slug-eet-sales"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/eet-sales/{id}/actions/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug eet sales by ID actions retry
+         * @description Allowed roles: owner, admin, member.
+         */
+        post: operations["post-api-accounts-by-slug-eet-sales-by-id-actions-retry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/eet/actions/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post API accounts by slug eet actions test
+         * @description Allowed roles: owner, admin.
+         */
+        post: operations["post-api-accounts-by-slug-eet-actions-test"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{slug}/eet/certificate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put API accounts by slug eet certificate
+         * @description Allowed roles: owner, admin.
+         */
+        put: operations["put-api-accounts-by-slug-eet-certificate"];
+        post?: never;
+        /**
+         * Delete API accounts by slug eet certificate
+         * @description Allowed roles: owner, admin.
+         */
+        delete: operations["delete-api-accounts-by-slug-eet-certificate"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/accounts/{slug}/email-templates/defaults": {
         parameters: {
             query?: never;
@@ -3145,6 +3247,121 @@ export interface components {
             /** @description Customer (A.4) or supplier (B.2) DIČ */
             vat_no: string;
         };
+        EETCertificateUpload: {
+            /** @description Password of the .p12 file */
+            password: string;
+            /** @description The .p12 file, base64 */
+            pkcs12: string;
+        };
+        EETSale: {
+            /**
+             * Format: int64
+             * @description CZK minor units; negative = cancellation
+             */
+            amount: number;
+            /** Format: int64 */
+            attempts: number;
+            /**
+             * Format: int64
+             * @description Cancellation (storno) of this sale
+             */
+            cancels_id?: number;
+            /** Format: date-time */
+            confirmed_at?: string;
+            /** Format: date-time */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description Legal limit for sending: 48 hours after the sale
+             */
+            deadline_at: string;
+            eic: string;
+            /** @enum {string} */
+            environment: "production" | "playground";
+            error?: string;
+            /** Format: int64 */
+            error_code?: number;
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            invoice_id: number;
+            invoice_number: string;
+            /** Format: date-time */
+            last_attempt_at?: string;
+            /**
+             * Format: int64
+             * @description Missing for cancellations and once the payment was deleted
+             */
+            payment_id?: number;
+            /** @description Confirmation code of the tax authority */
+            pok?: string;
+            register_id: string;
+            serial_no: string;
+            /** Format: date-time */
+            sold_at: string;
+            /** @enum {string} */
+            status: "pending" | "confirmed" | "failed" | "cancelled";
+            /** @description For support requests to the tax authority */
+            transaction_id?: string;
+            unit_id: string;
+            warnings: string[];
+        };
+        EETSettings: {
+            /** @description EIC the stored certificate was issued to */
+            certificate_eic?: string;
+            /** Format: date-time */
+            certificate_valid_to?: string;
+            /** @description Evidenční identifikační číslo: CZ + 8–10 digits (usually the DIČ) */
+            eic: string;
+            /** @description Contact payments are registered */
+            enabled: boolean;
+            /**
+             * @description playground = the tax authority's test system (its confirmations are not valid)
+             * @enum {string}
+             */
+            environment: "production" | "playground";
+            /**
+             * Format: int64
+             * @description Sales refused by the tax authority (fix the cause and retry)
+             */
+            failed_count: number;
+            has_certificate: boolean;
+            /**
+             * Format: int64
+             * @description Sales waiting to be sent
+             */
+            pending_count: number;
+            /** @description The account's own name of the cash register (id_pokl) */
+            register_id: string;
+            /** @description Number of the evidenční jednotka assigned in DIS+ */
+            unit_id: string;
+        };
+        EETSettingsPatch: {
+            eic?: string;
+            /** @description true needs a certificate, EIC, unit and register */
+            enabled?: boolean;
+            /** @enum {string} */
+            environment?: "production" | "playground";
+            register_id?: string;
+            unit_id?: string;
+        };
+        EETTestResult: {
+            /**
+             * Format: int64
+             * @description Error code of the tax authority (0 = processed)
+             */
+            code?: number;
+            environment: string;
+            message: string;
+            ok: boolean;
+            transaction_id?: string;
+            warnings: components["schemas"]["EETWarning"][];
+        };
+        EETWarning: {
+            /** Format: int64 */
+            code: number;
+            text: string;
+        };
         EmailLog: {
             attachments: string[];
             /** @description Sent by the scheduler or an automatic rule */
@@ -3827,6 +4044,8 @@ export interface components {
             /** Format: int64 */
             due_days: number;
             due_on: string;
+            /** @description Sales of this document registered in EET (payments via payment_id) and their cancellations */
+            eet_sales: components["schemas"]["EETSale"][];
             exchange_rate: string;
             footer_note: string;
             iban: string;
@@ -4317,6 +4536,15 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        ListResponseEETSale: {
+            items: components["schemas"]["EETSale"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            per_page: number;
+            /** Format: int64 */
+            total: number;
+        };
         ListResponseEmailLog: {
             items: components["schemas"]["EmailLog"][];
             /** Format: int64 */
@@ -4671,6 +4899,8 @@ export interface components {
             amount?: number;
             /** @description Proforma only: also issue the final invoice dated paid_on; it takes over all proforma payments (a partial payment leaves the rest due on the final invoice) and settles the proforma */
             create_final_invoice?: boolean;
+            /** @description Contact payment (cash, card at the counter …): register it in EET. Default: true when the account registers sales and the invoice is paid in cash; true without EET turned on → 409 eet_not_enabled */
+            eet?: boolean;
             note?: string;
             /**
              * Format: date
@@ -5326,7 +5556,7 @@ export interface components {
             due_on?: string;
             /** Format: int64 */
             id: number;
-            /** @description manual, invoice.overdue, bank.suggested, stock.low, recurring.failed */
+            /** @description manual, invoice.overdue, bank.suggested, stock.low, recurring.failed, eet.failed */
             name: string;
             /** Format: int64 */
             related_id?: number;
@@ -6627,6 +6857,242 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Dashboard"];
                 };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-eet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EETSettings"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "patch-api-accounts-by-slug-eet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EETSettingsPatch"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EETSettings"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-api-accounts-by-slug-eet-sales": {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+                status?: "pending" | "confirmed" | "failed" | "cancelled";
+                invoice_id?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListResponseEETSale"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-eet-sales-by-id-actions-retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EETSale"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "post-api-accounts-by-slug-eet-actions-test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EETTestResult"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "put-api-accounts-by-slug-eet-certificate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EETCertificateUpload"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EETSettings"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-api-accounts-by-slug-eet-certificate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Error */
             default: {

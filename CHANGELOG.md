@@ -9,6 +9,17 @@ Pravidla (viz CLAUDE.md → „Novinky“):
 - Podporováno: odstavce, `###`, odrážky, **tučně**, *zvýraznění* (např. cesta v menu), `kód`, [odkazy](https://…). Nic dalšího.
 -->
 
+## 2026-11-13 · Evidence tržeb (EET 2.0)
+
+Od 1. ledna 2027 se vrací evidence tržeb. Týká se plateb přijatých při osobním kontaktu se zákazníkem (hotově, kartou na místě apod.) — faktury placené převodem na účet se neevidují. NanoFaktura umí tržby evidovat za vás.
+
+- **Nastavení EET** — v *Nastavení → EET* nahrajete pokladní certifikát z portálu MOJE daně, vyplníte EIČ (obvykle vaše DIČ) a číslo evidenční jednotky a evidenci zapnete. Tlačítkem *Otestovat spojení* si ověříte, že je vše správně, aniž by se cokoli zaevidovalo. Více o povinnosti na [eet.gov.cz](https://eet.gov.cz).
+- **Zaevidování při úhradě** — při zápisu úhrady faktury zaškrtnete *Kontaktní platba — zaevidovat do EET* (u faktur placených hotově je zaškrtnuto předem). Tržba se hned odešle Finanční správě a u platby uvidíte potvrzovací kód.
+- **Výpadek nevadí** — když se odeslání nepovede, NanoFaktura to zkouší sama znovu, dokud tržba neprojde. Pokud Finanční správa tržbu odmítne (třeba kvůli propadlému certifikátu), dostanete úkol a po opravě ji odešlete znovu jedním kliknutím.
+- **Storno** — smažete-li zaevidovanou platbu, odešle se automaticky storno tržby.
+- **Přehled tržeb** — všechny evidované tržby včetně potvrzovacích kódů najdete v *Nastavení → EET* a jsou i součástí zálohy účtu. Certifikát se do zálohy neukládá; po obnově ze zálohy ho nahrajte znovu.
+- **Vyzkoušení nanečisto** — v nastavení lze přepnout na testovací prostředí Finanční správy. Tržby odeslané tam se nepočítají.
+
 ## 2026-10-13 · Oprava vystavení konceptu
 
 - **Vystavení konceptu už nehlásí „Záznam se stejným označením už existuje“** — když už číslo, které by řada přidělila, používá jiný doklad (třeba proto, že jste ho zadali ručně), vystavení ho přeskočí a použije další volné číslo. Totéž platí pro nově vytvořené faktury.

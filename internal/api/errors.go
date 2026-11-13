@@ -91,6 +91,11 @@ const (
 	CodeCurrencyHasPayments      = "currency_has_payments"
 	CodeCorrectionRequired       = "correction_required"
 	CodeMonthlyControlStatement  = "monthly_control_statement"
+	CodeEETNotConfigured         = "eet_not_configured"
+	CodeEETNotEnabled            = "eet_not_enabled"
+	CodeEETBadCertificate        = "eet_bad_certificate"
+	CodeEETCertificateExpired    = "eet_certificate_expired"
+	CodeEETNotRetryable          = "eet_not_retryable"
 )
 
 // statusCodes are the generic codes of errors created without apiError.

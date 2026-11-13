@@ -53,6 +53,8 @@ var coverage = map[string]string{
 	"Event":              FileEvents,
 	"Todo":               FileTodos,
 	"Webhook":            FileWebhooks,
+	"EETConfig":          "excluded: holds the cash-register certificate (secret); EET is set up again in the new account",
+	"EETSale":            FileEETSales,
 	"WebhookDelivery":    "excluded: delivery queue/log of the old instance (payloads with old IDs)",
 }
 
@@ -102,6 +104,7 @@ func TestDTOsCoverModelFields(t *testing.T) {
 		{model.InvoiceTemplate{}, Template{}}, {model.TemplateLine{}, TemplateLine{}}, {model.Recurring{}, Recurring{}},
 		{model.BankTransaction{}, BankTransaction{}}, {model.MatchSuggestion{}, MatchSuggestion{}},
 		{model.Todo{}, Todo{}}, {model.Event{}, Event{}}, {model.EmailLog{}, EmailLog{}}, {model.Webhook{}, Webhook{}},
+		{model.EETSale{}, EETSale{}},
 		{model.Attachment{}, Attachment{}},
 	}
 	for _, p := range pairs {

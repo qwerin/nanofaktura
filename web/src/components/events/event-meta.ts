@@ -20,6 +20,7 @@ import {
   MailWarningIcon,
   PackageIcon,
   ReceiptIcon,
+  ReceiptTextIcon,
   RepeatIcon,
   SendIcon,
   Trash2Icon,
@@ -134,6 +135,9 @@ const specific: Record<string, EventVisual> = {
   'bank.unmatched': { icon: UnlinkIcon, tone: 'muted' },
   'webhook.failed': { icon: BellRingIcon, tone: 'destructive' },
   'webhook.disabled': { icon: BanIcon, tone: 'destructive' },
+  'eet.registered': { icon: ReceiptTextIcon, tone: 'success' },
+  'eet.failed': { icon: CircleAlertIcon, tone: 'destructive' },
+  'eet.settings_updated': { icon: ReceiptTextIcon, tone: 'muted' },
   'account.exported': { icon: ArchiveIcon, tone: 'muted' },
   'account.imported': { icon: ArchiveRestoreIcon, tone: 'info' },
 }

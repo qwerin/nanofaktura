@@ -458,6 +458,7 @@ func Jobs(db *gorm.DB, cfg config.Config, deps Deps) []scheduler.Job {
 		{Name: "todos", Run: s.RunTodos, Every: time.Hour},
 		{Name: "auth-cleanup", Run: s.RunAuthCleanup, Every: time.Hour},
 		{Name: "webhooks", Run: s.RunWebhooks}, // every tick (cmd/server ticks every minute)
+		{Name: "eet", Run: s.RunEET},           // every tick: sales must reach the tax authority without delay
 	}
 }
 

@@ -72,6 +72,12 @@ export const codeMessages: Record<string, string> = {
     'Odeslaný daňový doklad nelze stornovat. Vystavte k němu opravný daňový doklad (dobropis).',
   monthly_control_statement:
     'Právnická osoba podává kontrolní hlášení vždy za měsíc, i při čtvrtletním přiznání. Vyberte měsíc.',
+  eet_not_configured:
+    'EET zatím nejde zapnout ani otestovat — nahrajte certifikát a vyplňte EIČ, číslo evidenční jednotky a označení pokladny.',
+  eet_not_enabled: 'Evidence tržeb (EET) není pro tento účet zapnutá. Zapněte ji v Nastavení → EET.',
+  eet_bad_certificate: 'Soubor není pokladní certifikát (.p12), nebo nesedí heslo.',
+  eet_certificate_expired: 'Platnost certifikátu už vypršela. Vygenerujte si nový na portálu MOJE daně.',
+  eet_not_retryable: 'Znovu lze odeslat jen tržbu, která čeká nebo byla odmítnuta.',
   correction_invoice_only: 'Dobropis lze vystavit jen k faktuře.',
   correction_template: 'Dobropis nelze uložit jako šablonu.',
   template_needs_subject: 'Fakturu bez kontaktu nelze uložit jako šablonu — nejdřív k ní vyberte odběratele z kontaktů.',

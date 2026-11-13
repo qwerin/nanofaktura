@@ -49,6 +49,7 @@ const (
 	TodoBankSuggested   = "bank.suggested"
 	TodoStockLow        = "stock.low"
 	TodoRecurringFailed = "recurring.failed"
+	TodoEETFailed       = "eet.failed"
 )
 
 // Webhook delivers the account's events to an URL (SPEC §7.10). Secret is

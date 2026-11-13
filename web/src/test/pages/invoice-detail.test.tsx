@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import type { CreatePaymentInput, EmailLog, Invoice } from '@/api/types'
-import { makeInvoice } from '@/test/fixtures'
+import { makeEETSale, makeEETSettings, makeInvoice } from '@/test/fixtures'
 import { renderApp } from '@/test/render'
 import { API, problem, server, setSession } from '@/test/server'
 import { setMobile } from '@/test/viewport'
@@ -289,5 +289,163 @@ describe('detail faktury — koncept', () => {
     await openDetail(draft)
     expect(screen.getAllByRole('button', { name: 'Vystavit' }).length).toBeGreaterThan(0)
     expect(action('Přidat platbu')).toBeNull()
+  })
+})
+
+describe('detail faktury — EET', () => {
+  const payment = { id: 5, invoice_id: 42, amount: 1_000_000, paid_on: '2026-03-02', note: '', created_at: '' }
+
+  /** Odpověď na platbu s tržbou v daném stavu. */
+  function mockPaymentWithSale(inv: Invoice, sale: Partial<ReturnType<typeof makeEETSale>>) {
+    const bodies: CreatePaymentInput[] = []
+    server.use(
+      http.post(`${API}/api/accounts/:slug/invoices/:id/payments`, async ({ request }) => {
+        bodies.push((await request.json()) as CreatePaymentInput)
+        return HttpResponse.json(
+          {
+            invoice: { ...inv, status: 'paid', paid_amount: inv.total, remaining_amount: 0, payments: [payment], eet_sales: [makeEETSale({ payment_id: 5, ...sale })] },
+            payment,
+          },
+          { status: 201 },
+        )
+      }),
+    )
+    return bodies
+  }
+
+  it('bez zapnuté evidence volbu nenabízí a pole neposílá', async () => {
+    const inv = makeInvoice({ payment_method: 'cash' })
+    const calls = mockInvoice(inv)
+    server.use(http.get(`${API}/api/accounts/:slug/eet`, () => HttpResponse.json(makeEETSettings({ enabled: false }))))
+    const { user } = await openDetail(inv)
+    await user.click(screen.getByRole('button', { name: 'Přidat platbu' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Přidat platbu' })
+    expect(within(dialog).queryByRole('switch', { name: /Kontaktní platba/ })).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Přidat platbu' }))
+    await waitFor(() => expect(calls.payments).toHaveLength(1))
+    expect('eet' in calls.payments[0]!).toBe(false)
+  })
+
+  it('hotovost předvolí kontaktní platbu a pošle eet: true', async () => {
+    const inv = makeInvoice({ payment_method: 'cash' })
+    mockInvoice(inv)
+    server.use(http.get(`${API}/api/accounts/:slug/eet`, () => HttpResponse.json(makeEETSettings())))
+    const bodies = mockPaymentWithSale(inv, {})
+    const { user } = await openDetail(inv)
+    await user.click(screen.getByRole('button', { name: 'Přidat platbu' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Přidat platbu' })
+    expect(await within(dialog).findByRole('switch', { name: /Kontaktní platba — zaevidovat do EET/ })).toBeChecked()
+    expect(within(dialog).getByText(/převod na účet se neeviduje/)).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Přidat platbu' }))
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0]!.eet).toBe(true)
+    // zaevidovaná tržba = žádné upozornění navíc
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Přidat platbu' })).not.toBeInTheDocument())
+    expect((await screen.findAllByText('Faktura je uhrazená')).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/do EET/)).not.toBeInTheDocument()
+  })
+
+  it('převod nechá volbu vypnutou a pošle eet: false; čekající tržba jen upozorní', async () => {
+    const inv = makeInvoice({ payment_method: 'bank' })
+    mockInvoice(inv)
+    server.use(http.get(`${API}/api/accounts/:slug/eet`, () => HttpResponse.json(makeEETSettings())))
+    const bodies = mockPaymentWithSale(inv, { status: 'pending', pok: undefined, confirmed_at: undefined })
+    const { user } = await openDetail(inv)
+    await user.click(screen.getByRole('button', { name: 'Přidat platbu' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Přidat platbu' })
+    expect(await within(dialog).findByRole('switch', { name: /Kontaktní platba/ })).not.toBeChecked()
+    await user.click(within(dialog).getByRole('button', { name: 'Přidat platbu' }))
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0]!.eet).toBe(false)
+    // čekající tržba → neblokující upozornění
+    expect(await screen.findByText('Tržba čeká na odeslání do EET')).toBeInTheDocument()
+    expect(screen.getByText(/odešle se automaticky/)).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Přidat platbu' })).not.toBeInTheDocument()
+  })
+
+  it('odmítnutá tržba ukáže chybu Finanční správy', async () => {
+    const inv = makeInvoice({ payment_method: 'card' })
+    mockInvoice(inv)
+    server.use(http.get(`${API}/api/accounts/:slug/eet`, () => HttpResponse.json(makeEETSettings())))
+    mockPaymentWithSale(inv, { status: 'failed', pok: undefined, confirmed_at: undefined, error: 'Neplatné EIČ', error_code: 12 })
+    const { user } = await openDetail(inv)
+    await user.click(screen.getByRole('button', { name: 'Přidat platbu' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Přidat platbu' })
+    expect(await within(dialog).findByRole('switch', { name: /Kontaktní platba/ })).toBeChecked()
+    await user.click(within(dialog).getByRole('button', { name: 'Přidat platbu' }))
+    expect(await screen.findByText('Platbu se nepodařilo zaevidovat do EET')).toBeInTheDocument()
+    expect(screen.getByText('Neplatné EIČ')).toBeInTheDocument()
+  })
+
+  it('platby ukazují stav a POK, storna jsou v podseznamu, odmítnutou jde poslat znovu', async () => {
+    const failed = makeEETSale({ id: 3, payment_id: 6, status: 'failed', pok: undefined, error: 'Chybný podpis', amount: 50_000 })
+    const inv = makeInvoice({
+      status: 'paid',
+      paid_amount: 1_000_000,
+      remaining_amount: 0,
+      payments: [payment, { ...payment, id: 6, amount: 50_000 }],
+      eet_sales: [
+        makeEETSale({ id: 1, payment_id: 5 }),
+        failed,
+        makeEETSale({ id: 2, payment_id: undefined, status: 'cancelled', pok: 'pok-smazane-platby', amount: 20_000 }),
+        makeEETSale({ id: 4, payment_id: undefined, cancels_id: 2, pok: 'pok-storna', amount: -20_000 }),
+      ],
+    })
+    mockInvoice(inv)
+    const retried: string[] = []
+    server.use(
+      http.post(`${API}/api/accounts/:slug/eet-sales/:id/actions/retry`, ({ params }) => {
+        retried.push(String(params.id))
+        return HttpResponse.json({ ...failed, status: 'confirmed', pok: 'pok-po-opakovani', error: undefined })
+      }),
+    )
+    const { user } = await openDetail(inv)
+    expect(screen.getByText('EET: Zaevidováno')).toBeInTheDocument()
+    expect(screen.getByText('EET: Odmítnuto')).toBeInTheDocument()
+    expect(screen.getByText('Chybný podpis')).toBeInTheDocument()
+    expect(screen.getByText('EET — storna a smazané platby')).toBeInTheDocument()
+    expect(screen.getByText('pok-storna')).toBeInTheDocument()
+    expect(screen.getByText('pok-smazane-platby')).toBeInTheDocument()
+    expect(screen.getByText(/storno tržby/)).toBeInTheDocument()
+    expect(screen.getByText(/tržba smazané platby/)).toBeInTheDocument()
+
+    expect(screen.getAllByRole('button', { name: 'Zkusit znovu' })).toHaveLength(1)
+    await user.click(screen.getByRole('button', { name: 'Zkusit znovu' }))
+    expect(await screen.findByText('Tržba je zaevidovaná')).toBeInTheDocument()
+    expect(retried).toEqual(['3'])
+  })
+
+  it('smazání zaevidované platby upozorní na storno', async () => {
+    const inv = makeInvoice({
+      status: 'paid',
+      paid_amount: 1_000_000,
+      remaining_amount: 0,
+      payments: [payment, { ...payment, id: 6 }],
+      eet_sales: [makeEETSale({ payment_id: 5 })],
+    })
+    mockInvoice(inv)
+    const { user } = await openDetail(inv)
+    const [withSale, withoutSale] = screen.getAllByRole('button', { name: 'Smazat platbu' })
+    await user.click(withoutSale!)
+    let dialog = await screen.findByRole('dialog', { name: 'Smazat platbu?' })
+    expect(within(dialog).queryByText(/storno/)).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Zpět' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Smazat platbu?' })).not.toBeInTheDocument())
+
+    await user.click(withSale!)
+    dialog = await screen.findByRole('dialog', { name: 'Smazat platbu?' })
+    expect(within(dialog).getByText(/Finanční správě se automaticky odešle její storno/)).toBeInTheDocument()
+  })
+
+  it('účetní vidí stav tržby, ale ne nový pokus', async () => {
+    setSession('accountant')
+    const inv = makeInvoice({
+      payments: [payment],
+      eet_sales: [makeEETSale({ payment_id: 5, status: 'failed', pok: undefined, error: 'Chybný podpis' })],
+    })
+    mockInvoice(inv)
+    await openDetail(inv)
+    expect(screen.getByText('EET: Odmítnuto')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Zkusit znovu' })).not.toBeInTheDocument()
   })
 })

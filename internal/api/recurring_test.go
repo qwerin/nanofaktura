@@ -18,7 +18,8 @@ import (
 // runJob runs a scheduler job of the API (same DB, clock, mailer) at ts.now.
 func runJob(ts *testServer, name string) error {
 	ts.t.Helper()
-	deps := api.Deps{Now: func() time.Time { return ts.now }, Mailer: ts.mail, Storage: storage.NewLocal(ts.dataDir), Secrets: ts.secrets}
+	deps := api.Deps{Now: func() time.Time { return ts.now }, Mailer: ts.mail, Storage: storage.NewLocal(ts.dataDir), Secrets: ts.secrets,
+		EET: ts.eet.Client()}
 	for _, j := range api.Jobs(ts.db, ts.cfg, deps) {
 		if j.Name == name {
 			return j.Run(context.Background(), ts.now)

@@ -110,6 +110,7 @@ type Invoice struct {
 	VatRecap    []VatRecapItem `json:"vat_recap" nullable:"false"`
 	Warnings    []DocWarning   `json:"warnings" nullable:"false" doc:"Things the issuer should check (not errors)"`
 	Attachments []Attachment   `json:"attachments" nullable:"false"`
+	EETSales    []EETSale      `json:"eet_sales" nullable:"false" doc:"Sales of this document registered in EET (payments via payment_id) and their cancellations"`
 	// RelatedDocuments are the documents referring to this one (corrections
 	// of an invoice; tax documents and the final invoice of a proforma).
 	RelatedDocuments []RelatedDocument `json:"related_documents" nullable:"false"`
@@ -234,6 +235,7 @@ func toInvoice(m *model.Invoice, today string) Invoice {
 		VatRecap:         []VatRecapItem{},
 		Warnings:         invoiceWarnings(m),
 		Attachments:      []Attachment{},
+		EETSales:         []EETSale{},
 		RelatedDocuments: []RelatedDocument{},
 		Deposits:         []Deposit{},
 	}
@@ -472,6 +474,9 @@ func (s *server) invoiceOut(ctx context.Context, db *gorm.DB, id uint) (*Out[Inv
 		return nil, err
 	}
 	out.Deposits = toDeposits(deps)
+	if out.EETSales, err = invoiceEETSales(ctx, db, m.ID); err != nil {
+		return nil, err
+	}
 	return &Out[Invoice]{Body: out}, nil
 }
 

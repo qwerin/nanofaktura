@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { ReceiptTextIcon } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
@@ -6,13 +7,15 @@ import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { applyProblemToForm, errorMessage } from '@/api/errors'
+import { eetQueries } from '@/api/queries/eet'
 import { useCreatePayment } from '@/api/queries/invoices'
-import type { Invoice } from '@/api/types'
+import type { EETSale, Invoice } from '@/api/types'
 import { SwitchField, TextField } from '@/components/form/fields'
 import { ResponsiveDialog } from '@/components/responsive-dialog'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { parseISODate, todayISO } from '@/lib/date'
+import { defaultContactPayment } from '@/lib/eet'
 import { formatMoney, formatMoneyInput, parseMoney } from '@/lib/money'
 import { paymentAmountError, precheckFinalInvoice, remainderOnFinalInvoice } from './payment-logic'
 
@@ -25,6 +28,7 @@ function makeSchema(remaining: number) {
     }),
     note: z.string().max(500),
     create_final_invoice: z.boolean(),
+    eet: z.boolean(),
   })
 }
 type Values = z.infer<ReturnType<typeof makeSchema>>
@@ -35,12 +39,33 @@ function defaults(inv: Invoice): Values {
     amount: formatMoneyInput(inv.remaining_amount),
     note: '',
     create_final_invoice: inv.document_type === 'proforma' && precheckFinalInvoice(inv.remaining_amount, inv.remaining_amount),
+    eet: defaultContactPayment(inv.payment_method),
   }
 }
 
 /** Plátce bez přenesení daňové povinnosti: k platbě zálohy vzniká daňový doklad (§ 28 ZDPH). */
 function issuesTaxDocument(inv: Invoice): boolean {
   return inv.document_type === 'proforma' && inv.your_vat_mode === 'vat_payer' && !inv.reverse_charge
+}
+
+/** Tržba v EET, která vznikla k právě přidané platbě (odpověď už obsahuje výsledek pokusu o odeslání). */
+function saleOfPayment(invoice: Invoice, paymentId: number): EETSale | undefined {
+  return (invoice.eet_sales ?? []).find((s) => s.payment_id === paymentId && s.cancels_id == null)
+}
+
+/** Neblokující upozornění, když se tržbu nepodařilo hned zaevidovat. */
+function notifyEetOutcome(sale: EETSale | undefined) {
+  if (!sale || sale.status === 'confirmed') return
+  if (sale.status === 'failed') {
+    toast.error('Platbu se nepodařilo zaevidovat do EET', {
+      description: sale.error || 'Finanční správa tržbu odmítla. Podrobnosti najdete u platby na faktuře.',
+      duration: 10_000,
+    })
+  } else if (sale.status === 'pending') {
+    toast.warning('Tržba čeká na odeslání do EET', {
+      description: 'Finanční správa teď neodpovídá — odešle se automaticky.',
+    })
+  }
 }
 
 export function AddPaymentDialog({
@@ -56,6 +81,10 @@ export function AddPaymentDialog({
 }) {
   const navigate = useNavigate()
   const create = useCreatePayment(slug, invoice.id)
+  // Volba kontaktní platby se nabízí jen při zapnuté evidenci tržeb (načte se už s detailem faktury);
+  // dokud nastavení neznáme, pole neposíláme a o evidenci rozhodne výchozí pravidlo serveru.
+  const eet = useQuery(eetQueries.settings(slug))
+  const eetEnabled = eet.data?.enabled === true
   const schema = useMemo(() => makeSchema(invoice.remaining_amount), [invoice.remaining_amount])
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: defaults(invoice) })
   const proforma = invoice.document_type === 'proforma'
@@ -84,8 +113,11 @@ export function AddPaymentDialog({
         amount: parseMoney(v.amount) ?? undefined,
         note: v.note.trim() || undefined,
         create_final_invoice: proforma ? v.create_final_invoice : undefined,
+        // Při zapnuté evidenci vždy výslovně; jinak pole neposíláme (true by skončilo chybou).
+        eet: eetEnabled ? v.eet : undefined,
       })
       onOpenChange(false)
+      notifyEetOutcome(saleOfPayment(res.invoice, res.payment.id))
       const taxDocumentId = res.tax_document_id
       const taxDocAction = taxDocumentId
         ? { action: { label: 'Zobrazit daňový doklad', onClick: () => openInvoice(taxDocumentId) } }
@@ -145,6 +177,18 @@ export function AddPaymentDialog({
           />
         </div>
         <TextField control={form.control} name="note" label="Poznámka" autoComplete="off" placeholder="Nepovinné" />
+        {eetEnabled && (
+          <SwitchField
+            control={form.control}
+            name="eet"
+            label="Kontaktní platba — zaevidovat do EET"
+            description={
+              eet.data?.environment === 'playground'
+                ? 'Hotově nebo kartou na místě; převod na účet se neeviduje. Běží testovací prostředí — potvrzení nebude platné.'
+                : 'Hotově nebo kartou na místě; převod na účet se neeviduje.'
+            }
+          />
+        )}
         {proforma && issuesTaxDocument(invoice) && (
           <p className="flex gap-2 rounded-lg bg-muted/60 p-3 text-sm text-muted-foreground">
             <ReceiptTextIcon className="mt-0.5 size-4 shrink-0" />

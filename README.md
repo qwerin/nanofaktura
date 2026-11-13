@@ -15,6 +15,8 @@ Co je nového pro uživatele, je v [`CHANGELOG.md`](CHANGELOG.md) — stejný te
 - **Náklady** s přílohami (foto účtenky), **ceník a sklad**
 - **Pravidelné faktury a šablony**, odesílání e-mailem, automatické upomínky, veřejný odkaz faktury pro klienta
 - **Banka** — synchronizace s Fio API, import výpisů (ABO/GPC, CSV Fio/ČSOB/KB/Air Bank), automatické párování plateb
+- **Evidence tržeb (EET 2.0)** — hotovostní a jiné kontaktní platby faktur se od 2027 evidují u Finanční správy:
+  pokladní certifikát z portálu MOJE daně, potvrzovací kód u platby, automatické opakování při výpadku, storna
 - **Přehledy a DPH** — tržby/náklady/zisk, srovnání s paušálem OSVČ, přiznání k DPH a kontrolní hlášení (XML pro EPO)
 - **Exporty** — CSV/XLSX, ZIP s PDF za období, kompletní **záloha a obnova účtu**
 - **Tým** — více uživatelů a firem, role (vlastník, administrátor, člen, účetní), pozvánky
@@ -222,7 +224,7 @@ Výsledek ověříte v Gmailu: otevřete testovací e-mail → tři tečky → �
 
 Zálohu účtu (ZIP se všemi daty a přílohami, bez hesel a tajných tokenů) stáhne vlastník/administrátor
 v *Nastavení → Záloha a přenos*; obnova v přepínači účtů *Nový účet → Obnovit ze zálohy* vždy založí nový účet.
-Po obnově jsou pravidelné faktury, upomínky a webhooky vypnuté a tokeny Fio je třeba zadat znovu.
+Po obnově jsou pravidelné faktury, upomínky, webhooky a EET vypnuté; tokeny Fio a certifikát pro EET je třeba zadat znovu.
 
 ### Zapomenuté heslo a dvoufázové ověření
 

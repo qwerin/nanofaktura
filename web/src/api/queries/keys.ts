@@ -130,5 +130,9 @@ export const keys = {
   todoCount: (slug: string) => [...keys.todos(slug), 'open-count'] as const,
   webhooks: (slug: string) => [...keys.account(slug), 'webhooks'] as const,
   webhookDeliveries: (slug: string, id: number) => [...keys.webhooks(slug), 'deliveries', id] as const,
+  // --- EET (evidence tržeb) ---
+  eet: (slug: string) => [...keys.account(slug), 'eet'] as const,
+  eetSettings: (slug: string) => [...keys.eet(slug), 'settings'] as const,
+  eetSales: (slug: string, filters: object) => [...keys.eet(slug), 'sales', filters] as const,
   search: (slug: string, q: string) => [...keys.account(slug), 'search', q] as const,
 }

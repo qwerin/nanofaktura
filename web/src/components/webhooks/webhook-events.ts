@@ -17,6 +17,7 @@ const prefixLabels: Record<string, string> = {
   recurring: 'Pravidelné faktury',
   bank: 'Banka',
   webhook: 'Webhooky',
+  eet: 'EET',
 }
 
 export function prefixOf(name: string): string {

@@ -44,6 +44,7 @@ import { Route as ASlugSettingsAppearanceRouteImport } from './routes/a/$slug/se
 import { Route as ASlugSettingsBackupRouteImport } from './routes/a/$slug/settings/backup'
 import { Route as ASlugSettingsBankAccountsRouteImport } from './routes/a/$slug/settings/bank-accounts'
 import { Route as ASlugSettingsCompanyRouteImport } from './routes/a/$slug/settings/company'
+import { Route as ASlugSettingsEetRouteImport } from './routes/a/$slug/settings/eet'
 import { Route as ASlugSettingsEmailsRouteImport } from './routes/a/$slug/settings/emails'
 import { Route as ASlugSettingsMembersRouteImport } from './routes/a/$slug/settings/members'
 import { Route as ASlugSettingsNumberFormatsRouteImport } from './routes/a/$slug/settings/number-formats'
@@ -244,6 +245,11 @@ const ASlugSettingsCompanyRoute = ASlugSettingsCompanyRouteImport.update({
   path: '/company',
   getParentRoute: () => ASlugSettingsRouteRoute,
 } as any)
+const ASlugSettingsEetRoute = ASlugSettingsEetRouteImport.update({
+  id: '/eet',
+  path: '/eet',
+  getParentRoute: () => ASlugSettingsRouteRoute,
+} as any)
 const ASlugSettingsEmailsRoute = ASlugSettingsEmailsRouteImport.update({
   id: '/emails',
   path: '/emails',
@@ -399,6 +405,7 @@ export interface FileRoutesByFullPath {
   '/a/$slug/settings/backup': typeof ASlugSettingsBackupRoute
   '/a/$slug/settings/bank-accounts': typeof ASlugSettingsBankAccountsRoute
   '/a/$slug/settings/company': typeof ASlugSettingsCompanyRoute
+  '/a/$slug/settings/eet': typeof ASlugSettingsEetRoute
   '/a/$slug/settings/emails': typeof ASlugSettingsEmailsRoute
   '/a/$slug/settings/members': typeof ASlugSettingsMembersRoute
   '/a/$slug/settings/number-formats': typeof ASlugSettingsNumberFormatsRoute
@@ -456,6 +463,7 @@ export interface FileRoutesByTo {
   '/a/$slug/settings/backup': typeof ASlugSettingsBackupRoute
   '/a/$slug/settings/bank-accounts': typeof ASlugSettingsBankAccountsRoute
   '/a/$slug/settings/company': typeof ASlugSettingsCompanyRoute
+  '/a/$slug/settings/eet': typeof ASlugSettingsEetRoute
   '/a/$slug/settings/emails': typeof ASlugSettingsEmailsRoute
   '/a/$slug/settings/members': typeof ASlugSettingsMembersRoute
   '/a/$slug/settings/number-formats': typeof ASlugSettingsNumberFormatsRoute
@@ -517,6 +525,7 @@ export interface FileRoutesById {
   '/a/$slug/settings/backup': typeof ASlugSettingsBackupRoute
   '/a/$slug/settings/bank-accounts': typeof ASlugSettingsBankAccountsRoute
   '/a/$slug/settings/company': typeof ASlugSettingsCompanyRoute
+  '/a/$slug/settings/eet': typeof ASlugSettingsEetRoute
   '/a/$slug/settings/emails': typeof ASlugSettingsEmailsRoute
   '/a/$slug/settings/members': typeof ASlugSettingsMembersRoute
   '/a/$slug/settings/number-formats': typeof ASlugSettingsNumberFormatsRoute
@@ -579,6 +588,7 @@ export interface FileRouteTypes {
     | '/a/$slug/settings/backup'
     | '/a/$slug/settings/bank-accounts'
     | '/a/$slug/settings/company'
+    | '/a/$slug/settings/eet'
     | '/a/$slug/settings/emails'
     | '/a/$slug/settings/members'
     | '/a/$slug/settings/number-formats'
@@ -636,6 +646,7 @@ export interface FileRouteTypes {
     | '/a/$slug/settings/backup'
     | '/a/$slug/settings/bank-accounts'
     | '/a/$slug/settings/company'
+    | '/a/$slug/settings/eet'
     | '/a/$slug/settings/emails'
     | '/a/$slug/settings/members'
     | '/a/$slug/settings/number-formats'
@@ -696,6 +707,7 @@ export interface FileRouteTypes {
     | '/a/$slug/settings/backup'
     | '/a/$slug/settings/bank-accounts'
     | '/a/$slug/settings/company'
+    | '/a/$slug/settings/eet'
     | '/a/$slug/settings/emails'
     | '/a/$slug/settings/members'
     | '/a/$slug/settings/number-formats'
@@ -991,6 +1003,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ASlugSettingsCompanyRouteImport
       parentRoute: typeof ASlugSettingsRouteRoute
     }
+    '/a/$slug/settings/eet': {
+      id: '/a/$slug/settings/eet'
+      path: '/eet'
+      fullPath: '/a/$slug/settings/eet'
+      preLoaderRoute: typeof ASlugSettingsEetRouteImport
+      parentRoute: typeof ASlugSettingsRouteRoute
+    }
     '/a/$slug/settings/emails': {
       id: '/a/$slug/settings/emails'
       path: '/emails'
@@ -1173,6 +1192,7 @@ interface ASlugSettingsRouteRouteChildren {
   ASlugSettingsBackupRoute: typeof ASlugSettingsBackupRoute
   ASlugSettingsBankAccountsRoute: typeof ASlugSettingsBankAccountsRoute
   ASlugSettingsCompanyRoute: typeof ASlugSettingsCompanyRoute
+  ASlugSettingsEetRoute: typeof ASlugSettingsEetRoute
   ASlugSettingsEmailsRoute: typeof ASlugSettingsEmailsRoute
   ASlugSettingsMembersRoute: typeof ASlugSettingsMembersRoute
   ASlugSettingsNumberFormatsRoute: typeof ASlugSettingsNumberFormatsRoute
@@ -1188,6 +1208,7 @@ const ASlugSettingsRouteRouteChildren: ASlugSettingsRouteRouteChildren = {
   ASlugSettingsBackupRoute: ASlugSettingsBackupRoute,
   ASlugSettingsBankAccountsRoute: ASlugSettingsBankAccountsRoute,
   ASlugSettingsCompanyRoute: ASlugSettingsCompanyRoute,
+  ASlugSettingsEetRoute: ASlugSettingsEetRoute,
   ASlugSettingsEmailsRoute: ASlugSettingsEmailsRoute,
   ASlugSettingsMembersRoute: ASlugSettingsMembersRoute,
   ASlugSettingsNumberFormatsRoute: ASlugSettingsNumberFormatsRoute,

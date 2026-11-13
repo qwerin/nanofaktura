@@ -54,6 +54,7 @@ func TestTenantIsolationAllIDRoutes(t *testing.T) {
 		"attachments":       byAcc(&model.Attachment{}),
 		"bank-accounts":     byAcc(&model.BankAccount{}),
 		"bank-transactions": byAcc(&model.BankTransaction{}),
+		"eet-sales":         byAcc(&model.EETSale{}),
 		"expenses":          byAcc(&model.Expense{}),
 		"invitations":       byAcc(&model.Invitation{}),
 		"invoices":          byAcc(&model.Invoice{}),

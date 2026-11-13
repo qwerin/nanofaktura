@@ -145,6 +145,22 @@ func richFixture(t *testing.T, ts *testServer, a *client) (webhookSecret string)
 			t.Fatal(err)
 		}
 	}
+	// a registered EET sale of the payment of the locked invoice and its cancellation
+	var lockedPay model.Payment
+	if err := ts.db.Where("invoice_id = ?", locked.ID).First(&lockedPay).Error; err != nil {
+		t.Fatal(err)
+	}
+	sale := model.EETSale{AccountID: acc.ID, InvoiceID: locked.ID, InvoiceNumber: locked.Number, PaymentID: &lockedPay.ID, Env: "production",
+		EIC: "CZ12345678", UnitID: "11", RegisterID: "1", SerialNo: "1", SoldAt: ts.now, Amount: 500, Status: model.EETConfirmed,
+		POK: "987a6be5-6af5-44f3-b4fc-987654321000-02", Attempts: 1, LastAttemptAt: &ts.now, ConfirmedAt: &ts.now, CreatedAt: ts.now}
+	if err := ts.db.Create(&sale).Error; err != nil {
+		t.Fatal(err)
+	}
+	storno := sale
+	storno.ID, storno.PaymentID, storno.CancelsID, storno.Amount, storno.SerialNo = 0, nil, &sale.ID, -500, "2"
+	if err := ts.db.Create(&storno).Error; err != nil {
+		t.Fatal(err)
+	}
 	ts.memberOf(a, "ucetni@example.cz", "accountant")
 	return hook.Secret
 }
@@ -192,6 +208,7 @@ func dumpAccount(t *testing.T, ts *testServer, accID uint) map[string][]string {
 	byAcc("todos", &[]model.Todo{})
 	byAcc("events", &[]model.Event{})
 	byAcc("email_logs", &[]model.EmailLog{})
+	byAcc("eet_sales", &[]model.EETSale{})
 	byAcc("webhooks", &[]model.Webhook{})
 	byAcc("attachments", &[]model.Attachment{})
 	ids := func(table string) []any {
@@ -215,7 +232,7 @@ func dumpAccount(t *testing.T, ts *testServer, accID uint) map[string][]string {
 		}
 	}
 	for _, tb := range []string{"accounts", "bank_accounts", "number_formats", "subjects", "price_items", "invoices", "expenses",
-		"templates", "recurring", "bank_transactions", "webhooks", "attachments"} {
+		"templates", "recurring", "bank_transactions", "webhooks", "attachments", "eet_sales"} {
 		index(tb)
 	}
 	// payments: by (invoice, id) — the order of the backup
@@ -277,6 +294,8 @@ func dumpAccount(t *testing.T, ts *testServer, accID uint) map[string][]string {
 						}
 					}
 				}
+			case "eet_sales":
+				r["PaymentID"], r["CancelsID"] = ref("payments", r["PaymentID"]), ref("eet_sales", r["CancelsID"])
 			case "bank_transactions":
 				if r["MatchedInvoiceID"] != nil {
 					r["PaymentID"] = ref("payments", r["PaymentID"])
@@ -375,7 +394,7 @@ func TestBackupRoundtrip(t *testing.T) {
 		codes[w.Code] = w.Count
 	}
 	for code, n := range map[string]int{"recurring_deactivated": 1, "reminders_disabled": 0, "paid_thanks_disabled": 0,
-		"webhooks_inactive": 1, "bank_tokens_removed": 1, "public_links_regenerated": 9, "members_not_imported": 1} {
+		"webhooks_inactive": 1, "bank_tokens_removed": 1, "public_links_regenerated": 9, "members_not_imported": 1, "eet_not_configured": 2} {
 		if got, ok := codes[code]; !ok || got != n {
 			t.Errorf("warning %s: %d (present %v), want %d; all %+v", code, got, ok, n, out.Warnings)
 		}

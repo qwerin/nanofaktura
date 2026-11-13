@@ -251,6 +251,9 @@ func (s *server) removePayment(ctx context.Context, tx *gorm.DB, inv *model.Invo
 	if err := unlinkBankPayment(tx, "matched_invoice_id", inv.ID, paymentID); err != nil {
 		return true, err
 	}
+	if err := cancelEETSale(ctx, tx, paymentID); err != nil {
+		return true, err
+	}
 	if pay.TaxDocumentID != nil {
 		if err := deleteTaxDocument(ctx, tx, *pay.TaxDocumentID); err != nil {
 			return true, err

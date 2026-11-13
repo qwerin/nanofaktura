@@ -16,6 +16,7 @@ import (
 	"github.com/qwerin/nanofaktura/internal/auth"
 	"github.com/qwerin/nanofaktura/internal/config"
 	"github.com/qwerin/nanofaktura/internal/db"
+	"github.com/qwerin/nanofaktura/internal/eet/eettest"
 	"github.com/qwerin/nanofaktura/internal/mail/mailtest"
 	"github.com/qwerin/nanofaktura/internal/model"
 	"github.com/qwerin/nanofaktura/internal/secret"
@@ -34,7 +35,8 @@ type testServer struct {
 	mail    *mailtest.Recorder
 	dataDir string // attachment storage (t.TempDir)
 	cfg     config.Config
-	secrets *secret.Box // shared by the API and runJob (webhook secrets)
+	secrets *secret.Box     // shared by the API and runJob (webhook secrets)
+	eet     *eettest.Server // fake EET receiving system (shared by the API and runJob)
 }
 
 // newTestServer starts an API with signup allowed. Use opts to tweak the config.
@@ -58,9 +60,10 @@ func newTestServer(t *testing.T, opts ...func(*config.Config)) *testServer {
 		o(&cfg)
 	}
 	ts := &testServer{t: t, db: gdb, now: time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC), mail: mailtest.New(), dataDir: t.TempDir(),
-		cfg: cfg, secrets: secret.NewRandom()}
+		cfg: cfg, secrets: secret.NewRandom(), eet: eettest.Start(t)}
 	deps := api.Deps{
 		Now: func() time.Time { return ts.now }, Mailer: ts.mail, Storage: storage.NewLocal(ts.dataDir), Secrets: ts.secrets,
+		EET: ts.eet.Client(),
 	}
 	if cfg.CNBURL == "" {
 		deps.CNB = &fakeRates{} // never call the real ČNB (foreign-currency documents fetch a rate)

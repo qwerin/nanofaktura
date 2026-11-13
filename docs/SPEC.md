@@ -568,7 +568,45 @@ pracovat s účtem za uživatele.
   (`DELETE /api/auth/oauth-grants/{id}`) a změna hesla smažou grant i jeho tokeny. Do zálohy účtu nepatří.
 
 ### 7.18 Mimo rozsah
-EET (zrušeno), účetnictví (podvojné), mzdy, OCR účtenek (jen příprava: přílohy nákladu).
+Účetnictví (podvojné), mzdy, OCR účtenek (jen příprava: přílohy nákladu).
+
+### 7.19 Evidence tržeb — EET 2.0
+Zákon č. 180/2026 Sb. (účinnost 1. 1. 2027), datové rozhraní 4.1 (`https://eet.gov.cz/cs/pro-vyvojare`: popis rozhraní v1.2,
+WSDL/XSD, přístupové informace). Evidují se jen **kontaktní platby** (osobní kontakt / provozovna: hotovost, karta na místě …);
+úhrada faktury převodem na dálku evidovanou tržbou není. Rozhoduje skutečný způsob úhrady, ne `payment_method` faktury.
+
+- **Klient `internal/eet`**: jedna synchronní SOAP 1.1 operace `OdeslaniTrzby` (`SOAPAction: http://fs.gov.cz/eet/OdeslaniTrzby`,
+  `Content-Type: text/xml; charset=utf-8`, HTTPS TLS ≥ 1.2 bez klientského certifikátu, HTTP/1.1, nové spojení pro každou zprávu —
+  produkce má DNS balancing). Endpointy: produkce `https://trzbyeet.gov.cz/eet/services/EETServiceSOAP/v4`, playground
+  `https://pg.trzbyeet.gov.cz/eet/services/EETServiceSOAP/v4`. Podepisuje se jen `soap:Body` (WS-Security, XML-DSig
+  RSA-SHA256, digest SHA-256, exclusive C14N), certifikát jde jako `BinarySecurityToken`; zpráva se generuje rovnou
+  v kanonickém tvaru. Limit zprávy 12 kB. Tělo: `Trzba/Hlavicka` (`uuid_zpravy`, `dat_odesl`, `prvni_zaslani`, `overeni`) +
+  `Trzba/Data` (`eic_popl`, `id_jednotky`, `id_pokl`, `porad_cis`, `dat_trzby`, `celk_trzba`). Časy v českém čase s offsetem,
+  částka v Kč se dvěma desetinnými místy. Odpověď: `Potvrzeni pok` (+ `test="true"` mimo produkci, POK pak končí `-ff`),
+  nebo `Chyba kod` (0 = ověřovací mód prošel, > 0 kritická chyba, < 0 dočasná chyba → poslat později), volitelně `Varovani`.
+- **Nastavení účtu** (`EETConfig`, 1 na účet): `enabled`, `environment` (production|playground), `eic` (CZ + 8–10 číslic, obvykle DIČ),
+  `unit_id` (číslo evidenční jednotky z DIS+), `register_id` (vlastní označení pokladny, výchozí `1`), pokladní certifikát
+  (.p12 z portálu MOJE daně → uložen jako PEM šifrovaný `secret.Box`, write-only; výstup jen `has_certificate`, `certificate_eic`,
+  `certificate_valid_to`). `GET /eet` (všichni), `PATCH /eet`, `PUT /eet/certificate` `{pkcs12 (base64), password}`,
+  `DELETE /eet/certificate` (vypne EET), `POST /eet/actions/test` (zpráva v ověřovacím módu, nic neeviduje; limit 20/h na účet) —
+  vše owner/admin. Zapnutí bez certifikátu/EIČ/jednotky/pokladny → 409 `eet_not_configured`; špatný soubor/heslo → 422
+  `eet_bad_certificate`; propadlý → 422 `eet_certificate_expired`. Nahrání certifikátu vrátí odmítnuté tržby do fronty.
+- **Tržba** (`EETSale`): `POST /invoices/{id}/payments` má `eet` (bool): `true` = kontaktní platba → v transakci platby vznikne
+  tržba `pending` (údaje se už nemění: prostředí, EIČ, jednotka, pokladna, `serial_no` = ID tržby, `sold_at`, `amount` v haléřích CZK —
+  cizí měna přepočtena kurzem dokladu). Výchozí hodnota `eet`: zapnutá EET **a** `payment_method = cash`; `true` bez zapnuté EET →
+  409 `eet_not_enabled`. `sold_at` = okamžik zápisu, u platby s dřívějším `paid_on` poledne toho dne; budoucí `paid_on` → 422.
+  Po commitu se tržba hned odešle (timeout 5 s); výsledek je v odpovědi (`invoice.eet_sales`). Hromadná úhrada, párování banky
+  a převzaté platby zálohy (finální faktura, daňový doklad) tržbu nezakládají.
+- **Opakování**: job `eet` (každý tick) posílá `pending` tržby s `next_attempt_at <= now` (prodlevy 1, 2, 5, 10, 30, 60 min, pak
+  každou hodinu bez konce — povinnost zaslat trvá i po zákonné lhůtě 48 h, `deadline_at`). Opakované zaslání má stejná data,
+  nové UUID a čas odeslání a `prvni_zaslani=false`. Kritická chyba (nebo chybějící certifikát) → `failed` + událost `eet.failed` +
+  automatický úkol `eet.failed` u dokladu; `POST /eet-sales/{id}/actions/retry` (editoři) ji vrátí do fronty a odešle. Potvrzení →
+  `confirmed`, `pok`, `warnings`, událost `eet.registered`. `GET /eet-sales` (`status`, `invoice_id`), detail faktury má `eet_sales[]`.
+- **Storno**: smazání platby se zaevidovanou (nebo možná doručenou — `pending` po aspoň jednom pokusu) tržbou založí storno
+  (`cancels_id`, opačná částka, aktuální čas; na straně správce daně se s původní tržbou nepáruje). Tržba nikdy neodeslaná nebo
+  odmítnutá se jen zruší (`cancelled`). Původní tržbě zůstane `payment_id = null`.
+- Události: `eet.registered`, `eet.failed` (subjekt = doklad), `eet.settings_updated` (subjekt = účet). Záloha: `eet_sales.json`
+  (historie vč. POK); nastavení a certifikát se nezálohují — import přidá upozornění `eet_not_configured` a čekající tržby označí `failed`.
 
 ## Otevřené otázky
 (sem zapisují implementátoři odchylky a nejasnosti)
@@ -817,6 +855,22 @@ EET (zrušeno), účetnictví (podvojné), mzdy, OCR účtenek (jen příprava: 
 - Nevytváří se události pro jednotlivé záznamy; jen `account.imported` (data: `source_slug`, `exported_at`, `app_version`, `counts`) a při stažení `account.exported` (po úspěšném dokončení streamu; při chybě uprostřed dostane klient useknutý ZIP a chyba se jen zaloguje). `app_version` = verze modulu nebo VCS revize z build info (`dev`).
 - CLI: `nanofaktura backup export --account <slug> [--out soubor.zip|-]` (nepřepíše existující soubor; událost bez uživatele) a `nanofaktura backup import --owner <email> [--name …] soubor.zip` (uživatel musí existovat). Bez argumentů (nebo `serve`) běží server jako dřív.
 - `POST /api/accounts/import` je v `authed` (vytvořit účet smí každý přihlášený, stejně jako `POST /api/accounts`); `GET …/backup` jen owner/admin.
+
+**EET 2.0 (§7.19, 2026-11-13) — rozhodnutí a odchylky:**
+- Podpis potvrzovací zprávy správce daně se neověřuje (spoléháme na TLS s ověřeným certifikátem serveru); kontroluje se jen
+  tvar POK a shoda příznaku `test` s prostředím. CRL ani platnost vlastního certifikátu se před odesláním nekontroluje — vyhodnotí
+  ji správce daně (chyba 4 → `failed`).
+- Nepodporuje se evidence v pověření / zastoupení (`eic_poverujiciho`, `povereni_vice_popl`) ani položky nabití/čerpání
+  (`urceno_cerp_zuct`, `cerp_zuct`); fakturační platby je nepotřebují.
+- Jedna evidenční jednotka a jedna pokladna na účet. Účtenka se netiskne (zákon ji nevyžaduje); POK je vidět u platby v detailu
+  faktury, na PDF faktury se neuvádí.
+- Výchozí `eet` jen pro `cash`: karta může být i platba na dálku (brána), proto ji musí uživatel označit sám (frontend
+  předvyplní zaškrtnutí pro `cash` i `card`). Dobírka: hotovost převzatá dopravcem jménem prodejce může být kontaktní platbou —
+  necháváme na uživateli.
+- Před 1. 1. 2027 produkční prostředí tržby přijímá v přechodném režimu (od 1. 11. 2026); starší datum tržby vrátí jen varování.
+- Automatická obnova certifikátu přes API certifikační autority (CA EET, JWT) není implementována — certifikát (platnost 366 dní)
+  se nahrává ručně; frontend upozorní 30 dní před koncem platnosti.
+- Trasy tržeb jsou `/eet-sales` (ne `/eet/sales`), aby seděly na konvenci „segment prostředku → ID“ (test izolace tenantů).
 
 **Koncový zákazník — faktura bez kontaktu (2026-10-04):**
 - Odchylka: `Invoice.subject_id` je volitelné (`null`), stejně jako u nákladů. Bez něj je povinné `client_name` (422 `client_name`, i když

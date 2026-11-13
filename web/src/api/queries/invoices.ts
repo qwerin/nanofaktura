@@ -172,6 +172,8 @@ export function useCreatePayment(slug: string, id: number) {
       afterChange(qc, slug, res.invoice)
       // Platba zálohy může vytvořit daňový doklad / vyúčtování — jejich detaily se načtou znovu.
       void qc.invalidateQueries({ queryKey: keys.invoices(slug) })
+      // Kontaktní platba mohla vzniknout i jako tržba v EET (počty čekajících/odmítnutých, seznam tržeb).
+      void qc.invalidateQueries({ queryKey: keys.eet(slug) })
     },
     meta: { silent: true },
   })
@@ -190,6 +192,8 @@ export function useDeletePayment(slug: string, id: number) {
       // I související doklady (daňový doklad k platbě, vyúčtování) se mění.
       void qc.invalidateQueries({ queryKey: keys.invoices(slug) })
       afterChange(qc, slug)
+      // Smazání zaevidované platby posílá do EET storno.
+      void qc.invalidateQueries({ queryKey: keys.eet(slug) })
     },
   })
 }

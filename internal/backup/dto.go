@@ -434,6 +434,34 @@ type EmailLog struct {
 	CreatedAt    time.Time  `json:"created_at"`
 }
 
+// EETSale is a sale registered in EET (the certificate and the EET setup are
+// not part of the backup).
+type EETSale struct {
+	ID            uint       `json:"id"`
+	InvoiceID     uint       `json:"invoice_id"`
+	InvoiceNumber string     `json:"invoice_number"`
+	PaymentID     *uint      `json:"payment_id"`
+	CancelsID     *uint      `json:"cancels_id"`
+	Env           string     `json:"env"`
+	EIC           string     `json:"eic"`
+	UnitID        string     `json:"unit_id"`
+	RegisterID    string     `json:"register_id"`
+	SerialNo      string     `json:"serial_no"`
+	SoldAt        time.Time  `json:"sold_at"`
+	Amount        int64      `json:"amount"`
+	Status        string     `json:"status"`
+	POK           string     `json:"pok"`
+	Attempts      int        `json:"attempts"`
+	LastAttemptAt *time.Time `json:"last_attempt_at"`
+	NextAttemptAt *time.Time `json:"next_attempt_at"`
+	ConfirmedAt   *time.Time `json:"confirmed_at"`
+	ErrorCode     int        `json:"error_code"`
+	Error         string     `json:"error"`
+	Warnings      string     `json:"warnings"`
+	TransactionID string     `json:"transaction_id"`
+	CreatedAt     time.Time  `json:"created_at"`
+}
+
 type Webhook struct {
 	ID                  uint       `json:"id"`
 	URL                 string     `json:"url"`

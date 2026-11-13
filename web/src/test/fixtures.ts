@@ -1,5 +1,5 @@
 // Typované testovací fixtury odpovídající src/api/schema.gen.ts (komponentové testy).
-import type { Account, AccountMembership, BankAccount, Invoice, Me, Subject } from '@/api/types'
+import type { Account, AccountMembership, BankAccount, EETSale, EETSettings, Invoice, Me, Subject } from '@/api/types'
 
 export const SLUG = 'firma'
 export const TS = '2026-03-01T10:00:00Z'
@@ -200,6 +200,7 @@ export function makeInvoice(overrides: Partial<Invoice> = {}): Invoice {
     ],
     vat_recap: [],
     payments: [],
+    eet_sales: [],
     related_documents: [],
     deposits: [],
     attachments: [],
@@ -207,6 +208,46 @@ export function makeInvoice(overrides: Partial<Invoice> = {}): Invoice {
     public_token: 'pub-token',
     created_at: TS,
     updated_at: TS,
+    ...overrides,
+  }
+}
+
+export function makeEETSettings(overrides: Partial<EETSettings> = {}): EETSettings {
+  return {
+    enabled: true,
+    environment: 'production',
+    eic: 'CZ12345678',
+    unit_id: '11',
+    register_id: '1',
+    has_certificate: true,
+    certificate_eic: 'CZ12345678',
+    certificate_valid_to: '2099-01-01T00:00:00Z',
+    pending_count: 0,
+    failed_count: 0,
+    ...overrides,
+  }
+}
+
+export function makeEETSale(overrides: Partial<EETSale> = {}): EETSale {
+  return {
+    id: 1,
+    invoice_id: 42,
+    invoice_number: '2026-0001',
+    payment_id: 1,
+    environment: 'production',
+    eic: 'CZ12345678',
+    unit_id: '11',
+    register_id: '1',
+    serial_no: '2026-0001/1',
+    sold_at: TS,
+    amount: 1000000,
+    status: 'confirmed',
+    pok: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d',
+    attempts: 1,
+    confirmed_at: TS,
+    deadline_at: '2026-03-03T10:00:00Z',
+    warnings: [],
+    created_at: TS,
     ...overrides,
   }
 }

@@ -36,7 +36,8 @@ import {
   useDuplicateInvoice,
   useInvoiceAction,
 } from '@/api/queries/invoices'
-import type { EmailKind, Invoice, InvoiceAction, InvoiceDeposit, InvoicePayment, RelatedDocument } from '@/api/types'
+import type { EETSale, EmailKind, Invoice, InvoiceAction, InvoiceDeposit, InvoicePayment, RelatedDocument } from '@/api/types'
+import { EetPok, EetRetryButton, EetSaleFlags, EetStatusBadge } from '@/components/eet/eet-parts'
 import { EmailHistory } from '@/components/email/email-history'
 import { HistorySection } from '@/components/events/timeline'
 import { sendableKinds } from '@/components/email/placeholders'
@@ -70,6 +71,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { formatDate, formatDateTime } from '@/lib/date'
+import { canRetrySale, deleteSendsCancellation, isCancellation, splitInvoiceSales } from '@/lib/eet'
 import { formatMoney, formatVatRate } from '@/lib/money'
 import { parseId } from '@/lib/params'
 import { formatQuantity } from '@/lib/quantity'
@@ -137,6 +139,8 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
   const duplicate = useDuplicateInvoice(slug, inv.id)
   const remove = useDeleteInvoice(slug)
   const deletePayment = useDeletePayment(slug, inv.id)
+
+  const eetSales = splitInvoiceSales(inv.payments, inv.eet_sales ?? [])
 
   const allowed = canEdit ? allowedActions({ ...inv, payment_count: inv.payments.length }) : new Set<UiAction>()
   const payer = inv.your_vat_mode !== 'non_vat_payer'
@@ -544,11 +548,16 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
                           slug={slug}
                           currency={inv.currency}
                           canDelete={canEdit}
+                          sale={eetSales.byPayment.get(p.id)}
                           onDelete={() =>
                             ask({
                               title: 'Smazat platbu?',
                               description: `Platba ${formatMoney(p.amount, inv.currency)} z ${formatDate(p.paid_on)} se odstraní a stav faktury se přepočítá.${
                                 p.tax_document_id ? ' Smaže se i daňový doklad k této platbě.' : ''
+                              }${
+                                deleteSendsCancellation(eetSales.byPayment.get(p.id))
+                                  ? ' K platbě patří tržba v EET — Finanční správě se automaticky odešle její storno.'
+                                  : ''
                               }`,
                               confirmLabel: 'Smazat platbu',
                               destructive: true,
@@ -558,6 +567,18 @@ function InvoiceDetail({ slug, inv }: { slug: string; inv: Invoice }) {
                         />
                       ))}
                     </ul>
+                  )}
+                  {eetSales.other.length > 0 && (
+                    <div className="mt-3 border-t pt-3">
+                      <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">EET — storna a smazané platby</h3>
+                      <ul className="mt-1 divide-y">
+                        {eetSales.other.map((s) => (
+                          <li key={s.id} className="py-2">
+                            <EetSaleInfo slug={slug} sale={s} canRetry={canEdit} showAmount />
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                 </Section>
 
@@ -870,12 +891,15 @@ function PaymentRow({
   slug,
   currency,
   canDelete,
+  sale,
   onDelete,
 }: {
   p: InvoicePayment
   slug: string
   currency: string
   canDelete: boolean
+  /** Tržba v EET k této platbě (kontaktní platba). */
+  sale?: EETSale
   onDelete: () => void
 }) {
   const takenOver = Boolean(p.source_payment_id)
@@ -900,6 +924,7 @@ function PaymentRow({
             Daňový doklad k platbě
           </Link>
         )}
+        {sale && <EetSaleInfo slug={slug} sale={sale} canRetry={canDelete} prefix className="mt-1" />}
       </div>
       {canDelete &&
         (takenOver ? (
@@ -925,6 +950,49 @@ function PaymentRow({
           </Button>
         ))}
     </li>
+  )
+}
+
+/** Stav tržby v EET: štítek, potvrzovací kód (POK), chyba a nový pokus. */
+function EetSaleInfo({
+  slug,
+  sale,
+  canRetry,
+  prefix,
+  showAmount,
+  className,
+}: {
+  slug: string
+  sale: EETSale
+  canRetry: boolean
+  prefix?: boolean
+  /** Storna a tržby bez platby: částka a čas, aby bylo jasné, čeho se týkají. */
+  showAmount?: boolean
+  className?: string
+}) {
+  return (
+    <div className={cn('flex min-w-0 flex-col items-start gap-1', className)}>
+      {showAmount && (
+        <span className="text-sm">
+          <span className="font-medium tabular-nums">{formatMoney(sale.amount, 'CZK')}</span>
+          <span className="text-xs text-muted-foreground">
+            {' · '}
+            {isCancellation(sale) ? 'storno tržby' : 'tržba smazané platby'}
+            {' · '}
+            {formatDateTime(sale.sold_at)}
+          </span>
+        </span>
+      )}
+      <span className="flex flex-wrap items-center gap-1.5">
+        <EetStatusBadge status={sale.status} prefix={prefix} />
+        {/* V podseznamu je druh záznamu (storno) už v textu výše. */}
+        <EetSaleFlags sale={sale} hideCancellation={showAmount} />
+      </span>
+      {sale.pok && <EetPok pok={sale.pok} />}
+      {sale.error && sale.status !== 'confirmed' && <span className="text-xs break-words text-destructive">{sale.error}</span>}
+      {sale.status === 'pending' && <span className="text-xs text-muted-foreground">Odešle se automaticky. Lhůta pro zaevidování: {formatDateTime(sale.deadline_at)}.</span>}
+      {canRetry && canRetrySale(sale) && <EetRetryButton slug={slug} sale={sale} />}
+    </div>
   )
 }
 

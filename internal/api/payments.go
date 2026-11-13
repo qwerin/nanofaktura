@@ -18,6 +18,7 @@ type PaymentCreate struct {
 	PaidOn             string `json:"paid_on,omitempty" format:"date" doc:"Default today"`
 	Amount             *int64 `json:"amount,omitempty" doc:"Minor units, non-zero (negative = refund), same sign as remaining_amount; default: remaining_amount"`
 	Note               string `json:"note,omitempty" maxLength:"500"`
+	EET                *bool  `json:"eet,omitempty" doc:"Contact payment (cash, card at the counter …): register it in EET. Default: true when the account registers sales and the invoice is paid in cash; true without EET turned on → 409 eet_not_enabled"`
 	CreateFinalInvoice bool   `json:"create_final_invoice,omitempty" doc:"Proforma only: also issue the final invoice dated paid_on; it takes over all proforma payments (a partial payment leaves the rest due on the final invoice) and settles the proforma"`
 }
 
@@ -79,6 +80,9 @@ func (s *server) createPayment(ctx context.Context, in *struct {
 			return err
 		}
 		res.Payment, res.TaxDocumentID = toPayment(p), p.TaxDocumentID
+		if _, err := s.registerEETSale(ctx, tx, m, p, in.Body.EET); err != nil {
+			return err
+		}
 
 		if in.Body.CreateFinalInvoice {
 			fin, err := s.createFinalInvoice(ctx, tx, m, paidOn, paidOn, s.advanceRate(ctx, m, paidOn))
@@ -97,6 +101,12 @@ func (s *server) createPayment(ctx context.Context, in *struct {
 	})
 	if err != nil {
 		return nil, err
+	}
+	if len(res.Invoice.EETSales) > 0 {
+		s.sendEETSales(ctx, res.Invoice.ID) // after commit; the "eet" job retries what did not get through
+		if sales, err := invoiceEETSales(ctx, s.db.WithContext(ctx), res.Invoice.ID); err == nil {
+			res.Invoice.EETSales = sales
+		}
 	}
 	// a proforma settled by a partial payment is "paid" without being paid in full
 	if !wasPaid && res.Invoice.Status == model.StatusPaid && (res.FinalInvoiceID == nil || res.Invoice.RemainingAmount == 0) {
@@ -126,6 +136,7 @@ func (s *server) deletePayment(ctx context.Context, in *struct {
 	if err != nil {
 		return nil, err
 	}
+	s.sendEETSales(ctx, in.ID) // the cancellation of a registered sale, if any
 	return &NoContent{}, nil
 }
 

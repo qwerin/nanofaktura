@@ -99,6 +99,9 @@ const (
 	WebhookDisabled             = "webhook.disabled"
 	AccountExported             = "account.exported"
 	AccountImported             = "account.imported"
+	EETRegistered               = "eet.registered"
+	EETFailed                   = "eet.failed"
+	EETSettingsUpdated          = "eet.settings_updated"
 )
 
 // CatalogEntry describes one event name (for UIs choosing webhook filters).
@@ -153,6 +156,9 @@ var Catalog = []CatalogEntry{
 	{WebhookDisabled, "Webhook automaticky vypnut"},
 	{AccountExported, "Záloha účtu stažena"},
 	{AccountImported, "Účet obnoven ze zálohy"},
+	{EETRegistered, "Tržba (nebo její storno) zaevidována v EET"},
+	{EETFailed, "Tržbu se nepodařilo zaevidovat v EET"},
+	{EETSettingsUpdated, "Nastavení EET změněno"},
 }
 
 // Record stores e and queues a delivery for every active webhook of the

@@ -26,6 +26,8 @@ export function importWarningText(w: ImportWarningLike): string {
       return `Ostatní členové účtu (${n}) se nepřenáší — pozvěte je znovu v nastavení Tým.`
     case 'attachments_missing':
       return `${countText(n, 'příloha chyběla', 'přílohy chyběly', 'příloh chybělo')} v záloze a nebyla obnovena.`
+    case 'eet_not_configured':
+      return `Evidované tržby (${n}) jsou obnovené jako historie. EET je vypnutá — nastavte ji znovu a nahrajte certifikát v Nastavení → EET.`
     case 'orphans_skipped':
       return `Vynecháno ${n} záznamů odkazujících na data, která v záloze nejsou.`
     default:

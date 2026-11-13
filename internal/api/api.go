@@ -53,6 +53,7 @@ import (
 	"github.com/qwerin/nanofaktura/internal/bankimport"
 	"github.com/qwerin/nanofaktura/internal/cnb"
 	"github.com/qwerin/nanofaktura/internal/config"
+	"github.com/qwerin/nanofaktura/internal/eet"
 	"github.com/qwerin/nanofaktura/internal/httpsec"
 	"github.com/qwerin/nanofaktura/internal/mail"
 	"github.com/qwerin/nanofaktura/internal/maildiag"
@@ -90,6 +91,10 @@ type Deps struct {
 	// keyed by NANOFAKTURA_SECRET_KEY or DATA_DIR/secret.key (secret.LoadOrCreateKey);
 	// the default is a random per-process key (tests, OpenAPI generation).
 	Secrets *secret.Box
+
+	// EET sends registered sales to the tax authority. Defaults to eet.New()
+	// (official endpoints); tests: eettest.Start(t).Client().
+	EET eet.Sender
 
 	// Resolver answers the DNS queries of the e-mail test (defaults to net.DefaultResolver).
 	Resolver maildiag.Resolver
@@ -211,6 +216,7 @@ func New(db *gorm.DB, cfg config.Config, deps Deps) (http.Handler, huma.API) {
 	s.registerWebhooks(account)
 	s.registerSearch(account)
 	s.registerBackup(authed, account)
+	s.registerEET(account)
 
 	// MCP for AI assistants: plain handler (streaming transport), tools dispatch to the routes above
 	router.Handle(mcpPath, s.mcpHandler(router, api))
@@ -251,6 +257,9 @@ func newServer(db *gorm.DB, cfg config.Config, deps Deps) *server {
 	}
 	if deps.Fio == nil {
 		deps.Fio = bankimport.NewFioClient(cfg.FioURL)
+	}
+	if deps.EET == nil {
+		deps.EET = eet.New()
 	}
 	if deps.Secrets == nil {
 		deps.Secrets = secret.NewRandom()

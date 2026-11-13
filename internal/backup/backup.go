@@ -60,6 +60,7 @@ const (
 	FileEvents           = "events.json"
 	FileEmailLogs        = "email_logs.json"
 	FileWebhooks         = "webhooks.json"
+	FileEETSales         = "eet_sales.json"
 	FileMembers          = "members.json"
 	FileAttachments      = "attachments.json"
 	attachmentsDir       = "attachments/"

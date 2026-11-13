@@ -36,7 +36,7 @@ type ImportOptions struct {
 // Warning describes something Import changed on purpose (Code is stable,
 // Message English; Count = number of affected records when relevant).
 type Warning struct {
-	Code    string `json:"code" enum:"recurring_deactivated,reminders_disabled,paid_thanks_disabled,webhooks_inactive,bank_tokens_removed,public_links_regenerated,members_not_imported,attachments_missing,orphans_skipped"`
+	Code    string `json:"code" enum:"recurring_deactivated,reminders_disabled,paid_thanks_disabled,webhooks_inactive,bank_tokens_removed,public_links_regenerated,members_not_imported,attachments_missing,orphans_skipped,eet_not_configured"`
 	Message string `json:"message"`
 	Count   int    `json:"count,omitempty"`
 }
@@ -52,6 +52,7 @@ const (
 	WarnMembersNotImported     = "members_not_imported"
 	WarnAttachmentsMissing     = "attachments_missing"
 	WarnOrphansSkipped         = "orphans_skipped"
+	WarnEETNotConfigured       = "eet_not_configured"
 	// WarnTotalsRecomputed: stored totals or paid amounts of documents did not
 	// match their lines / payments (an edited or older backup) and were recomputed.
 	WarnTotalsRecomputed = "totals_recomputed"
@@ -76,6 +77,7 @@ type archive struct {
 	todos            []Todo
 	events           []Event
 	emailLogs        []EmailLog
+	eetSales         []EETSale
 	webhooks         []Webhook
 	members          []Member
 	attachments      []Attachment
@@ -206,6 +208,7 @@ func readArchive(r io.ReaderAt, size, maxBytes int64) (*archive, error) {
 		{FileTodos, &a.todos, false},
 		{FileEvents, &a.events, false},
 		{FileEmailLogs, &a.emailLogs, false},
+		{FileEETSales, &a.eetSales, false}, // absent in backups made before EET
 		{FileWebhooks, &a.webhooks, false},
 		{FileMembers, &a.members, false},
 		{FileAttachments, &a.attachments, false},
@@ -716,6 +719,41 @@ func (im *importer) run(tx *gorm.DB) error {
 		if err := tx.Create(&m).Error; err != nil {
 			return fmt.Errorf("import e-mail log %d: %w", d.ID, err)
 		}
+	}
+
+	// registered sales (EET): the history with the confirmation codes; the
+	// setup and the certificate are not in the backup, so a sale that was
+	// still waiting becomes "failed" until EET is set up again (uploading a
+	// certificate queues failed sales).
+	eetSales := idMap{}
+	for i := range a.eetSales {
+		d := &a.eetSales[i]
+		iid, ok := im.invoices[d.InvoiceID]
+		if !ok {
+			im.orphans++
+			continue
+		}
+		m := model.EETSale{}
+		convert(&m, d)
+		m.ID, m.AccountID, m.InvoiceID, m.PaymentID, m.CancelsID = 0, accID, iid, im.payments.opt(d.PaymentID), nil
+		if m.Status == model.EETPending {
+			m.Status, m.NextAttemptAt, m.Error = model.EETFailed, nil, "Obnoveno ze zálohy – tržba čekala na odeslání"
+		}
+		if err := tx.Create(&m).Error; err != nil {
+			return fmt.Errorf("import EET sale %d: %w", d.ID, err)
+		}
+		eetSales[d.ID] = m.ID
+	}
+	for i := range a.eetSales {
+		d := &a.eetSales[i]
+		if id, ok := eetSales[d.ID]; ok && d.CancelsID != nil {
+			if err := tx.Model(&model.EETSale{}).Where("id = ?", id).UpdateColumn("cancels_id", eetSales.opt(d.CancelsID)).Error; err != nil {
+				return fmt.Errorf("import EET sale %d: %w", d.ID, err)
+			}
+		}
+	}
+	if len(eetSales) > 0 {
+		im.warn(WarnEETNotConfigured, "registered sales (EET) were imported as history; EET is turned off and needs its setup and certificate again", len(eetSales))
 	}
 
 	for i := range a.webhooks {

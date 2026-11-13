@@ -236,5 +236,14 @@ export type UpdateWebhookInput = RequestBody<'/api/accounts/{slug}/webhooks/{id}
 export type WebhookDeliveryList = ResponseBody<'/api/accounts/{slug}/webhooks/{id}/deliveries', 'get'>
 export type WebhookDelivery = ListItem<WebhookDeliveryList>
 export type WebhookTestResult = ResponseBody<'/api/accounts/{slug}/webhooks/{id}/test', 'post'>
+// --- EET (evidence tržeb) ---
+export type EETSettings = ResponseBody<'/api/accounts/{slug}/eet', 'get'>
+export type UpdateEETSettingsInput = RequestBody<'/api/accounts/{slug}/eet', 'patch'>
+export type EETEnvironment = EETSettings['environment']
+export type EETCertificateInput = RequestBody<'/api/accounts/{slug}/eet/certificate', 'put'>
+export type EETTestResult = ResponseBody<'/api/accounts/{slug}/eet/actions/test', 'post'>
+export type EETSaleList = ResponseBody<'/api/accounts/{slug}/eet-sales', 'get'>
+export type EETSale = ListItem<EETSaleList>
+export type EETSaleStatus = EETSale['status']
 export type SearchResults = ResponseBody<'/api/accounts/{slug}/search', 'get'>
 export type SearchHit = SearchResults['invoices'][number]
