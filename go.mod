@@ -1,6 +1,6 @@
 module github.com/qwerin/nanofaktura
 
-go 1.26.9
+go 1.27.4
 
 require (
 	github.com/boombuler/barcode v1.1.0
@@ -15,7 +15,7 @@ require (
 	github.com/johnfercher/maroto/v2 v2.4.3
 	github.com/ledongthuc/pdf v0.0.0-20260907135840-6c8c28e0e8a0
 	github.com/modelcontextprotocol/go-sdk v1.8.0
-	github.com/xuri/excelize/v2 v2.11.0
+	github.com/xuri/excelize/v2 v2.11.1
 	golang.org/x/crypto v0.58.0
 	golang.org/x/image v0.47.0
 	golang.org/x/text v0.43.0
@@ -58,10 +58,10 @@ require (
 	github.com/tiendc/go-deepcopy v1.7.2 // indirect
 	github.com/tinylib/msgp v1.6.5 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	github.com/xuri/efp v0.0.2 // indirect
+	github.com/xuri/efp v0.0.3-0.20260924042702-217b81952dec // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
-	golang.org/x/net v0.61.0 // indirect
+	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
